@@ -165,32 +165,32 @@
                 </div>
                 <div class="w-full h-px bg-[#1E2338]"></div>
                 <div class="flex flex-col gap-2 w-full">
-                    <button
+                    <a href="AnalysisDashboard.html"
                         class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
                         <span class="material-symbols-outlined shrink-0">dashboard</span>
                         <span
                             class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
-                    </button>
-                    <button
+                    </a>
+                    <a href="ReportPage.html"
                         class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
                         <span class="material-symbols-outlined shrink-0">history</span>
                         <span
                             class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
                             Scans</span>
-                    </button>
-                    <button
+                    </a>
+                    <a href="ReportPage.html"
                         class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
                         <span class="material-symbols-outlined shrink-0">folder_open</span>
                         <span
                             class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
-                    </button>
-                    <button
+                    </a>
+                    <a href="FactCheckPage.html"
                         class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
                         <span class="material-symbols-outlined shrink-0">shield</span>
                         <span
                             class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
                             Intel</span>
-                    </button>
+                    </a>
                 </div>
             </div>
             <div class="flex flex-col gap-2 w-full px-3">
@@ -247,69 +247,237 @@
                     <div
                         class="bg-[#161b2e] border border-[#1E2338] rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm">
                         <!-- Tabs -->
-                        <div class="flex border-b border-[#1E2338] overflow-x-auto">
-                            <button
-                                class="flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 active-tab transition-colors min-w-[100px]">
+                        <div class="flex border-b border-[#1E2338] overflow-x-auto" id="mediaTabs">
+                            <button data-tab="image" data-result="ResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 active-tab transition-colors min-w-[100px]">
                                 <span class="material-symbols-outlined">image</span>
                                 <span class="text-xs font-bold uppercase tracking-wider">Image</span>
                             </button>
-                            <button
-                                class="flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                            <button data-tab="video" data-result="VideoResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
                                 <span class="material-symbols-outlined">videocam</span>
                                 <span class="text-xs font-bold uppercase tracking-wider">Video</span>
                             </button>
-                            <button
-                                class="flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                            <button data-tab="audio" data-result="AudioResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
                                 <span class="material-symbols-outlined">mic</span>
                                 <span class="text-xs font-bold uppercase tracking-wider">Audio</span>
                             </button>
-                            <button
-                                class="flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                            <button data-tab="text" data-result="TextResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
                                 <span class="material-symbols-outlined">description</span>
                                 <span class="text-xs font-bold uppercase tracking-wider">Text</span>
                             </button>
-                            <button
-                                class="flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                            <button data-tab="url" data-result="FactCheckPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
                                 <span class="material-symbols-outlined">link</span>
                                 <span class="text-xs font-bold uppercase tracking-wider">URL</span>
                             </button>
                         </div>
-                        <!-- Drop Zone -->
-                        <div
-                            class="p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
-                            <div
-                                class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            </div>
-                            <div
-                                class="border-2 border-dashed border-[#2A3450] group-hover:border-primary/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A]">
+
+                        <!-- Upload Content Sections -->
+                        <div id="uploadContents">
+                            <!-- Image Upload -->
+                            <div id="image-upload"
+                                class="upload-content p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
                                 <div
-                                    class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-primary group-hover:text-white group-hover:bg-primary transition-all shadow-glow">
-                                    <span class="material-symbols-outlined !text-3xl">cloud_upload</span>
+                                    class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                 </div>
-                                <div class="text-center">
-                                    <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop file here</p>
-                                    <p class="text-sm text-[#94A3B8]">or <span
-                                            class="text-primary cursor-pointer hover:underline">browse files</span> from
-                                        your computer</p>
-                                </div>
-                                <p class="text-xs text-[#64748B] mt-2">Supports JPG, PNG, WEBP up to 50MB</p>
-                            </div>
-                            <!-- Action Area -->
-                            <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
-                                <div class="flex-1 w-full">
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-primary/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A]">
                                     <div
-                                        class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
-                                        <span class="material-symbols-outlined text-[#64748B]">link</span>
-                                        <input
-                                            class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
-                                            placeholder="Or paste an image URL here..." type="text" />
+                                        class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-primary group-hover:text-white group-hover:bg-primary transition-all shadow-glow">
+                                        <span class="material-symbols-outlined !text-3xl">cloud_upload</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop image here</p>
+                                        <p class="text-sm text-[#94A3B8]">or <span
+                                                class="text-primary cursor-pointer hover:underline">browse files</span>
+                                            from your computer</p>
+                                    </div>
+                                    <p class="text-xs text-[#64748B] mt-2">Supports JPG, PNG, WEBP up to 50MB</p>
+                                </div>
+                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                            <span class="material-symbols-outlined text-[#64748B]">link</span>
+                                            <input
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or paste an image URL here..." type="text" />
+                                        </div>
+                                    </div>
+                                    <button id="analyzeBtn" onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Credibility
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Video Upload -->
+                            <div id="video-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-purple-500/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A]">
+                                    <div
+                                        class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-purple-400 group-hover:text-white group-hover:bg-purple-500 transition-all shadow-glow">
+                                        <span class="material-symbols-outlined !text-3xl">videocam</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop video here</p>
+                                        <p class="text-sm text-[#94A3B8]">or <span
+                                                class="text-purple-400 cursor-pointer hover:underline">browse
+                                                files</span> from your computer</p>
+                                    </div>
+                                    <p class="text-xs text-[#64748B] mt-2">Supports MP4, MOV, AVI, WEBM up to 500MB</p>
+                                </div>
+                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                            <span class="material-symbols-outlined text-[#64748B]">link</span>
+                                            <input
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or paste a video URL here..." type="text" />
+                                        </div>
+                                    </div>
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Video
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Audio Upload -->
+                            <div id="audio-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-green-500/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A]">
+                                    <div
+                                        class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-green-400 group-hover:text-white group-hover:bg-green-500 transition-all shadow-glow">
+                                        <span class="material-symbols-outlined !text-3xl">mic</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop audio here</p>
+                                        <p class="text-sm text-[#94A3B8]">or <span
+                                                class="text-green-400 cursor-pointer hover:underline">browse
+                                                files</span> from your computer</p>
+                                    </div>
+                                    <p class="text-xs text-[#64748B] mt-2">Supports MP3, WAV, FLAC, OGG up to 100MB</p>
+                                </div>
+                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                            <span class="material-symbols-outlined text-[#64748B]">link</span>
+                                            <input
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or paste an audio URL here..." type="text" />
+                                        </div>
+                                    </div>
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Audio
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Text Upload -->
+                            <div id="text-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-amber-500/50 transition-all rounded-xl w-full bg-[#0D1B2A] p-6">
+                                    <div class="flex items-center gap-3 mb-4">
+                                        <div
+                                            class="size-10 rounded-full bg-[#1E2338] flex items-center justify-center text-amber-400">
+                                            <span class="material-symbols-outlined">description</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-lg font-medium text-white">Paste or Type Text</p>
+                                            <p class="text-xs text-[#64748B]">Enter text to check for AI-generated
+                                                content</p>
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        class="w-full h-48 bg-[#0F121A] border border-[#2A3450] rounded-lg p-4 text-white text-sm placeholder-[#64748B] focus:outline-none focus:border-amber-500/50 resize-none"
+                                        placeholder="Paste your text here to analyze for AI-generated content..."></textarea>
+                                </div>
+                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                            <span class="material-symbols-outlined text-[#64748B]">upload_file</span>
+                                            <input
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or upload a text document (.txt, .doc, .pdf)..."
+                                                type="text" readonly />
+                                            <button
+                                                class="text-amber-400 hover:text-amber-300 text-sm font-medium">Browse</button>
+                                        </div>
+                                    </div>
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Text
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- URL Input -->
+                            <div id="url-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-red-500/50 transition-all rounded-xl w-full bg-[#0D1B2A] p-8">
+                                    <div class="flex flex-col items-center gap-6">
+                                        <div
+                                            class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-red-400 group-hover:text-white group-hover:bg-red-500 transition-all shadow-glow">
+                                            <span class="material-symbols-outlined !text-3xl">link</span>
+                                        </div>
+                                        <div class="text-center">
+                                            <p class="text-lg font-medium text-white mb-1">Enter URL to Fact Check</p>
+                                            <p class="text-sm text-[#94A3B8]">Paste any news article, social media post,
+                                                or website URL</p>
+                                        </div>
+                                        <div class="w-full max-w-xl">
+                                            <div
+                                                class="flex items-center gap-3 px-4 py-4 bg-[#0F121A] border border-[#2A3450] rounded-lg focus-within:border-red-500/50 transition-colors">
+                                                <span class="material-symbols-outlined text-red-400">language</span>
+                                                <input
+                                                    class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                    placeholder="https://example.com/article..." type="url" />
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-[#64748B]">We'll analyze the content for misinformation
+                                            and verify claims</p>
                                     </div>
                                 </div>
-                                <a href="ResultPage.html"
-                                    class="w-full md:w-auto px-8 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
-                                    <span class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
-                                    Analyze Credibility
-                                </a>
+                                <div class="w-full mt-8 flex justify-center">
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">fact_check</span>
+                                        Fact Check URL
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -317,7 +485,7 @@
                 <!-- Feature Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Card 1 -->
-                    <div
+                    <a href="VideoResultPage.html"
                         class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
                             <span class="flex h-2 w-2 rounded-full bg-accent-success"></span>
@@ -331,9 +499,9 @@
                             <p class="text-[#94A3B8] text-sm leading-relaxed">Advanced frame-by-frame video analysis to
                                 spot synthetic faces.</p>
                         </div>
-                    </div>
+                    </a>
                     <!-- Card 2 -->
-                    <div
+                    <a href="AudioResultPage.html"
                         class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
                             <span class="flex h-2 w-2 rounded-full bg-accent-success"></span>
@@ -347,9 +515,9 @@
                             <p class="text-[#94A3B8] text-sm leading-relaxed">Spectral audio analysis to identify
                                 AI-generated voice patterns.</p>
                         </div>
-                    </div>
+                    </a>
                     <!-- Card 3 -->
-                    <div
+                    <a href="TextResultPage.html"
                         class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
                             <span class="flex h-2 w-2 rounded-full bg-accent-warning"></span>
@@ -363,9 +531,9 @@
                             <p class="text-[#94A3B8] text-sm leading-relaxed">Detects LLM-generated text from ChatGPT,
                                 Claude, and others.</p>
                         </div>
-                    </div>
+                    </a>
                     <!-- Card 4 -->
-                    <div
+                    <a href="FactCheckPage.html"
                         class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
                         <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
                             <span class="flex h-2 w-2 rounded-full bg-accent-success"></span>
@@ -379,7 +547,7 @@
                             <p class="text-[#94A3B8] text-sm leading-relaxed">Real-time cross-referencing with trusted
                                 global news sources.</p>
                         </div>
-                    </div>
+                    </a>
                 </div>
                 <!-- Unified Scorecard Preview (Compact) -->
                 <div
@@ -413,6 +581,54 @@
             </div>
         </main>
     </div>
+
+    <!-- Tab Switching and Navigation Script -->
+    <script>
+        // Track currently active tab
+        let activeTab = 'image';
+
+        // Tab switching logic
+        document.querySelectorAll('.media-tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                const targetTab = this.getAttribute('data-tab');
+
+                // Update active tab tracking
+                activeTab = targetTab;
+
+                // Remove active state from all tabs
+                document.querySelectorAll('.media-tab').forEach(t => {
+                    t.classList.remove('active-tab');
+                    t.classList.add('inactive-tab');
+                });
+
+                // Add active state to clicked tab
+                this.classList.remove('inactive-tab');
+                this.classList.add('active-tab');
+
+                // Hide all upload content sections
+                document.querySelectorAll('.upload-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+
+                // Show the corresponding upload content
+                const targetContent = document.getElementById(targetTab + '-upload');
+                if (targetContent) {
+                    targetContent.classList.remove('hidden');
+                }
+            });
+        });
+
+        // Navigate to the result page based on active tab
+        function navigateToResult() {
+            const activeTabElement = document.querySelector('.media-tab.active-tab');
+            if (activeTabElement) {
+                const resultPage = activeTabElement.getAttribute('data-result');
+                if (resultPage) {
+                    window.location.href = resultPage;
+                }
+            }
+        }
+    </script>
 </body>
 
 </html>
