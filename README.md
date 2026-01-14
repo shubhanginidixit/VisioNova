@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![VisioNova Logo](https://img.shields.io/badge/VisioNova-AI%20Credibility%20Verification-3A8DFF?style=for-the-badge&logo=shield&logoColor=white)
-
 **The world's most advanced multi-modal AI credibility engine for enterprise security and media integrity.**
 
 </div>
