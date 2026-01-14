@@ -44,26 +44,7 @@
             },
         }
     </script>
-    <style>
-        /* Custom scrollbar for dark theme */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #0D1B2A;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #2a3b55;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3A8DFF;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/common.css">
 </head>
 
 <body
@@ -213,7 +194,7 @@
                                 Risk Detected</span>
                             <span class="text-gray-500 text-xs">ID: #VN-8842-XJ</span>
                         </div>
-                        <h1 class="text-2xl font-bold text-white">Video Credibility Analysis</h1>
+                        <h1 id="pageTitle" class="text-2xl font-bold text-white">Video Credibility Analysis</h1>
                     </div>
                     <div class="flex gap-3">
                         <button
@@ -233,24 +214,15 @@
                     <!-- Video Player Column -->
                     <div class="col-span-12 lg:col-span-8 flex flex-col h-full">
                         <div class="relative flex-1 bg-black rounded-t-xl overflow-hidden group">
-                            <!-- Video Placeholder -->
-                            <div class="absolute inset-0 bg-cover bg-center opacity-60"
-                                data-alt="Video frame of a person speaking at a podium"
-                                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAQDuxpWFdOkVVEugXBywQZ_2DsIaD7p2r9XjZRfUqsQ4A56gXCSo4sESEVQAg1aTvPFuLysl69sbDV6Oxp9Pw66Un6B-eicyroqSVtfq6eHtfW-1siwDKpjMw4TR1LUj6_gdM4fncDYC2aS5l0Pyb90JxqTfvL1Xx8SA-UhVQEyNfoSplHxp_wY5GnHBq_Bnir6BvLZ77iETzk1cFNPhNkaYwdZCNv8LbFihTVa5x8qloQnSYg344eeUtbA58_d1By8v6Ge-oq1f3u');">
-                            </div>
-                            <!-- Fake Analysis Overlay (simulated) -->
-                            <div
-                                class="absolute top-[20%] left-[45%] w-[120px] h-[120px] border-2 border-visio-accent-red rounded-full opacity-80 animate-pulse">
-                            </div>
-                            <div
-                                class="absolute top-[22%] left-[48%] bg-visio-accent-red text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                                MOUTH MAP</div>
-                            <!-- Play Button -->
-                            <div class="absolute inset-0 flex items-center justify-center">
-                                <button
-                                    class="size-16 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:scale-105 transition-transform group-hover:bg-primary/80">
-                                    <span class="material-symbols-outlined text-[32px] ml-1">play_arrow</span>
-                                </button>
+                            <!-- Dynamic Video Container -->
+                            <div id="videoContainer" class="absolute inset-0 flex items-center justify-center">
+                                <div id="noVideoPlaceholder" class="flex flex-col items-center gap-4 text-gray-400">
+                                    <span class="material-symbols-outlined text-6xl opacity-50">videocam</span>
+                                    <p class="text-sm">No video uploaded</p>
+                                    <a href="homepage.html" class="text-primary hover:underline text-sm">Upload a video
+                                        to analyze</a>
+                                </div>
+                                <video id="uploadedVideo" class="hidden w-full h-full object-contain" controls></video>
                             </div>
                             <!-- Top Controls -->
                             <div class="absolute top-4 right-4 flex gap-2">
@@ -586,6 +558,12 @@
             </div>
         </main>
     </div>
+
+    <!-- Storage Utilities -->
+    <script src="../js/storage-utils.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
+    <script src="../js/video-result.js"></script>
 </body>
 
 </html>

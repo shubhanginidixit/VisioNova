@@ -37,26 +37,7 @@
             },
         }
     </script>
-    <style>
-        /* Custom scrollbar for dark mode */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #0f1723;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #20324b;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #388bff;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/common.css">
 </head>
 
 <body
@@ -187,8 +168,9 @@
                             <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                             <span>Text Analysis</span>
                         </div>
-                        <h1 class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Quantum
-                            Computing Article</h1>
+                        <h1 id="pageTitle"
+                            class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Text
+                            Analysis</h1>
                         <p class="text-[#8da8ce] text-sm font-normal flex items-center gap-2">
                             <span class="material-symbols-outlined text-[18px]">calendar_today</span>
                             Analyzed on Oct 24, 2023 • 14:32 PM
@@ -302,34 +284,16 @@
                                 </span>
                             </div>
                         </div>
-                        <div
+                        <div id="textContent"
                             class="p-8 font-serif text-lg leading-relaxed text-slate-800 h-full overflow-y-auto max-h-[600px]">
-                            <p class="mb-4">
-                                The rapid advancement of quantum computing poses significant opportunities and
-                                challenges for the tech industry. <span
-                                    class="bg-yellow-200/60 px-0.5 rounded cursor-help relative group"
-                                    title="Low perplexity score detected">Unlike classical computers, which use bits to
-                                    process information as zeros or ones, quantum computers use quantum bits, or
-                                    qubits.</span>
-                            </p>
-                            <p class="mb-4">
-                                <span class="bg-red-200/60 px-0.5 rounded cursor-help"
-                                    title="High burstiness anomaly">This allows them to exist in multiple states
-                                    simultaneously, a phenomenon known as superposition.</span> In 2019, Google claimed
-                                to have achieved "quantum supremacy," performing a calculation in 200 seconds that would
-                                take a supercomputer 10,000 years.
-                            </p>
-                            <p class="mb-4">
-                                However, critics argue that practical applications remain decades away. The error rates
-                                in current quantum processors are still too high for reliable large-scale computation.
-                                Despite this, investment in the sector has tripled since 2020.
-                            </p>
-                            <p class="mb-4">
-                                <span class="bg-yellow-200/60 px-0.5 rounded">Major tech giants like IBM and Microsoft
-                                    are racing to build the first fault-tolerant quantum computer.</span> The
-                                implications for cryptography are particularly concerning, as quantum machines could
-                                potentially crack current encryption standards.
-                            </p>
+                            <div id="noTextPlaceholder"
+                                class="flex flex-col items-center justify-center h-full gap-4 text-slate-400 font-sans text-center">
+                                <span class="material-symbols-outlined text-6xl opacity-50">description</span>
+                                <p class="text-sm">No text provided for analysis</p>
+                                <a href="homepage.html" class="text-primary hover:underline text-sm">Paste or upload
+                                    text to analyze</a>
+                            </div>
+                            <div id="uploadedText" class="hidden"></div>
                         </div>
                     </div>
                     <!-- Metrics & Graphs Column -->
@@ -584,6 +548,12 @@
             </div>
         </main>
     </div>
+
+    <!-- Storage Utilities -->
+    <script src="../js/storage-utils.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
+    <script src="../js/text-result.js"></script>
 </body>
 
 </html>

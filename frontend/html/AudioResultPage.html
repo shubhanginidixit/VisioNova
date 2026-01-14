@@ -42,46 +42,7 @@
       },
     }
   </script>
-  <style>
-    /* Custom scrollbar for dark theme */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #0D1B2A;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #20324b;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #3A8DFF;
-    }
-
-    @keyframes scan {
-      0% {
-        transform: translateY(0);
-        opacity: 0.5;
-      }
-
-      50% {
-        opacity: 0.2;
-      }
-
-      100% {
-        transform: translateY(100%);
-        opacity: 0.5;
-      }
-    }
-
-    .animate-scan {
-      animation: scan 3s linear infinite;
-    }
-  </style>
+  <link rel="stylesheet" href="../css/common.css">
 </head>
 
 <body
@@ -193,7 +154,7 @@
       <!-- Page Header -->
       <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <h1 class="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">evidence_audio_042.mp3</h1>
+          <h1 id="pageTitle" class="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">Audio Analysis</h1>
           <div class="flex items-center gap-4 text-gray-400 text-sm">
             <span class="flex items-center gap-1"><span
                 class="material-symbols-outlined text-[16px]">calendar_today</span> Oct 24, 2023</span>
@@ -300,8 +261,17 @@
             </div>
             <!-- Visualizer Area -->
             <div class="flex-1 relative bg-[#0a0f16] m-1 rounded-xl overflow-hidden group">
-              <!-- Background Image acting as spectrogram -->
-              <div class="absolute inset-0 bg-cover bg-center opacity-80"
+              <!-- Dynamic Audio Container -->
+              <div id="audioContainer" class="absolute inset-0 flex items-center justify-center">
+                <div id="noAudioPlaceholder" class="flex flex-col items-center gap-4 text-gray-400">
+                  <span class="material-symbols-outlined text-6xl opacity-50">mic</span>
+                  <p class="text-sm">No audio uploaded</p>
+                  <a href="homepage.html" class="text-primary hover:underline text-sm">Upload audio to analyze</a>
+                </div>
+                <audio id="uploadedAudio" class="hidden w-full max-w-xl" controls></audio>
+              </div>
+              <!-- Background Spectrogram (shown when audio exists) -->
+              <div id="spectrogramBg" class="hidden absolute inset-0 bg-cover bg-center opacity-80"
                 data-alt="Detailed audio spectrogram showing frequency intensity heat map"
                 style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDLVV8WOTRRDz3dja2PUA4mXuwVLqj33i7j5pqraMDRjuz11tX6rzG38uMLsaVyKwbJG8jxW67CrUEzxN4yfbFzpuHQLriLE6RndTeOrXtxpgHNoWcbIYa9SSu8ySUHp6RkRNefWuLsmRTdGTg1aDOr8h2OIjKtx1Mgf9oHJ8nsqo-HpRryK5pRhrRs6QJkkQpLm64dOGsivUb53qmHy1qWS53d-stIXsubfhQSrTs5X77FFr4vPOKprk6VyYzZc0RjCRcgh9BV_ddX');">
               </div>
@@ -479,6 +449,12 @@
       </div>
     </main>
   </div>
+
+  <!-- Storage Utilities -->
+  <script src="../js/storage-utils.js"></script>
+
+  <!-- Dynamic Content Loading Script -->
+  <script src="../js/audio-result.js"></script>
 </body>
 
 </html>

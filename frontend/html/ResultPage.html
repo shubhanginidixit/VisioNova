@@ -39,20 +39,7 @@
             },
         }
     </script>
-    <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #0f121a;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #20324b;
-            border-radius: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/common.css">
 </head>
 
 <body
@@ -157,9 +144,10 @@
                                 class="px-2 py-0.5 rounded text-[10px] font-bold bg-accent-green/10 text-accent-green border border-accent-green/20">COMPLETED</span>
                             <span class="text-[#8da8ce] text-xs">ID: #8F9D7A2B</span>
                         </div>
-                        <h1 class="text-white text-2xl lg:text-3xl font-bold tracking-tight">Analysis:
-                            candidate_evidence_001.jpg</h1>
-                        <p class="text-[#8da8ce] text-sm">Source: Social Media Import • Feb 24, 2024 at 10:42 AM</p>
+                        <h1 id="pageTitle" class="text-white text-2xl lg:text-3xl font-bold tracking-tight">Analysis:
+                            Uploaded Image</h1>
+                        <p id="pageSubtitle" class="text-[#8da8ce] text-sm">Source: Local Upload • <span
+                                id="analysisTime"></span></p>
                     </div>
                     <div class="flex gap-3">
                         <button
@@ -233,9 +221,16 @@
                             <div class="absolute inset-0 z-10 opacity-10 pointer-events-none"
                                 style="background-image: linear-gradient(#3A8DFF 1px, transparent 1px), linear-gradient(90deg, #3A8DFF 1px, transparent 1px); background-size: 40px 40px;">
                             </div>
-                            <div class="w-full h-full bg-center bg-no-repeat bg-cover"
-                                data-alt="Analyzed image showing a cityscape with potential digital alterations highlighted"
-                                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAPwJqnTt25LkjVrXHox0C1JGXpinDQay2eylL9EX-Kvr-5npFxED31bSyLUmGvZeAfEWsBnAFuzs9LxLKOrZMWVrcetAJhaheRJdFd9CIViNF2TMqYUcRyuDw7gGKBkGjNz4lnlbGSidCTGB9M07nbMgHz4oE2VYNa1sZNrlbpFPYmadQcWJJklQnlrTZlwTmasNj_NQSUvOX1rnj0a_AH1jxm4Fw-ZUkMhxbf9-mmgTvQ43UKQfTHbm9V092JZDDjJ-nyp93VL2gv");'>
+                            <!-- Dynamic Image Container -->
+                            <div id="imageContainer" class="w-full h-full flex items-center justify-center">
+                                <div id="noImagePlaceholder" class="flex flex-col items-center gap-4 text-[#8da8ce]">
+                                    <span class="material-symbols-outlined text-6xl opacity-50">image</span>
+                                    <p class="text-sm">No image uploaded</p>
+                                    <a href="homepage.html" class="text-primary hover:underline text-sm">Upload an image
+                                        to analyze</a>
+                                </div>
+                                <img id="uploadedImage" class="hidden w-full h-full object-contain"
+                                    alt="Uploaded image for analysis" />
                             </div>
                             <!-- Analysis Markers (Simulated) -->
                             <div
@@ -438,6 +433,12 @@
             </div>
         </main>
     </div>
+
+    <!-- Storage Utilities -->
+    <script src="../js/storage-utils.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
+    <script src="../js/result-page.js"></script>
 </body>
 
 </html>

@@ -1,0 +1,54 @@
+/* VisioNova - Common Styles */
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0F121A;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2A3450;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3A8DFF;
+}
+
+.glass-panel {
+    background: rgba(13, 27, 42, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.active-tab {
+    color: #3A8DFF;
+    border-bottom-color: #3A8DFF;
+}
+
+.inactive-tab {
+    color: #94A3B8;
+    border-bottom-color: transparent;
+}
+
+.inactive-tab:hover {
+    color: #E2E8F0;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.feature-card {
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    border-color: rgba(58, 141, 255, 0.3);
+}

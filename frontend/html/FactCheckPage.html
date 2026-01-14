@@ -38,30 +38,7 @@
             },
         }
     </script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        /* Custom scrollbar for a cleaner look in dark mode */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #0D1B2A;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #2e476b;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #388bff;
-        }
-    </style>
+    <link rel="stylesheet" href="../css/common.css">
 </head>
 
 <body
@@ -196,10 +173,9 @@
                         <div class="pl-4 pr-3 text-slate-400">
                             <span class="material-symbols-outlined">link</span>
                         </div>
-                        <input
+                        <input id="urlInput"
                             class="bg-transparent border-none text-white placeholder-slate-500 w-full focus:ring-0 text-base"
-                            placeholder="Paste URL, text, or drop media here..." type="text"
-                            value="https://globalnews.com/economy/2023/report-inflation-impact" />
+                            placeholder="Paste URL, text, or drop media here..." type="text" value="" />
                         <button
                             class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-primary/25 flex items-center gap-2 whitespace-nowrap">
                             <span class="material-symbols-outlined text-[20px]">verified</span>
@@ -470,6 +446,12 @@
             </div>
         </main>
     </div>
+
+    <!-- Storage Utilities -->
+    <script src="../js/storage-utils.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
+    <script src="../js/fact-check.js"></script>
 </body>
 
 </html>
