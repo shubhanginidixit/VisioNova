@@ -97,7 +97,7 @@ VisioNova uses a **Unified Credibility Score** (0-100) that combines:
 ## 🤝 Contributing
 
 Contributions:
-Dhanush Pillay
+Dhanush Pillay and 
 Shubhangini Dixit
 
 ---
