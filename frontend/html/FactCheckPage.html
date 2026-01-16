@@ -281,16 +281,16 @@
                 <!-- Right Column: Content & Analysis Stream -->
                 <div class="lg:col-span-8 flex flex-col gap-6">
                     <!-- Tabs -->
-                    <div class="flex gap-1 bg-card-dark/50 p-1 rounded-xl w-fit border border-white/5">
-                        <button
-                            class="px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm">Claims
-                            &amp; Evidence</button>
-                        <button
-                            class="px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Full
-                            Text View</button>
-                        <button
-                            class="px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Media
+                    <div id="analysisTabs"
+                        class="flex gap-1 bg-card-dark/50 p-1 rounded-xl w-fit border border-white/5">
+                        <button id="tabSummary" data-tab="summary"
+                            class="tab-btn px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm">Summary</button>
+                        <button id="tabDetailed" data-tab="detailed"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Detailed
                             Analysis</button>
+                        <button id="tabClaims" data-tab="claims"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Claims
+                            & Evidence</button>
                     </div>
                     <!-- Claim Preview & Sources List -->
                     <div id="claimsCard"

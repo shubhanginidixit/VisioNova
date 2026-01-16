@@ -25,13 +25,14 @@ class AIAnalyzer:
     def analyze_claim(self, claim: str, sources: list) -> dict:
         """
         Use AI to analyze a claim against found sources.
+        Returns structured content for different view tabs.
         
         Args:
             claim: The claim being fact-checked
             sources: List of source dictionaries with title, snippet, trust_level
             
         Returns:
-            dict with verdict, confidence, and explanation
+            dict with verdict, confidence, summary, detailed_analysis, and claims
         """
         if not self.client:
             return self._fallback_analysis(sources)
@@ -40,8 +41,8 @@ class AIAnalyzer:
             # Build context from sources
             source_context = self._build_source_context(sources)
             
-            # Create prompt for analysis
-            prompt = f"""You are a fact-checker. Analyze the following claim based on the provided sources.
+            # Create prompt for comprehensive analysis
+            prompt = f"""You are an expert fact-checker. Analyze the following claim based on the provided sources.
 
 CLAIM TO VERIFY:
 "{claim}"
@@ -49,12 +50,31 @@ CLAIM TO VERIFY:
 SOURCES FOUND:
 {source_context}
 
-Based on these sources, provide your analysis in the following JSON format:
+Provide a comprehensive analysis in the following JSON format:
 {{
     "verdict": "TRUE" | "FALSE" | "PARTIALLY TRUE" | "MISLEADING" | "UNVERIFIABLE",
     "confidence": <number 0-100>,
-    "explanation": "<2-3 sentence explanation of your verdict>",
-    "key_finding": "<most important finding from sources>"
+    
+    "summary": {{
+        "one_liner": "<One sentence verdict summary>",
+        "key_points": ["<key point 1>", "<key point 2>", "<key point 3>"]
+    }},
+    
+    "detailed_analysis": {{
+        "overview": "<2-3 paragraph detailed explanation of the analysis>",
+        "methodology": "<How the claim was verified>",
+        "context": "<Important context about the claim>",
+        "limitations": "<Any limitations in the verification>"
+    }},
+    
+    "claims": [
+        {{
+            "statement": "<specific claim extracted>",
+            "status": "VERIFIED" | "FALSE" | "MISLEADING" | "UNVERIFIED",
+            "evidence": "<evidence supporting or refuting this claim>",
+            "source": "<which source supports this>"
+        }}
+    ]
 }}
 
 Rules:
@@ -62,7 +82,8 @@ Rules:
 - If sources directly contradict the claim, verdict is FALSE  
 - If claim has some truth but is exaggerated/missing context, verdict is PARTIALLY TRUE or MISLEADING
 - If sources don't provide enough information, verdict is UNVERIFIABLE
-- Confidence should reflect how certain you are (high trust sources = higher confidence)
+- Break down the main claim into individual verifiable statements in the "claims" array
+- Provide thorough analysis in detailed_analysis section
 
 Respond ONLY with valid JSON, no other text."""
 
@@ -71,12 +92,12 @@ Respond ONLY with valid JSON, no other text."""
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are an expert fact-checker. You analyze claims objectively and base verdicts only on provided evidence. Always respond in valid JSON format."
+                        "content": "You are an expert fact-checker and journalist. You analyze claims thoroughly, break them into verifiable components, and provide comprehensive analysis. Always respond in valid JSON format."
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1,  # Low temperature for consistent analysis
-                max_tokens=500
+                temperature=0.1,
+                max_tokens=1500  # Increased for detailed response
             )
             
             # Parse the response
@@ -97,8 +118,18 @@ Respond ONLY with valid JSON, no other text."""
             return {
                 'verdict': result.get('verdict', 'UNVERIFIABLE'),
                 'confidence': min(100, max(0, int(result.get('confidence', 50)))),
-                'explanation': result.get('explanation', 'Analysis completed.'),
-                'key_finding': result.get('key_finding', ''),
+                'summary': result.get('summary', {
+                    'one_liner': 'Analysis completed.',
+                    'key_points': []
+                }),
+                'detailed_analysis': result.get('detailed_analysis', {
+                    'overview': 'Detailed analysis unavailable.',
+                    'methodology': '',
+                    'context': '',
+                    'limitations': ''
+                }),
+                'claims': result.get('claims', []),
+                'explanation': result.get('summary', {}).get('one_liner', 'Analysis completed.'),
                 'ai_analyzed': True
             }
             
@@ -133,7 +164,7 @@ Respond ONLY with valid JSON, no other text."""
         
         if factcheck_count > 0:
             confidence = min(85, 60 + factcheck_count * 10)
-            verdict = 'UNVERIFIABLE'  # Can't determine without AI
+            verdict = 'UNVERIFIABLE'
             explanation = f"Found {factcheck_count} fact-check sources. AI analysis unavailable."
         elif high_trust > 0:
             confidence = min(70, 40 + high_trust * 10)
@@ -148,7 +179,17 @@ Respond ONLY with valid JSON, no other text."""
             'verdict': verdict,
             'confidence': confidence,
             'explanation': explanation,
-            'key_finding': '',
+            'summary': {
+                'one_liner': explanation,
+                'key_points': [f"Found {len(sources)} sources", "AI analysis unavailable"]
+            },
+            'detailed_analysis': {
+                'overview': explanation,
+                'methodology': 'Automated source search without AI analysis.',
+                'context': 'AI-powered analysis is currently unavailable.',
+                'limitations': 'Cannot determine verdict without AI analysis.'
+            },
+            'claims': [],
             'ai_analyzed': False
         }
 

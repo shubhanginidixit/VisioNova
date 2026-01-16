@@ -8,6 +8,8 @@ const API_BASE_URL = 'http://localhost:5000';
 // DOM Elements
 let urlInput = null;
 let resultsContainer = null;
+let currentResult = null; // Store current result for tab switching
+let currentTab = 'summary'; // Default tab
 
 /**
  * Initialize the fact-check page
@@ -40,8 +42,46 @@ function initFactCheck() {
         });
     }
 
+    // Initialize tabs
+    initTabs();
+
     // Create results container
     createResultsContainer();
+}
+
+/**
+ * Initialize tab functionality
+ */
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            switchTab(tabName);
+        });
+    });
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+    currentTab = tabName;
+
+    // Update tab button styles
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.className = 'tab-btn px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm';
+        } else {
+            btn.className = 'tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors';
+        }
+    });
+
+    // Re-render content for the selected tab
+    if (currentResult) {
+        renderTabContent(currentResult, tabName);
+    }
 }
 
 /**
@@ -110,6 +150,9 @@ function displayResults(result) {
         return;
     }
 
+    // Store result for tab switching
+    currentResult = result;
+
     // Update trust score display
     updateTrustScore(result.confidence, result.verdict);
 
@@ -119,10 +162,17 @@ function displayResults(result) {
     if (sourceCountEl) sourceCountEl.textContent = result.source_count;
     if (inputTypeEl) inputTypeEl.textContent = formatInputType(result.input_type);
 
-    // Update explanation box
+    // Update explanation box with AI summary
     const explanationBox = document.getElementById('explanationBox');
-    if (explanationBox) {
-        explanationBox.innerHTML = `<p class="text-white text-sm">${result.explanation}</p>`;
+    if (explanationBox && result.summary) {
+        const keyPoints = result.summary.key_points || [];
+        const keyPointsHTML = keyPoints.length > 0
+            ? `<ul class="mt-2 space-y-1">${keyPoints.map(p => `<li class="text-sm text-slate-300 flex items-start gap-2"><span class="material-symbols-outlined text-primary text-sm mt-0.5">check_circle</span>${escapeHTML(p)}</li>`).join('')}</ul>`
+            : '';
+        explanationBox.innerHTML = `
+            <p class="text-white text-sm">${escapeHTML(result.summary.one_liner || result.explanation)}</p>
+            ${keyPointsHTML}
+        `;
     }
 
     // Update claim title and summary
@@ -131,11 +181,8 @@ function displayResults(result) {
     if (claimTitle) claimTitle.textContent = `"${result.claim}"`;
     if (claimSummary) claimSummary.textContent = `Analyzing claim from ${result.input_type} input. Found ${result.source_count} sources for verification.`;
 
-    // Update sources container
-    const sourcesContainer = document.getElementById('sourcesContainer');
-    if (sourcesContainer) {
-        sourcesContainer.innerHTML = buildSourcesListHTML(result);
-    }
+    // Render content for the current tab
+    renderTabContent(result, currentTab);
 
     // Also update the legacy results container if it exists
     if (resultsContainer) {
@@ -197,6 +244,256 @@ function updateTrustScore(confidence, verdict) {
         verdictLabel.textContent = style.text;
         verdictLabel.className = `mt-4 px-3 py-1 rounded-full ${style.bg} border ${style.border} ${style.color} text-sm font-bold tracking-wide`;
     }
+}
+
+/**
+ * Render content based on the selected tab
+ */
+function renderTabContent(result, tabName) {
+    const sourcesContainer = document.getElementById('sourcesContainer');
+    if (!sourcesContainer) return;
+
+    switch (tabName) {
+        case 'summary':
+            sourcesContainer.innerHTML = buildSummaryHTML(result);
+            break;
+        case 'detailed':
+            sourcesContainer.innerHTML = buildDetailedHTML(result);
+            break;
+        case 'claims':
+            sourcesContainer.innerHTML = buildClaimsHTML(result);
+            break;
+        default:
+            sourcesContainer.innerHTML = buildSummaryHTML(result);
+    }
+}
+
+/**
+ * Build Summary tab content
+ */
+function buildSummaryHTML(result) {
+    const summary = result.summary || {};
+    const keyPoints = summary.key_points || [];
+
+    const keyPointsHTML = keyPoints.map(point => `
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-background-dark/50 border border-white/5">
+            <div class="size-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-xs text-primary">check</span>
+            </div>
+            <p class="text-slate-300 text-sm">${escapeHTML(point)}</p>
+        </div>
+    `).join('');
+
+    return `
+        <div class="space-y-4">
+            <div class="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                <h4 class="text-white font-medium mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">summarize</span>
+                    Quick Summary
+                </h4>
+                <p class="text-primary text-sm">${escapeHTML(summary.one_liner || result.explanation)}</p>
+            </div>
+            
+            ${keyPoints.length > 0 ? `
+                <div>
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-slate-400">checklist</span>
+                        Key Points
+                    </h4>
+                    <div class="space-y-2">
+                        ${keyPointsHTML}
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                <h4 class="text-slate-400 text-xs uppercase tracking-wider mb-2">Verdict</h4>
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl font-bold text-white">${result.confidence}%</span>
+                    <span class="text-lg font-medium ${getVerdictColor(result.verdict)}">${result.verdict}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Detailed Analysis tab content
+ */
+function buildDetailedHTML(result) {
+    const detailed = result.detailed_analysis || {};
+
+    return `
+        <div class="space-y-6">
+            ${detailed.overview ? `
+                <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">description</span>
+                        Overview
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed whitespace-pre-line">${escapeHTML(detailed.overview)}</p>
+                </div>
+            ` : ''}
+            
+            ${detailed.methodology ? `
+                <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-success">science</span>
+                        Methodology
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(detailed.methodology)}</p>
+                </div>
+            ` : ''}
+            
+            ${detailed.context ? `
+                <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-warning">info</span>
+                        Context
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(detailed.context)}</p>
+                </div>
+            ` : ''}
+            
+            ${detailed.limitations ? `
+                <div class="p-4 rounded-xl bg-warning/10 border border-warning/20">
+                    <h4 class="text-warning font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined">warning</span>
+                        Limitations
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(detailed.limitations)}</p>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Build Claims & Evidence tab content
+ */
+function buildClaimsHTML(result) {
+    const claims = result.claims || [];
+
+    if (claims.length === 0) {
+        // Fall back to showing sources if no claims
+        return buildSourcesListHTML(result);
+    }
+
+    const claimsHTML = claims.map((claim, index) => {
+        const isLast = index === claims.length - 1;
+        const statusConfig = getClaimStatusConfig(claim.status);
+
+        // Build source links by matching source names to actual sources
+        const sourceLinksHTML = buildSourceLinksHTML(claim.source, result.sources);
+
+        return `
+            <div class="flex gap-4 group">
+                <div class="flex flex-col items-center">
+                    <div class="size-8 rounded-full ${statusConfig.bgClass} flex items-center justify-center ${statusConfig.textClass} border ${statusConfig.borderClass} shrink-0">
+                        <span class="material-symbols-outlined text-sm font-bold">${statusConfig.icon}</span>
+                    </div>
+                    ${!isLast ? '<div class="w-0.5 h-full bg-white/5 mt-2"></div>' : ''}
+                </div>
+                <div class="flex-1 pb-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h4 class="text-white font-medium text-lg">${escapeHTML(claim.statement)}</h4>
+                        <span class="px-2.5 py-1 rounded-md ${statusConfig.bgClass} ${statusConfig.textClass} text-xs font-bold border ${statusConfig.borderClass} uppercase">${claim.status}</span>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-3">${escapeHTML(claim.evidence || '')}</p>
+                    ${sourceLinksHTML}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="space-y-2">
+            ${claimsHTML}
+        </div>
+    `;
+}
+
+/**
+ * Build clickable source links from source names
+ */
+function buildSourceLinksHTML(sourceText, sources) {
+    if (!sourceText || !sources || sources.length === 0) {
+        return '';
+    }
+
+    // Parse source names from the text (e.g., "AP News, Wikipedia, CBS News")
+    const sourceNames = sourceText.split(',').map(s => s.trim().toLowerCase());
+
+    // Find matching sources with URLs
+    const matchedSources = [];
+    for (const source of sources) {
+        const domain = (source.domain || '').toLowerCase();
+        const title = (source.title || '').toLowerCase();
+
+        for (const name of sourceNames) {
+            if (domain.includes(name.replace(/\s+/g, '')) ||
+                title.includes(name) ||
+                name.includes('wikipedia') && domain.includes('wikipedia') ||
+                name.includes('ap news') && (domain.includes('apnews') || title.includes('ap')) ||
+                name.includes('cbs') && domain.includes('cbs') ||
+                name.includes('cnn') && domain.includes('cnn') ||
+                name.includes('nbc') && domain.includes('nbc') ||
+                name.includes('reuters') && domain.includes('reuters') ||
+                name.includes('bbc') && domain.includes('bbc')) {
+                if (!matchedSources.find(s => s.url === source.url)) {
+                    matchedSources.push(source);
+                }
+            }
+        }
+    }
+
+    // If no matches found, show all available sources
+    const sourcesToShow = matchedSources.length > 0 ? matchedSources : sources.slice(0, 3);
+
+    const linksHTML = sourcesToShow.map(source => `
+        <a href="${escapeHTML(source.url)}" target="_blank" 
+           class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
+            <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+            ${escapeHTML(source.domain || 'Source')}
+        </a>
+    `).join('');
+
+    return `
+        <div class="bg-background-dark/80 rounded-xl p-3 border border-white/5">
+            <p class="text-xs text-slate-400 mb-2">Sources:</p>
+            <div class="flex flex-wrap gap-2">
+                ${linksHTML}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Get claim status styling configuration
+ */
+function getClaimStatusConfig(status) {
+    const configs = {
+        'VERIFIED': { bgClass: 'bg-success/20', textClass: 'text-success', borderClass: 'border-success/30', icon: 'check' },
+        'TRUE': { bgClass: 'bg-success/20', textClass: 'text-success', borderClass: 'border-success/30', icon: 'check' },
+        'FALSE': { bgClass: 'bg-danger/20', textClass: 'text-danger', borderClass: 'border-danger/30', icon: 'close' },
+        'MISLEADING': { bgClass: 'bg-warning/20', textClass: 'text-warning', borderClass: 'border-warning/30', icon: 'priority_high' },
+        'UNVERIFIED': { bgClass: 'bg-slate-500/20', textClass: 'text-slate-400', borderClass: 'border-slate-500/30', icon: 'help' }
+    };
+    return configs[status] || configs['UNVERIFIED'];
+}
+
+/**
+ * Get verdict color class
+ */
+function getVerdictColor(verdict) {
+    const colors = {
+        'TRUE': 'text-success',
+        'FALSE': 'text-danger',
+        'PARTIALLY TRUE': 'text-warning',
+        'MISLEADING': 'text-warning',
+        'UNVERIFIABLE': 'text-slate-400'
+    };
+    return colors[verdict] || 'text-slate-400';
 }
 
 /**
