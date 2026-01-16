@@ -1,11 +1,17 @@
 """
 Fact Checker - Main Pipeline
-Orchestrates the fact-checking process.
+Orchestrates the fact-checking process with AI-powered analysis.
 """
 from .input_classifier import InputClassifier
 from .content_extractor import ContentExtractor
 from .web_searcher import WebSearcher
 from .config import Verdict
+
+# Import AI analyzer from separate ai module
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ai import AIAnalyzer
 
 
 class FactChecker:
@@ -19,6 +25,7 @@ class FactChecker:
         self.classifier = InputClassifier()
         self.extractor = ContentExtractor()
         self.searcher = WebSearcher()
+        self.ai_analyzer = AIAnalyzer()
     
     def check(self, user_input: str) -> dict:
         """
@@ -73,29 +80,24 @@ class FactChecker:
                 explanation="Could not find any sources to verify this claim."
             )
         
-        # Step 4: Analyze sources and determine verdict
-        verdict, confidence, explanation = self._analyze_sources(claim, sources)
+        # Step 4: Analyze sources and determine verdict using AI
+        ai_result = self._analyze_sources(claim, sources)
         
-        # Step 5: Build response
+        # Step 5: Build response with all AI analysis data
         return self._build_response(
             classification,
-            verdict,
-            confidence,
-            sources,
-            explanation
+            ai_result,
+            sources
         )
     
-    def _analyze_sources(self, claim: str, sources: list) -> tuple:
+    def _analyze_sources(self, claim: str, sources: list) -> dict:
         """
-        Analyze sources to determine verdict.
+        Analyze sources using AI.
         
         Returns:
-            tuple of (verdict, confidence, explanation)
+            dict with verdict, confidence, summary, detailed_analysis, claims
         """
-        # Count sources by trust level
-        high_trust = [s for s in sources if s['trust_level'] == 'high']
-        medium_trust = [s for s in sources if s['trust_level'] == 'medium-high']
-        factcheck_sites = [s for s in sources if s['is_factcheck_site']]
+        return self.ai_analyzer.analyze_claim(claim, sources)
         
         # Check if we have fact-check sites with specific verdicts
         # (In a full implementation, we'd parse the snippets for verdict keywords)
@@ -172,9 +174,8 @@ class FactChecker:
         else:
             return Verdict.UNVERIFIABLE
     
-    def _build_response(self, classification: dict, verdict: str, 
-                       confidence: int, sources: list, explanation: str) -> dict:
-        """Build the final response object."""
+    def _build_response(self, classification: dict, ai_result: dict, sources: list) -> dict:
+        """Build the final response object with all analysis data."""
         # Limit sources to top 10
         top_sources = []
         for source in sources[:10]:
@@ -192,11 +193,16 @@ class FactChecker:
             'input': classification['original'],
             'input_type': classification['type'],
             'claim': classification['claim'],
-            'verdict': verdict,
-            'confidence': confidence,
+            'verdict': ai_result.get('verdict', 'UNVERIFIABLE'),
+            'confidence': ai_result.get('confidence', 50),
             'sources': top_sources,
             'source_count': len(sources),
-            'explanation': explanation
+            'explanation': ai_result.get('explanation', 'Analysis completed.'),
+            # New structured data for tabs
+            'summary': ai_result.get('summary', {}),
+            'detailed_analysis': ai_result.get('detailed_analysis', {}),
+            'claims': ai_result.get('claims', []),
+            'ai_analyzed': ai_result.get('ai_analyzed', False)
         }
     
     def _error_response(self, user_input: str, error: str) -> dict:

@@ -4,7 +4,7 @@ Searches multiple websites to find evidence for/against claims.
 """
 import requests
 from urllib.parse import urlparse
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from .config import (
     USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS,
     TRUSTED_FACTCHECK_DOMAINS, TRUSTED_DOMAINS

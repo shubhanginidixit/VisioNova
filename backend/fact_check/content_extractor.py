@@ -4,17 +4,27 @@ Extracts main text content from URLs (articles, web pages).
 """
 import requests
 from bs4 import BeautifulSoup
-from .config import USER_AGENT, REQUEST_TIMEOUT
+from .config import REQUEST_TIMEOUT
 
 
 class ContentExtractor:
     """Extracts text content from web pages."""
     
     def __init__(self):
+        # More realistic browser headers to avoid 403 blocks
         self.headers = {
-            'User-Agent': USER_AGENT,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
         }
     
     def extract_from_url(self, url: str) -> dict:
@@ -28,7 +38,15 @@ class ContentExtractor:
             dict with 'success', 'title', 'content', 'error'
         """
         try:
-            response = requests.get(
+            # Create a session for better cookie handling
+            session = requests.Session()
+            
+            # Add referer based on the URL domain
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            self.headers['Referer'] = f"{parsed.scheme}://{parsed.netloc}/"
+            
+            response = session.get(
                 url, 
                 headers=self.headers, 
                 timeout=REQUEST_TIMEOUT,

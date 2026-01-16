@@ -8,6 +8,8 @@ const API_BASE_URL = 'http://localhost:5000';
 // DOM Elements
 let urlInput = null;
 let resultsContainer = null;
+let currentResult = null; // Store current result for tab switching
+let currentTab = 'summary'; // Default tab
 
 /**
  * Initialize the fact-check page
@@ -40,8 +42,46 @@ function initFactCheck() {
         });
     }
 
+    // Initialize tabs
+    initTabs();
+
     // Create results container
     createResultsContainer();
+}
+
+/**
+ * Initialize tab functionality
+ */
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            switchTab(tabName);
+        });
+    });
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+    currentTab = tabName;
+
+    // Update tab button styles
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.className = 'tab-btn px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm';
+        } else {
+            btn.className = 'tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors';
+        }
+    });
+
+    // Re-render content for the selected tab
+    if (currentResult) {
+        renderTabContent(currentResult, tabName);
+    }
 }
 
 /**
@@ -110,8 +150,41 @@ function displayResults(result) {
         return;
     }
 
+    // Store result for tab switching
+    currentResult = result;
+
+    // Update trust score display
     updateTrustScore(result.confidence, result.verdict);
 
+    // Update source count and input type
+    const sourceCountEl = document.getElementById('sourceCount');
+    const inputTypeEl = document.getElementById('inputType');
+    if (sourceCountEl) sourceCountEl.textContent = result.source_count;
+    if (inputTypeEl) inputTypeEl.textContent = formatInputType(result.input_type);
+
+    // Update explanation box with AI summary
+    const explanationBox = document.getElementById('explanationBox');
+    if (explanationBox && result.summary) {
+        const keyPoints = result.summary.key_points || [];
+        const keyPointsHTML = keyPoints.length > 0
+            ? `<ul class="mt-2 space-y-1">${keyPoints.map(p => `<li class="text-sm text-slate-300 flex items-start gap-2"><span class="material-symbols-outlined text-primary text-sm mt-0.5">check_circle</span>${escapeHTML(p)}</li>`).join('')}</ul>`
+            : '';
+        explanationBox.innerHTML = `
+            <p class="text-white text-sm">${escapeHTML(result.summary.one_liner || result.explanation)}</p>
+            ${keyPointsHTML}
+        `;
+    }
+
+    // Update claim title and summary
+    const claimTitle = document.getElementById('claimTitle');
+    const claimSummary = document.getElementById('claimSummary');
+    if (claimTitle) claimTitle.textContent = `"${result.claim}"`;
+    if (claimSummary) claimSummary.textContent = `Analyzing claim from ${result.input_type} input. Found ${result.source_count} sources for verification.`;
+
+    // Render content for the current tab
+    renderTabContent(result, currentTab);
+
+    // Also update the legacy results container if it exists
     if (resultsContainer) {
         resultsContainer.classList.remove('hidden');
         resultsContainer.innerHTML = buildResultsHTML(result);
@@ -119,15 +192,29 @@ function displayResults(result) {
 }
 
 /**
+ * Format input type for display
+ */
+function formatInputType(type) {
+    const types = {
+        'claim': 'Claim',
+        'question': 'Question',
+        'url': 'URL'
+    };
+    return types[type] || type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+/**
  * Update the trust score display
  */
 function updateTrustScore(confidence, verdict) {
-    const scoreDisplay = document.querySelector('.text-4xl.font-black');
+    // Update score number
+    const scoreDisplay = document.getElementById('trustScore');
     if (scoreDisplay) {
         scoreDisplay.textContent = confidence;
     }
 
-    const circle = document.querySelector('circle[stroke="#00D991"], circle[stroke="#FF4A4A"], circle[stroke="#FFB74A"], circle[stroke="#94A3B8"]');
+    // Update the SVG circle
+    const circle = document.querySelector('circle[stroke-dasharray="251.2"]');
     if (circle) {
         const circumference = 251.2;
         const offset = circumference - (confidence / 100) * circumference;
@@ -137,17 +224,398 @@ function updateTrustScore(confidence, verdict) {
             'TRUE': '#00D991',
             'FALSE': '#FF4A4A',
             'PARTIALLY TRUE': '#FFB74A',
-            'MISLEADING': '#FF4A4A',
+            'MISLEADING': '#FFB74A',
             'UNVERIFIABLE': '#94A3B8'
         };
         circle.setAttribute('stroke', colors[verdict] || '#94A3B8');
     }
 
-    const verdictLabel = document.querySelector('.rounded-full.text-sm.font-bold');
+    // Update verdict label
+    const verdictLabel = document.getElementById('verdictLabel');
     if (verdictLabel) {
-        verdictLabel.textContent = verdict;
+        const verdictStyles = {
+            'TRUE': { text: 'VERIFIED TRUE', bg: 'bg-success/10', border: 'border-success/20', color: 'text-success' },
+            'FALSE': { text: 'FALSE CLAIM', bg: 'bg-danger/10', border: 'border-danger/20', color: 'text-danger' },
+            'PARTIALLY TRUE': { text: 'PARTIALLY TRUE', bg: 'bg-warning/10', border: 'border-warning/20', color: 'text-warning' },
+            'MISLEADING': { text: 'MISLEADING', bg: 'bg-warning/10', border: 'border-warning/20', color: 'text-warning' },
+            'UNVERIFIABLE': { text: 'UNVERIFIABLE', bg: 'bg-slate-500/10', border: 'border-slate-500/20', color: 'text-slate-400' }
+        };
+        const style = verdictStyles[verdict] || verdictStyles['UNVERIFIABLE'];
+        verdictLabel.textContent = style.text;
+        verdictLabel.className = `mt-4 px-3 py-1 rounded-full ${style.bg} border ${style.border} ${style.color} text-sm font-bold tracking-wide`;
     }
 }
+
+/**
+ * Render content based on the selected tab
+ */
+function renderTabContent(result, tabName) {
+    const sourcesContainer = document.getElementById('sourcesContainer');
+    if (!sourcesContainer) return;
+
+    switch (tabName) {
+        case 'summary':
+            sourcesContainer.innerHTML = buildSummaryHTML(result);
+            break;
+        case 'detailed':
+            sourcesContainer.innerHTML = buildDetailedHTML(result);
+            break;
+        case 'claims':
+            sourcesContainer.innerHTML = buildClaimsHTML(result);
+            break;
+        default:
+            sourcesContainer.innerHTML = buildSummaryHTML(result);
+    }
+}
+
+/**
+ * Build Summary tab content
+ */
+function buildSummaryHTML(result) {
+    const summary = result.summary || {};
+    const keyPoints = summary.key_points || [];
+
+    const keyPointsHTML = keyPoints.map(point => `
+        <div class="flex items-start gap-3 p-3 rounded-lg bg-background-dark/50 border border-white/5">
+            <div class="size-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-xs text-primary">check</span>
+            </div>
+            <p class="text-slate-300 text-sm">${escapeHTML(point)}</p>
+        </div>
+    `).join('');
+
+    return `
+        <div class="space-y-4">
+            <div class="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                <h4 class="text-white font-medium mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">summarize</span>
+                    Quick Summary
+                </h4>
+                <p class="text-primary text-sm">${escapeHTML(summary.one_liner || result.explanation)}</p>
+            </div>
+            
+            ${keyPoints.length > 0 ? `
+                <div>
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-slate-400">checklist</span>
+                        Key Points
+                    </h4>
+                    <div class="space-y-2">
+                        ${keyPointsHTML}
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                <h4 class="text-slate-400 text-xs uppercase tracking-wider mb-2">Verdict</h4>
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl font-bold text-white">${result.confidence}%</span>
+                    <span class="text-lg font-medium ${getVerdictColor(result.verdict)}">${result.verdict}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Detailed Analysis tab content
+ */
+function buildDetailedHTML(result) {
+    const detailed = result.detailed_analysis || {};
+
+    return `
+        <div class="space-y-6">
+            ${detailed.overview ? `
+                <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">description</span>
+                        Overview
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed whitespace-pre-line">${escapeHTML(detailed.overview)}</p>
+                </div>
+            ` : ''}
+            
+            ${detailed.methodology ? `
+                <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-success">science</span>
+                        Methodology
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(detailed.methodology)}</p>
+                </div>
+            ` : ''}
+            
+            ${detailed.context ? `
+                <div class="p-4 rounded-xl bg-card-dark border border-white/5">
+                    <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-warning">info</span>
+                        Context
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(detailed.context)}</p>
+                </div>
+            ` : ''}
+            
+            ${detailed.limitations ? `
+                <div class="p-4 rounded-xl bg-warning/10 border border-warning/20">
+                    <h4 class="text-warning font-medium mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined">warning</span>
+                        Limitations
+                    </h4>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(detailed.limitations)}</p>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Build Claims & Evidence tab content
+ */
+function buildClaimsHTML(result) {
+    const claims = result.claims || [];
+
+    if (claims.length === 0) {
+        // Fall back to showing sources if no claims
+        return buildSourcesListHTML(result);
+    }
+
+    const claimsHTML = claims.map((claim, index) => {
+        const isLast = index === claims.length - 1;
+        const statusConfig = getClaimStatusConfig(claim.status);
+
+        // Build source links by matching source names to actual sources
+        const sourceLinksHTML = buildSourceLinksHTML(claim.source, result.sources);
+
+        return `
+            <div class="flex gap-4 group">
+                <div class="flex flex-col items-center">
+                    <div class="size-8 rounded-full ${statusConfig.bgClass} flex items-center justify-center ${statusConfig.textClass} border ${statusConfig.borderClass} shrink-0">
+                        <span class="material-symbols-outlined text-sm font-bold">${statusConfig.icon}</span>
+                    </div>
+                    ${!isLast ? '<div class="w-0.5 h-full bg-white/5 mt-2"></div>' : ''}
+                </div>
+                <div class="flex-1 pb-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h4 class="text-white font-medium text-lg">${escapeHTML(claim.statement)}</h4>
+                        <span class="px-2.5 py-1 rounded-md ${statusConfig.bgClass} ${statusConfig.textClass} text-xs font-bold border ${statusConfig.borderClass} uppercase">${claim.status}</span>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-3">${escapeHTML(claim.evidence || '')}</p>
+                    ${sourceLinksHTML}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="space-y-2">
+            ${claimsHTML}
+        </div>
+    `;
+}
+
+/**
+ * Build clickable source links from source names
+ */
+function buildSourceLinksHTML(sourceText, sources) {
+    if (!sourceText || !sources || sources.length === 0) {
+        return '';
+    }
+
+    // Parse source names from the text (e.g., "AP News, Wikipedia, CBS News")
+    const sourceNames = sourceText.split(',').map(s => s.trim().toLowerCase());
+
+    // Find matching sources with URLs
+    const matchedSources = [];
+    for (const source of sources) {
+        const domain = (source.domain || '').toLowerCase();
+        const title = (source.title || '').toLowerCase();
+
+        for (const name of sourceNames) {
+            if (domain.includes(name.replace(/\s+/g, '')) ||
+                title.includes(name) ||
+                name.includes('wikipedia') && domain.includes('wikipedia') ||
+                name.includes('ap news') && (domain.includes('apnews') || title.includes('ap')) ||
+                name.includes('cbs') && domain.includes('cbs') ||
+                name.includes('cnn') && domain.includes('cnn') ||
+                name.includes('nbc') && domain.includes('nbc') ||
+                name.includes('reuters') && domain.includes('reuters') ||
+                name.includes('bbc') && domain.includes('bbc')) {
+                if (!matchedSources.find(s => s.url === source.url)) {
+                    matchedSources.push(source);
+                }
+            }
+        }
+    }
+
+    // If no matches found, show all available sources
+    const sourcesToShow = matchedSources.length > 0 ? matchedSources : sources.slice(0, 3);
+
+    const linksHTML = sourcesToShow.map(source => `
+        <a href="${escapeHTML(source.url)}" target="_blank" 
+           class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
+            <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+            ${escapeHTML(source.domain || 'Source')}
+        </a>
+    `).join('');
+
+    return `
+        <div class="bg-background-dark/80 rounded-xl p-3 border border-white/5">
+            <p class="text-xs text-slate-400 mb-2">Sources:</p>
+            <div class="flex flex-wrap gap-2">
+                ${linksHTML}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Get claim status styling configuration
+ */
+function getClaimStatusConfig(status) {
+    const configs = {
+        'VERIFIED': { bgClass: 'bg-success/20', textClass: 'text-success', borderClass: 'border-success/30', icon: 'check' },
+        'TRUE': { bgClass: 'bg-success/20', textClass: 'text-success', borderClass: 'border-success/30', icon: 'check' },
+        'FALSE': { bgClass: 'bg-danger/20', textClass: 'text-danger', borderClass: 'border-danger/30', icon: 'close' },
+        'MISLEADING': { bgClass: 'bg-warning/20', textClass: 'text-warning', borderClass: 'border-warning/30', icon: 'priority_high' },
+        'UNVERIFIED': { bgClass: 'bg-slate-500/20', textClass: 'text-slate-400', borderClass: 'border-slate-500/30', icon: 'help' }
+    };
+    return configs[status] || configs['UNVERIFIED'];
+}
+
+/**
+ * Get verdict color class
+ */
+function getVerdictColor(verdict) {
+    const colors = {
+        'TRUE': 'text-success',
+        'FALSE': 'text-danger',
+        'PARTIALLY TRUE': 'text-warning',
+        'MISLEADING': 'text-warning',
+        'UNVERIFIABLE': 'text-slate-400'
+    };
+    return colors[verdict] || 'text-slate-400';
+}
+
+/**
+ * Build the sources list HTML for the main dashboard
+ */
+function buildSourcesListHTML(result) {
+    if (!result.sources || result.sources.length === 0) {
+        return `
+            <div class="flex flex-col items-center justify-center py-8 text-center">
+                <div class="size-12 rounded-full bg-slate-500/10 flex items-center justify-center mb-3">
+                    <span class="material-symbols-outlined text-2xl text-slate-400">search_off</span>
+                </div>
+                <h4 class="text-white font-medium mb-1">No Sources Found</h4>
+                <p class="text-slate-400 text-sm">We couldn't find any sources to verify this claim.</p>
+            </div>
+        `;
+    }
+
+    // Generate source cards in timeline format
+    const sourcesHTML = result.sources.map((source, index) => {
+        const isLast = index === result.sources.length - 1;
+        const trustConfig = getSourceTrustConfig(source.trust_level, source.is_factcheck);
+
+        return `
+            <div class="flex gap-4 group">
+                <div class="flex flex-col items-center">
+                    <div class="size-8 rounded-full ${trustConfig.bgClass} flex items-center justify-center ${trustConfig.textClass} border ${trustConfig.borderClass} shrink-0">
+                        <span class="material-symbols-outlined text-sm font-bold">${trustConfig.icon}</span>
+                    </div>
+                    ${!isLast ? '<div class="w-0.5 h-full bg-white/5 mt-2"></div>' : ''}
+                </div>
+                <div class="flex-1 pb-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h4 class="text-white font-medium text-lg line-clamp-1">${escapeHTML(source.title)}</h4>
+                        <span class="px-2.5 py-1 rounded-md ${trustConfig.bgClass} ${trustConfig.textClass} text-xs font-bold border ${trustConfig.borderClass} uppercase">${trustConfig.label}</span>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-3">${escapeHTML(source.snippet)}</p>
+                    <!-- Source Evidence Card -->
+                    <div class="bg-background-dark/80 rounded-xl p-4 border border-white/5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer">
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1 ${trustConfig.textClass}">
+                                <span class="material-symbols-outlined text-[20px]">${source.is_factcheck ? 'verified' : 'language'}</span>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-white text-sm font-medium mb-1">${escapeHTML(source.domain)}</p>
+                                <div class="flex items-center gap-4 mt-2">
+                                    <a href="${escapeHTML(source.url)}" target="_blank" class="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+                                        Visit Source <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                                    </a>
+                                    <span class="text-xs text-slate-500">Trust: ${source.trust_level}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return sourcesHTML;
+}
+
+/**
+ * Get styling config based on source trust level
+ */
+function getSourceTrustConfig(trustLevel, isFactCheck) {
+    if (isFactCheck) {
+        return {
+            bgClass: 'bg-success/20',
+            textClass: 'text-success',
+            borderClass: 'border-success/30',
+            icon: 'verified',
+            label: 'Fact-Check'
+        };
+    }
+
+    switch (trustLevel) {
+        case 'high':
+            return {
+                bgClass: 'bg-success/20',
+                textClass: 'text-success',
+                borderClass: 'border-success/30',
+                icon: 'check',
+                label: 'High Trust'
+            };
+        case 'medium-high':
+            return {
+                bgClass: 'bg-primary/20',
+                textClass: 'text-primary',
+                borderClass: 'border-primary/30',
+                icon: 'thumb_up',
+                label: 'Trusted'
+            };
+        case 'medium':
+            return {
+                bgClass: 'bg-warning/20',
+                textClass: 'text-warning',
+                borderClass: 'border-warning/30',
+                icon: 'info',
+                label: 'Medium'
+            };
+        default:
+            return {
+                bgClass: 'bg-slate-500/20',
+                textClass: 'text-slate-400',
+                borderClass: 'border-slate-500/30',
+                icon: 'help',
+                label: 'Unknown'
+            };
+    }
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 
 /**
  * Build HTML for results display

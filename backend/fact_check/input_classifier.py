@@ -109,14 +109,72 @@ class InputClassifier:
         return self._normalize_claim(claim)
     
     def _normalize_claim(self, claim: str) -> str:
-        """Normalize a claim for searching."""
+        """
+        Normalize a claim for searching.
+        Strips metadata, timestamps, and cleans article-like text.
+        """
+        # Remove common article metadata patterns
+        # Pattern: "Updated - January 16, 2026 09:14 am IST"
+        claim = re.sub(
+            r'^(Updated|Published|Posted|Modified)\s*[-–:]\s*\w+\s+\d{1,2},?\s+\d{4}\s+\d{1,2}:\d{2}\s*(am|pm|AM|PM)?\s*\w*\s*',
+            '',
+            claim,
+            flags=re.IGNORECASE
+        )
+        
+        # Remove standalone date patterns at the beginning
+        # Pattern: "January 15, 2026" or "15 January 2026" or "2026-01-15"
+        claim = re.sub(
+            r'^\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{1,2}[-/]\d{1,2}|\w+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+\w+\s+\d{4})\s*[-–:]?\s*',
+            '',
+            claim,
+            flags=re.IGNORECASE
+        )
+        
+        # Remove time patterns like "09:14 am IST" or "10:30 PM EST"
+        claim = re.sub(
+            r'\d{1,2}:\d{2}\s*(am|pm|AM|PM)?\s*(IST|EST|PST|GMT|UTC|CST|MST)?\s*',
+            '',
+            claim
+        )
+        
+        # Remove "Updated -", "Published:", etc. at start
+        claim = re.sub(
+            r'^(Updated|Published|Posted|Modified|Last updated|Source|Photo|Image|Video)\s*[-–:]\s*',
+            '',
+            claim,
+            flags=re.IGNORECASE
+        )
+        
+        # Remove source attributions like "(Reuters)" or "- AP News"
+        claim = re.sub(
+            r'\s*[-–]\s*(Reuters|AP|AFP|PTI|ANI|IANS|UNI)\s*$',
+            '',
+            claim,
+            flags=re.IGNORECASE
+        )
+        claim = re.sub(
+            r'\s*\((Reuters|AP|AFP|PTI|ANI|IANS|UNI)\)\s*$',
+            '',
+            claim,
+            flags=re.IGNORECASE
+        )
+        
         # Remove extra whitespace
         claim = ' '.join(claim.split())
         
         # Remove leading/trailing punctuation (except important ones)
-        claim = claim.strip('.,;:!?')
+        claim = claim.strip('.,;:!?-–')
         
-        return claim
+        # If the claim is too long (likely pasted article), truncate to first sentence
+        if len(claim) > 200:
+            # Find first sentence break
+            sentence_end = re.search(r'[.!?]\s', claim)
+            if sentence_end and sentence_end.start() > 30:
+                claim = claim[:sentence_end.start() + 1]
+        
+        return claim.strip()
+
 
 
 # Quick test

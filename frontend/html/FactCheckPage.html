@@ -237,52 +237,34 @@
                                         stroke-linecap="round" stroke-width="8"></circle>
                                 </svg>
                                 <div class="absolute flex flex-col items-center">
-                                    <span class="text-4xl font-black text-white">84</span>
+                                    <span id="trustScore" class="text-4xl font-black text-white">--</span>
                                     <span class="text-xs text-slate-400 font-medium">OUT OF 100</span>
                                 </div>
                             </div>
-                            <div
-                                class="mt-4 px-3 py-1 rounded-full bg-success/10 border border-success/20 text-success text-sm font-bold tracking-wide">
-                                RELIABLE SOURCE
+                            <div id="verdictLabel"
+                                class="mt-4 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-400 text-sm font-bold tracking-wide">
+                                AWAITING INPUT
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 mt-6">
                             <div class="bg-background-dark/50 p-3 rounded-xl border border-white/5">
-                                <p class="text-xs text-slate-400 mb-1">Bias Rating</p>
-                                <p class="text-white font-semibold text-sm">Center-Left</p>
+                                <p class="text-xs text-slate-400 mb-1">Sources Found</p>
+                                <p id="sourceCount" class="text-white font-semibold text-sm">--</p>
                             </div>
                             <div class="bg-background-dark/50 p-3 rounded-xl border border-white/5">
-                                <p class="text-xs text-slate-400 mb-1">Domain Auth</p>
-                                <p class="text-white font-semibold text-sm">92/100</p>
+                                <p class="text-xs text-slate-400 mb-1">Input Type</p>
+                                <p id="inputType" class="text-white font-semibold text-sm">--</p>
                             </div>
                         </div>
                     </div>
-                    <!-- Source Metadata -->
-                    <div class="bg-card-dark rounded-2xl p-6 border border-white/5 shadow-xl">
-                        <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4 text-slate-400">Source
-                            Metadata</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-start">
-                                <span class="text-slate-400 text-sm">Publisher</span>
-                                <div class="flex items-center gap-2">
-                                    <img alt="Publisher Logo" class="rounded-full size-5"
-                                        data-alt="Small logo icon for the publisher"
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVcoQnnOBQzkUTKTydKGmoJtvPD4jvLvcY0PbCbnGUy6FZthHOXlxGqlGNGWdRTNyeEjmKcltKPYBA-zFriBIqwN12s_vZEJR1LjCC1p0p3uDwBc6sSoHHncGRTmOyrlVClL4k9HqIxGz14giTeNZxr6VxyKI3T4B30sn-UzSabpISV5dNkG_Ja61P2lywMuOeOUAe7NOu1LiaDJ1QWhL_NpLJjaphmuHVahFXJG376p-OnfJOz2DLZ3t05nKOQ5nhYz8_NORwSjsT" />
-                                    <span class="text-white text-sm font-medium">Global News Network</span>
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-start">
-                                <span class="text-slate-400 text-sm">Author</span>
-                                <span class="text-white text-sm font-medium">Sarah Jenkins (Verified)</span>
-                            </div>
-                            <div class="flex justify-between items-start">
-                                <span class="text-slate-400 text-sm">Publish Date</span>
-                                <span class="text-white text-sm font-medium">Oct 24, 2023</span>
-                            </div>
-                            <div class="flex justify-between items-start">
-                                <span class="text-slate-400 text-sm">Sentiment</span>
-                                <span class="text-warning text-sm font-medium">Slightly Negative</span>
-                            </div>
+                    <!-- Analysis Info -->
+                    <div id="analysisInfo" class="bg-card-dark rounded-2xl p-6 border border-white/5 shadow-xl">
+                        <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4 text-slate-400">
+                            Analysis
+                            Summary</h3>
+                        <div id="explanationBox" class="space-y-4">
+                            <p class="text-slate-400 text-sm">Enter a claim, question, or URL above to get fact-check
+                                results.</p>
                         </div>
                     </div>
                     <!-- Quick Actions -->
@@ -299,175 +281,37 @@
                 <!-- Right Column: Content & Analysis Stream -->
                 <div class="lg:col-span-8 flex flex-col gap-6">
                     <!-- Tabs -->
-                    <div class="flex gap-1 bg-card-dark/50 p-1 rounded-xl w-fit border border-white/5">
-                        <button
-                            class="px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm">Claims
-                            &amp; Evidence</button>
-                        <button
-                            class="px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Full
-                            Text View</button>
-                        <button
-                            class="px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Media
+                    <div id="analysisTabs"
+                        class="flex gap-1 bg-card-dark/50 p-1 rounded-xl w-fit border border-white/5">
+                        <button id="tabSummary" data-tab="summary"
+                            class="tab-btn px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm">Summary</button>
+                        <button id="tabDetailed" data-tab="detailed"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Detailed
                             Analysis</button>
+                        <button id="tabClaims" data-tab="claims"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Claims
+                            & Evidence</button>
                     </div>
-                    <!-- Article Preview & Claims List -->
-                    <div class="bg-card-dark rounded-2xl border border-white/5 shadow-xl overflow-hidden flex flex-col">
+                    <!-- Claim Preview & Sources List -->
+                    <div id="claimsCard"
+                        class="bg-card-dark rounded-2xl border border-white/5 shadow-xl overflow-hidden flex flex-col">
                         <div class="p-6 border-b border-white/5 bg-gradient-to-r from-card-dark to-surface-dark">
-                            <h2 class="text-xl font-bold text-white mb-2 leading-tight">"Economic Impact of New Fiscal
-                                Policies on Q3 Growth"</h2>
-                            <p class="text-slate-400 text-sm line-clamp-2">This report analyzes the recent shifts in
-                                fiscal policy, claiming a significant 4% GDP growth in the third quarter directly
-                                attributed to tax adjustments.</p>
+                            <h2 id="claimTitle" class="text-xl font-bold text-white mb-2 leading-tight">Enter a claim to
+                                verify</h2>
+                            <p id="claimSummary" class="text-slate-400 text-sm line-clamp-2">Paste a URL, type a
+                                question, or enter a factual claim in the input box above and click "Verify Credibility"
+                                to begin analysis.</p>
                         </div>
-                        <div class="p-6 space-y-6">
-                            <!-- Verified Claim Item -->
-                            <div class="flex gap-4 group">
-                                <div class="flex flex-col items-center">
-                                    <div
-                                        class="size-8 rounded-full bg-success/20 flex items-center justify-center text-success border border-success/30 shrink-0">
-                                        <span class="material-symbols-outlined text-sm font-bold">check</span>
-                                    </div>
-                                    <div class="w-0.5 h-full bg-white/5 group-last:hidden mt-2"></div>
+                        <div id="sourcesContainer" class="p-6 space-y-6">
+                            <!-- Empty State -->
+                            <div id="emptyState" class="flex flex-col items-center justify-center py-12 text-center">
+                                <div class="size-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                    <span class="material-symbols-outlined text-3xl text-primary">fact_check</span>
                                 </div>
-                                <div class="flex-1 pb-4">
-                                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                        <h4 class="text-white font-medium text-lg">GDP grew by 4% in Q3</h4>
-                                        <span
-                                            class="px-2.5 py-1 rounded-md bg-success/10 text-success text-xs font-bold border border-success/20 uppercase">Verified</span>
-                                    </div>
-                                    <p class="text-slate-400 text-sm mb-3">Claim appears in paragraph 2. Matches
-                                        official government data releases.</p>
-                                    <!-- Evidence Card -->
-                                    <div
-                                        class="bg-background-dark/80 rounded-xl p-4 border border-white/5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer">
-                                        <div class="flex items-start gap-3">
-                                            <div class="mt-1 text-primary">
-                                                <span class="material-symbols-outlined text-[20px]">library_books</span>
-                                            </div>
-                                            <div>
-                                                <p class="text-white text-sm font-medium mb-1">Source: Department of
-                                                    Commerce Report (Oct 2023)</p>
-                                                <p class="text-slate-500 text-xs leading-relaxed">"Preliminary estimates
-                                                    indicate real gross domestic product (GDP) increased at an annual
-                                                    rate of 4.9 percent in the third quarter of 2023..."</p>
-                                                <div class="flex items-center gap-4 mt-3">
-                                                    <span
-                                                        class="text-xs text-primary font-medium hover:underline flex items-center gap-1">
-                                                        Read Source <span
-                                                            class="material-symbols-outlined text-[12px]">open_in_new</span>
-                                                    </span>
-                                                    <span class="text-xs text-slate-500">Confidence: 98%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <h4 class="text-white font-medium text-lg mb-2">Ready to Verify</h4>
+                                <p class="text-slate-400 text-sm max-w-sm">Enter a claim, question, or URL in the input
+                                    field above and we'll analyze it against trusted sources.</p>
                             </div>
-                            <!-- Questionable Claim Item -->
-                            <div class="flex gap-4 group">
-                                <div class="flex flex-col items-center">
-                                    <div
-                                        class="size-8 rounded-full bg-warning/20 flex items-center justify-center text-warning border border-warning/30 shrink-0">
-                                        <span class="material-symbols-outlined text-sm font-bold">priority_high</span>
-                                    </div>
-                                    <div class="w-0.5 h-full bg-white/5 group-last:hidden mt-2"></div>
-                                </div>
-                                <div class="flex-1 pb-4">
-                                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                        <h4 class="text-white font-medium text-lg">This policy will double taxes for
-                                            middle class</h4>
-                                        <span
-                                            class="px-2.5 py-1 rounded-md bg-warning/10 text-warning text-xs font-bold border border-warning/20 uppercase">Misleading</span>
-                                    </div>
-                                    <p class="text-slate-400 text-sm mb-3">Claim appears in paragraph 4. Lacks context
-                                        on tax brackets and deductions.</p>
-                                    <!-- Evidence Card -->
-                                    <div
-                                        class="bg-background-dark/80 rounded-xl p-4 border border-white/5 hover:border-warning/30 transition-all cursor-pointer">
-                                        <div class="flex items-start gap-3">
-                                            <div class="mt-1 text-warning">
-                                                <span class="material-symbols-outlined text-[20px]">warning</span>
-                                            </div>
-                                            <div>
-                                                <p class="text-white text-sm font-medium mb-1">Context Missing: Policy
-                                                    Analysis Institute</p>
-                                                <p class="text-slate-500 text-xs leading-relaxed">"The effective tax
-                                                    rate increase is approximately 10% for specific brackets, not a
-                                                    doubling (100%) across the board..."</p>
-                                                <div class="flex items-center gap-4 mt-3">
-                                                    <span
-                                                        class="text-xs text-primary font-medium hover:underline flex items-center gap-1">
-                                                        View Full Context <span
-                                                            class="material-symbols-outlined text-[12px]">open_in_new</span>
-                                                    </span>
-                                                    <span class="text-xs text-slate-500">Confidence: 85%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Fake Claim Item -->
-                            <div class="flex gap-4 group">
-                                <div class="flex flex-col items-center">
-                                    <div
-                                        class="size-8 rounded-full bg-danger/20 flex items-center justify-center text-danger border border-danger/30 shrink-0">
-                                        <span class="material-symbols-outlined text-sm font-bold">close</span>
-                                    </div>
-                                    <div class="w-0.5 h-full bg-white/5 group-last:hidden mt-2"></div>
-                                </div>
-                                <div class="flex-1 pb-4">
-                                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                        <h4 class="text-white font-medium text-lg">Image depicts a protest from
-                                            yesterday</h4>
-                                        <span
-                                            class="px-2.5 py-1 rounded-md bg-danger/10 text-danger text-xs font-bold border border-danger/20 uppercase">Fake
-                                            (AI)</span>
-                                    </div>
-                                    <p class="text-slate-400 text-sm mb-3">Image analysis detected high probability of
-                                        AI generation.</p>
-                                    <!-- Evidence Card -->
-                                    <div
-                                        class="bg-background-dark/80 rounded-xl p-4 border border-white/5 hover:border-danger/30 transition-all cursor-pointer">
-                                        <div class="flex items-start gap-3">
-                                            <div class="mt-1 text-danger">
-                                                <span class="material-symbols-outlined text-[20px]">broken_image</span>
-                                            </div>
-                                            <div class="w-full">
-                                                <p class="text-white text-sm font-medium mb-2">VisioNova Image Forensics
-                                                </p>
-                                                <div class="flex gap-4 mb-2">
-                                                    <div class="w-24 h-16 rounded-lg bg-center bg-cover border border-white/10 relative overflow-hidden"
-                                                        data-alt="Blurred thumbnail of the fake image being analyzed"
-                                                        style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDF-kSnClz8h1CiHwq0CwcWdOpni-fPsb8XAUvZBYLJ-qcwbRR7FbUl6qvS-jQEJUYwVo-FnWy_GS1IXJURuR3nq4ifrkCmTNYr4Wey88VOFOsgnihHg0Asl6K5ilV7fwk9h7FWUBvcJffTEdaEy33-RfJJklAydFH00JXYWw_A8WwlNcwA0zAnrLslrLUyiSKS9SzjZ8tMVOhIJ1_WfJ5hM1lRu5VprNTAEdu9vjBpCIXmziJBdWOwg6agZyT5JS6xjpwm7s8cZlwb");'>
-                                                        <div
-                                                            class="absolute inset-0 bg-danger/20 flex items-center justify-center">
-                                                            <span
-                                                                class="material-symbols-outlined text-white text-lg">auto_fix_high</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <p class="text-slate-500 text-xs leading-relaxed">Diffusion
-                                                            artifacts detected in background textures. Hands show
-                                                            structural inconsistencies typical of generative models.</p>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center gap-4 mt-1">
-                                                    <span class="text-xs text-danger font-medium">99.9% Probability AI
-                                                        Generated</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="p-4 border-t border-white/5 bg-card-dark text-center">
-                            <button
-                                class="text-sm text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-2 mx-auto">
-                                View 12 more claims
-                                <span class="material-symbols-outlined text-sm">expand_more</span>
-                            </button>
                         </div>
                     </div>
                 </div>
