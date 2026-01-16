@@ -2,6 +2,7 @@
 Web Searcher
 Searches multiple websites to find evidence for/against claims.
 """
+import time
 import requests
 from urllib.parse import urlparse
 from ddgs import DDGS
@@ -14,12 +15,26 @@ from .config import (
 class WebSearcher:
     """Searches multiple sources to verify claims."""
     
+    # Rate limiting settings
+    MIN_REQUEST_INTERVAL = 0.5  # Minimum 500ms between requests
+    
     def __init__(self):
         self.headers = {
             'User-Agent': USER_AGENT,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
         }
+        self._last_request_time = 0
+    
+    def _throttle(self):
+        """
+        Rate limiter to prevent getting blocked by external APIs.
+        Ensures minimum interval between consecutive requests.
+        """
+        elapsed = time.time() - self._last_request_time
+        if elapsed < self.MIN_REQUEST_INTERVAL:
+            time.sleep(self.MIN_REQUEST_INTERVAL - elapsed)
+        self._last_request_time = time.time()
     
     def search(self, claim: str) -> dict:
         """
@@ -59,6 +74,8 @@ class WebSearcher:
         results = []
         
         try:
+            # Rate limit before making request
+            self._throttle()
             with DDGS() as ddgs:
                 for r in ddgs.text(query, max_results=num_results):
                     results.append({
@@ -76,6 +93,9 @@ class WebSearcher:
     def _search_wikipedia(self, query: str) -> dict:
         """Search Wikipedia for relevant article."""
         try:
+            # Rate limit before making request
+            self._throttle()
+            
             # Use Wikipedia API
             api_url = "https://en.wikipedia.org/w/api.php"
             params = {
@@ -143,8 +163,10 @@ class WebSearcher:
                 if 'extract' in page_data:
                     return page_data['extract']
             
-        except Exception:
-            pass
+        except requests.RequestException as e:
+            print(f"Wikipedia extract request failed: {e}")
+        except (KeyError, ValueError) as e:
+            print(f"Wikipedia extract parsing error: {e}")
         
         return ""
     

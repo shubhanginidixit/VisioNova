@@ -10,32 +10,53 @@ load_dotenv()
 GOOGLE_SEARCH_RESULTS = 10  # Number of search results to fetch
 REQUEST_TIMEOUT = 10  # Seconds to wait for HTTP requests
 
-# Trusted fact-check domains (higher weight in scoring)
+# Trusted fact-check domains (highest weight in scoring)
 TRUSTED_FACTCHECK_DOMAINS = [
+    # International fact-checkers
     'snopes.com',
     'politifact.com',
     'factcheck.org',
     'fullfact.org',
+    'leadstories.com',
+    # News wire services
     'apnews.com',
     'reuters.com',
-    'bbc.com',
     'afp.com',
+    # India-specific fact-checkers
+    'altnews.in',
+    'boomlive.in',
+    'thequint.com',
+    'factchecker.in',
+    'vishvasnews.com',
+    'factly.in',
 ]
 
 # Trusted news/reference domains
 TRUSTED_DOMAINS = [
+    # Reference sources
     'wikipedia.org',
     'britannica.com',
+    # Major international news
     'nytimes.com',
     'washingtonpost.com',
     'theguardian.com',
     'bbc.com',
-    'reuters.com',
-    'apnews.com',
+    'bbc.co.uk',
+    'cnn.com',
+    'nbcnews.com',
+    'cbsnews.com',
+    'economist.com',
+    # Government & health sources
     'nasa.gov',
     'who.int',
     'cdc.gov',
     'nih.gov',
+    '.gov.in',  # Indian government sites
+    # Indian news sources
+    'thehindu.com',
+    'indianexpress.com',
+    'ndtv.com',
+    'hindustantimes.com',
 ]
 
 # User agent for web requests
@@ -48,3 +69,4 @@ class Verdict:
     PARTIALLY_TRUE = "PARTIALLY TRUE"
     MISLEADING = "MISLEADING"
     UNVERIFIABLE = "UNVERIFIABLE"
+

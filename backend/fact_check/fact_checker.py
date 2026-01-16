@@ -2,6 +2,8 @@
 Fact Checker - Main Pipeline
 Orchestrates the fact-checking process with AI-powered analysis.
 """
+import hashlib
+from functools import lru_cache
 from .input_classifier import InputClassifier
 from .content_extractor import ContentExtractor
 from .web_searcher import WebSearcher
@@ -12,6 +14,12 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai import AIAnalyzer
+
+
+# Module-level cache for fact-check results
+# Using a dictionary with TTL would be better for production
+_claim_cache = {}
+_CACHE_MAX_SIZE = 50
 
 
 class FactChecker:
@@ -27,6 +35,35 @@ class FactChecker:
         self.searcher = WebSearcher()
         self.ai_analyzer = AIAnalyzer()
     
+    def _get_cache_key(self, user_input: str) -> str:
+        """Generate a hash key for caching claim results."""
+        return hashlib.md5(user_input.strip().lower().encode()).hexdigest()
+    
+    def _get_cached_result(self, cache_key: str) -> dict:
+        """Check if result exists in cache."""
+        return _claim_cache.get(cache_key)
+    
+    def _cache_result(self, cache_key: str, result: dict):
+        """Store result in cache with size limit."""
+        global _claim_cache
+        # Simple LRU-like behavior: if cache is full, remove oldest entry
+        if len(_claim_cache) >= _CACHE_MAX_SIZE:
+            oldest_key = next(iter(_claim_cache))
+            del _claim_cache[oldest_key]
+        _claim_cache[cache_key] = result
+    
+    def clear_cache(self):
+        """Clear the claim cache."""
+        global _claim_cache
+        _claim_cache = {}
+    
+    def cache_info(self) -> dict:
+        """Get cache statistics."""
+        return {
+            'size': len(_claim_cache),
+            'max_size': _CACHE_MAX_SIZE
+        }
+    
     def check(self, user_input: str) -> dict:
         """
         Run the full fact-checking pipeline.
@@ -37,6 +74,13 @@ class FactChecker:
         Returns:
             dict with verdict, confidence, sources, and explanation
         """
+        # Check cache first for repeated claims
+        cache_key = self._get_cache_key(user_input)
+        cached_result = self._get_cached_result(cache_key)
+        if cached_result:
+            cached_result['cached'] = True
+            return cached_result
+        
         # Step 1: Classify input
         classification = self.classifier.classify(user_input)
         input_type = classification['type']
@@ -84,45 +128,79 @@ class FactChecker:
         ai_result = self._analyze_sources(claim, sources)
         
         # Step 5: Build response with all AI analysis data
-        return self._build_response(
+        result = self._build_response(
             classification,
             ai_result,
             sources
         )
+        
+        # Cache the result for future repeated claims
+        result['cached'] = False
+        self._cache_result(cache_key, result.copy())
+        
+        return result
     
     def _analyze_sources(self, claim: str, sources: list) -> dict:
         """
-        Analyze sources using AI.
+        Analyze sources using AI with fallback to heuristic analysis.
         
         Returns:
             dict with verdict, confidence, summary, detailed_analysis, claims
         """
-        return self.ai_analyzer.analyze_claim(claim, sources)
+        # Try AI-powered analysis first
+        try:
+            ai_result = self.ai_analyzer.analyze_claim(claim, sources)
+            if ai_result and ai_result.get('verdict'):
+                ai_result['ai_analyzed'] = True
+                return ai_result
+        except Exception as e:
+            print(f"AI analysis failed, falling back to heuristic: {e}")
         
-        # Check if we have fact-check sites with specific verdicts
-        # (In a full implementation, we'd parse the snippets for verdict keywords)
+        # Fallback to heuristic-based analysis
+        return self._heuristic_analysis(claim, sources)
+    
+    def _heuristic_analysis(self, claim: str, sources: list) -> dict:
+        """
+        Fallback heuristic-based analysis when AI is unavailable.
+        Categorizes sources by trust level and determines verdict.
         
-        total_trusted = len(high_trust) + len(medium_trust)
+        Returns:
+            dict with verdict, confidence, explanation, and empty structured fields
+        """
+        # Categorize sources by trust level
+        from .config import TRUSTED_FACTCHECK_DOMAINS, TRUSTED_DOMAINS
         
-        # Simple heuristic-based verdict determination
+        factcheck_sites = []
+        high_trust = []
+        medium_trust = []
+        
+        for source in sources:
+            domain = source.get('domain', '').lower()
+            if any(trusted in domain for trusted in TRUSTED_FACTCHECK_DOMAINS):
+                factcheck_sites.append(source)
+            elif any(trusted in domain for trusted in TRUSTED_DOMAINS):
+                high_trust.append(source)
+            else:
+                medium_trust.append(source)
+        
+        total_trusted = len(factcheck_sites) + len(high_trust)
+        
+        # Determine verdict based on source quality
         if factcheck_sites:
             # We have fact-check sources - give them high weight
             confidence = min(90, 70 + len(factcheck_sites) * 10)
-            
-            # Check snippets for verdict indicators
             verdict = self._extract_verdict_from_snippets(factcheck_sites)
-            
             explanation = (
                 f"Found {len(factcheck_sites)} fact-check source(s) addressing this claim. "
-                f"Total of {len(sources)} sources analyzed."
+                f"Total of {len(sources)} sources analyzed. (Heuristic analysis)"
             )
         elif total_trusted >= 3:
             # Multiple trusted sources
             confidence = min(85, 50 + total_trusted * 10)
-            verdict = Verdict.TRUE  # Assume true if trusted sources discuss it
+            verdict = Verdict.TRUE
             explanation = (
                 f"Found {total_trusted} trusted sources discussing this topic. "
-                f"No explicit fact-checks found, but sources appear credible."
+                f"No explicit fact-checks found, but sources appear credible. (Heuristic analysis)"
             )
         elif total_trusted >= 1:
             # Some trusted sources
@@ -130,7 +208,7 @@ class FactChecker:
             verdict = Verdict.PARTIALLY_TRUE
             explanation = (
                 f"Found {total_trusted} trusted source(s). "
-                f"Limited evidence available for full verification."
+                f"Limited evidence available for full verification. (Heuristic analysis)"
             )
         else:
             # Only unknown sources
@@ -138,10 +216,39 @@ class FactChecker:
             verdict = Verdict.UNVERIFIABLE
             explanation = (
                 "Could not find trusted sources to verify this claim. "
-                "The sources found are of unknown reliability."
+                "The sources found are of unknown reliability. (Heuristic analysis)"
             )
         
-        return verdict, confidence, explanation
+        # Calculate confidence breakdown for transparency
+        source_quality_score = min(25, len(factcheck_sites) * 10 + len(high_trust) * 5)
+        source_quantity_score = min(20, len(sources) * 2)
+        factcheck_bonus = 25 if factcheck_sites else 0
+        consensus_score = min(30, confidence - source_quality_score - source_quantity_score - factcheck_bonus)
+        
+        confidence_breakdown = {
+            'source_quality': source_quality_score,
+            'source_quantity': source_quantity_score,
+            'factcheck_found': factcheck_bonus,
+            'consensus': max(0, consensus_score),
+            'total': confidence,
+            'explanation': (
+                f"Quality: {source_quality_score}/25 (trusted sources), "
+                f"Quantity: {source_quantity_score}/20 ({len(sources)} sources), "
+                f"Fact-check: {factcheck_bonus}/25, "
+                f"Consensus: {max(0, consensus_score)}/30"
+            )
+        }
+        
+        return {
+            'verdict': verdict,
+            'confidence': confidence,
+            'confidence_breakdown': confidence_breakdown,
+            'explanation': explanation,
+            'summary': {'one_liner': explanation, 'key_points': []},
+            'detailed_analysis': {},
+            'claims': [],
+            'ai_analyzed': False
+        }
     
     def _extract_verdict_from_snippets(self, sources: list) -> str:
         """Extract verdict hints from source snippets."""

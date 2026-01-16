@@ -236,84 +236,227 @@
                                     class="absolute top-4 right-4 font-mono text-[10px] text-accent-green bg-accent-green/10 px-2 py-1 rounded border border-accent-green/20">
                                     PROCESSING_FRAMES</div>
                             </div>
-                            <!-- Progress Bars -->
-                            <div class="space-y-6">
-                                <div>
-                                    <div class="flex justify-between text-xs mb-2 font-medium">
-                                        <span class="text-slate-300">Surface Pattern Analysis</span>
-                                        <span class="text-accent-blue font-mono">Processing...</span>
-                                    </div>
-                                    <div class="h-2 w-full bg-[#1E293B] rounded-full overflow-hidden">
-                                        <div
-                                            class="h-full bg-accent-blue w-[65%] rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] animate-[shimmer_2s_infinite_linear] bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)]">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-xs mb-2 font-medium">
-                                        <span class="text-slate-300">Metadata Verification</span>
-                                        <span class="text-slate-500 font-mono">Pending</span>
-                                    </div>
-                                    <div class="h-2 w-full bg-[#1E293B] rounded-full overflow-hidden">
-                                        <div class="h-full bg-slate-700 w-0 rounded-full transition-all duration-500">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-xs mb-2 font-medium">
-                                        <span class="text-slate-300">Generative Artifact Detection</span>
-                                        <span class="text-slate-500 font-mono">Pending</span>
-                                    </div>
-                                    <div class="h-2 w-full bg-[#1E293B] rounded-full overflow-hidden">
-                                        <div class="h-full bg-slate-700 w-0 rounded-full transition-all duration-500">
-                                        </div>
-                                    </div>
-                                </div>
+                            <!-- Progress Bars - Dynamically populated based on media type -->
+                            <div id="analysisSteps" class="space-y-6">
+                                <!-- Will be populated by JavaScript -->
                             </div>
                         </div>
-                        <p class="text-center text-slate-500 text-sm animate-pulse" id="loadingStatus"> establishing
+                        <p class="text-center text-slate-500 text-sm animate-pulse" id="loadingStatus">establishing
                             secure
                             connection...</p>
                     </div>
                 </div>
 
-                <!-- Simulation Script -->
+                <!-- Dynamic Analysis Script -->
                 <script>
+                    // Analysis steps configuration by media type
+                    const ANALYSIS_CONFIGS = {
+                        image: {
+                            title: 'Analyzing Image',
+                            subtitle: 'Processing pixel patterns and metadata...',
+                            badge: 'SCANNING_PIXELS',
+                            steps: [
+                                { name: 'Pixel Pattern Analysis', description: 'Detecting unnatural pixel distributions' },
+                                { name: 'Metadata Extraction', description: 'Analyzing EXIF data and file signatures' },
+                                { name: 'AI Artifact Detection', description: 'Identifying GAN fingerprints and artifacts' }
+                            ],
+                            statusMessages: [
+                                'Analyzing pixel distributions...',
+                                'Extracting metadata signatures...',
+                                'Scanning for AI-generated artifacts...',
+                                'Finalizing image analysis...'
+                            ]
+                        },
+                        video: {
+                            title: 'Analyzing Video',
+                            subtitle: 'Processing frames and audio tracks...',
+                            badge: 'PROCESSING_FRAMES',
+                            steps: [
+                                { name: 'Frame-by-Frame Analysis', description: 'Detecting temporal inconsistencies' },
+                                { name: 'Audio Track Verification', description: 'Checking audio-visual sync' },
+                                { name: 'Deepfake Detection', description: 'Identifying face manipulation artifacts' }
+                            ],
+                            statusMessages: [
+                                'Extracting video frames...',
+                                'Analyzing frame consistency...',
+                                'Verifying audio synchronization...',
+                                'Running deepfake detection models...'
+                            ]
+                        },
+                        audio: {
+                            title: 'Analyzing Audio',
+                            subtitle: 'Processing voice patterns and frequencies...',
+                            badge: 'ANALYZING_WAVEFORM',
+                            steps: [
+                                { name: 'Voice Pattern Analysis', description: 'Analyzing vocal characteristics' },
+                                { name: 'Frequency Spectrum Check', description: 'Detecting unnatural frequencies' },
+                                { name: 'Speech Synthesis Detection', description: 'Identifying AI-generated speech' }
+                            ],
+                            statusMessages: [
+                                'Extracting audio waveform...',
+                                'Analyzing voice patterns...',
+                                'Checking frequency spectrum...',
+                                'Detecting synthetic speech markers...'
+                            ]
+                        },
+                        text: {
+                            title: 'Analyzing Text',
+                            subtitle: 'Processing linguistic patterns...',
+                            badge: 'PARSING_TEXT',
+                            steps: [
+                                { name: 'Linguistic Pattern Analysis', description: 'Detecting writing style anomalies' },
+                                { name: 'Source Attribution', description: 'Checking for plagiarism and sources' },
+                                { name: 'AI Writing Detection', description: 'Identifying machine-generated text' }
+                            ],
+                            statusMessages: [
+                                'Tokenizing text content...',
+                                'Analyzing linguistic patterns...',
+                                'Checking source attribution...',
+                                'Running AI detection models...'
+                            ]
+                        },
+                        url: {
+                            title: 'Analyzing URL',
+                            subtitle: 'Extracting and verifying content...',
+                            badge: 'FETCHING_CONTENT',
+                            steps: [
+                                { name: 'Content Extraction', description: 'Fetching and parsing page content' },
+                                { name: 'Source Credibility Check', description: 'Verifying domain reputation' },
+                                { name: 'Claim Verification', description: 'Cross-referencing with fact-check sources' }
+                            ],
+                            statusMessages: [
+                                'Fetching URL content...',
+                                'Extracting main article...',
+                                'Checking source credibility...',
+                                'Verifying claims against trusted sources...'
+                            ]
+                        }
+                    };
+
+                    // Default fallback config
+                    const DEFAULT_CONFIG = {
+                        title: 'Analyzing Media',
+                        subtitle: 'Processing multi-modal vectors...',
+                        badge: 'PROCESSING',
+                        steps: [
+                            { name: 'Content Analysis', description: 'Analyzing content structure' },
+                            { name: 'Metadata Verification', description: 'Verifying file metadata' },
+                            { name: 'Authenticity Check', description: 'Checking for manipulation' }
+                        ],
+                        statusMessages: [
+                            'Initializing analysis...',
+                            'Processing content...',
+                            'Verifying authenticity...',
+                            'Finalizing results...'
+                        ]
+                    };
+
+                    function renderAnalysisSteps(steps) {
+                        const container = document.getElementById('analysisSteps');
+                        container.innerHTML = steps.map((step, index) => `
+                            <div data-step="${index}">
+                                <div class="flex justify-between text-xs mb-2 font-medium">
+                                    <span class="text-slate-300">${step.name}</span>
+                                    <span class="step-status text-slate-500 font-mono">${index === 0 ? 'Processing...' : 'Pending'}</span>
+                                </div>
+                                <div class="h-2 w-full bg-[#1E293B] rounded-full overflow-hidden">
+                                    <div class="step-bar h-full ${index === 0 ? 'bg-accent-blue w-[30%] shadow-[0_0_10px_rgba(58,141,255,0.4)]' : 'bg-slate-700 w-0'} rounded-full transition-all duration-1000"></div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    function updateHeader(config) {
+                        const titleEl = document.querySelector('h3');
+                        const subtitleEl = document.querySelector('h3 + p');
+                        const badgeEl = document.querySelector('.font-mono.text-accent-green');
+
+                        if (titleEl) {
+                            titleEl.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-blue opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-accent-blue"></span></span> ${config.title}`;
+                        }
+                        if (subtitleEl) {
+                            subtitleEl.textContent = config.subtitle;
+                        }
+                        if (badgeEl) {
+                            badgeEl.textContent = config.badge;
+                        }
+                    }
+
+                    function animateProgress(config, onComplete) {
+                        const steps = document.querySelectorAll('[data-step]');
+                        const statusText = document.getElementById('loadingStatus');
+                        let currentStep = 0;
+                        const stepDuration = 1200;
+
+                        function updateStep() {
+                            if (currentStep >= steps.length) {
+                                if (onComplete) onComplete();
+                                return;
+                            }
+
+                            const stepEl = steps[currentStep];
+                            const bar = stepEl.querySelector('.step-bar');
+                            const status = stepEl.querySelector('.step-status');
+
+                            // Update status message
+                            if (statusText && config.statusMessages[currentStep]) {
+                                statusText.textContent = config.statusMessages[currentStep];
+                            }
+
+                            // Animate current step to 100%
+                            bar.className = 'step-bar h-full bg-accent-blue w-full rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-1000';
+                            status.textContent = 'Processing...';
+                            status.className = 'step-status text-accent-blue font-mono';
+
+                            setTimeout(() => {
+                                // Mark as complete
+                                bar.classList.replace('bg-accent-blue', 'bg-accent-green');
+                                bar.classList.replace('shadow-[0_0_10px_rgba(58,141,255,0.4)]', 'shadow-[0_0_10px_rgba(0,217,145,0.4)]');
+                                status.textContent = 'Complete';
+                                status.className = 'step-status text-accent-green font-mono';
+
+                                // Start next step
+                                currentStep++;
+                                if (currentStep < steps.length) {
+                                    const nextBar = steps[currentStep].querySelector('.step-bar');
+                                    const nextStatus = steps[currentStep].querySelector('.step-status');
+                                    nextBar.className = 'step-bar h-full bg-accent-blue w-[30%] rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-500';
+                                    nextStatus.textContent = 'Processing...';
+                                    nextStatus.className = 'step-status text-accent-blue font-mono';
+                                }
+
+                                setTimeout(updateStep, 300);
+                            }, stepDuration);
+                        }
+
+                        updateStep();
+                    }
+
                     document.addEventListener('DOMContentLoaded', () => {
                         const params = new URLSearchParams(window.location.search);
                         const isAnalyzing = params.get('analyzing') === 'true';
                         const nextUrl = params.get('next');
-                        const mediaType = params.get('media');
+                        const mediaType = params.get('media')?.toLowerCase() || 'default';
+
+                        // Get config for this media type
+                        const config = ANALYSIS_CONFIGS[mediaType] || DEFAULT_CONFIG;
+
+                        // Render the UI
+                        updateHeader(config);
+                        renderAnalysisSteps(config.steps);
 
                         if (isAnalyzing) {
-                            // Determine title based on media type
-                            const titleEl = document.querySelector('h3');
-                            if (titleEl && mediaType) {
-                                titleEl.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-blue opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-accent-blue"></span></span> Analyzing ${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}`;
-                            }
-
-                            // Simulate progress Steps
-                            const statusText = document.getElementById('loadingStatus');
-                            const bars = document.querySelectorAll('.h-full.bg-slate-700'); // Pending bars
-
-                            setTimeout(() => {
-                                if (bars[0]) { bars[0].className = 'h-full bg-accent-blue w-[40%] rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-1000'; }
-                                statusText.textContent = 'Verifying source signatures...';
-                            }, 1000);
-
-                            setTimeout(() => {
-                                if (bars[0]) { bars[0].style.width = '100%'; bars[0].classList.replace('bg-accent-blue', 'bg-accent-green'); }
-                                if (bars[1]) { bars[1].className = 'h-full bg-accent-blue w-[75%] rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-1000'; }
-                                statusText.textContent = 'Detecting AI-generated artifacts...';
-                            }, 2000);
-
-                            setTimeout(() => {
-                                if (nextUrl) {
-                                    window.location.href = decodeURIComponent(nextUrl);
-                                } else {
-                                    window.location.href = 'ResultPage.html';
-                                }
-                            }, 4000);
+                            // Run the animation
+                            animateProgress(config, () => {
+                                // Redirect after completion
+                                setTimeout(() => {
+                                    if (nextUrl) {
+                                        window.location.href = decodeURIComponent(nextUrl);
+                                    } else {
+                                        window.location.href = 'ResultPage.html';
+                                    }
+                                }, 500);
+                            });
                         }
                     });
                 </script>

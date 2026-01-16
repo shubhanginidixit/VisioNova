@@ -4,6 +4,8 @@
  */
 
 const API_BASE_URL = 'http://localhost:5000';
+const MAX_INPUT_LENGTH = 5000;  // Maximum characters allowed
+const DEBOUNCE_DELAY = 300;     // Milliseconds to wait before submitting
 
 // DOM Elements
 let urlInput = null;
@@ -11,17 +13,29 @@ let resultsContainer = null;
 let currentResult = null; // Store current result for tab switching
 let currentTab = 'summary'; // Default tab
 
+// Request management
+let currentController = null;  // AbortController for cancelling requests
+let debounceTimer = null;      // Timer for debouncing
+
 /**
  * Initialize the fact-check page
  */
 function initFactCheck() {
     urlInput = document.getElementById('urlInput');
 
+    // Check if we came from the analysis dashboard (should auto-analyze)
+    const params = new URLSearchParams(window.location.search);
+    const shouldAutoAnalyze = params.get('autoAnalyze') === 'true';
+    let hasStoredData = false;
+
     // Load any stored URL data
     if (typeof VisioNovaStorage !== 'undefined') {
         const urlData = VisioNovaStorage.getFile('url');
         if (urlData && urlInput) {
             urlInput.value = urlData.data;
+            hasStoredData = true;
+            // Clear the stored data after loading so it doesn't re-analyze on refresh
+            VisioNovaStorage.clearFile('url');
         }
     }
 
@@ -33,11 +47,12 @@ function initFactCheck() {
         }
     });
 
-    // Allow Enter key to submit
+    // Allow Enter key to submit with debouncing
     if (urlInput) {
         urlInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                handleVerifyClick();
+                e.preventDefault();
+                debouncedVerify();
             }
         });
     }
@@ -47,6 +62,26 @@ function initFactCheck() {
 
     // Create results container
     createResultsContainer();
+
+    // Auto-analyze if we have stored data (coming from analysis dashboard)
+    if (hasStoredData && urlInput && urlInput.value.trim()) {
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+            handleVerifyClick();
+        }, 500);
+    }
+}
+
+/**
+ * Debounced verify to prevent double submissions
+ */
+function debouncedVerify() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+        handleVerifyClick();
+    }, DEBOUNCE_DELAY);
 }
 
 /**
@@ -106,32 +141,79 @@ function createResultsContainer() {
 async function handleVerifyClick() {
     const input = urlInput ? urlInput.value.trim() : '';
 
+    // Validate empty input
     if (!input) {
         showNotification('Please enter a claim, question, or URL to verify.', 'warning');
         return;
     }
 
-    showLoading(true);
+    // Validate input length
+    if (input.length > MAX_INPUT_LENGTH) {
+        showNotification(`Input too long. Maximum ${MAX_INPUT_LENGTH} characters allowed.`, 'warning');
+        return;
+    }
+
+    // Cancel any previous ongoing request
+    if (currentController) {
+        currentController.abort();
+    }
+    currentController = new AbortController();
+
+    showLoading(true, 'Initializing...');
 
     try {
-        const result = await checkFact(input);
+        // Show progress steps
+        updateProgress('Classifying input...');
+        await delay(300);  // Brief pause for visual feedback
+
+        updateProgress('Searching sources...');
+        const result = await checkFact(input, currentController.signal);
+
+        updateProgress('Building results...');
+        await delay(200);
+
         displayResults(result);
     } catch (error) {
-        console.error('Fact-check error:', error);
-        showNotification('Failed to connect to the fact-check service. Make sure the backend is running on port 5000.', 'error');
+        if (error.name === 'AbortError') {
+            // Request was cancelled, don't show error
+            console.log('Request cancelled');
+        } else {
+            console.error('Fact-check error:', error);
+            showNotification('Failed to connect to the fact-check service. Make sure the backend is running on port 5000.', 'error');
+        }
     } finally {
         showLoading(false);
+        currentController = null;
     }
+}
+
+/**
+ * Simple delay helper
+ */
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Update the progress message during loading
+ */
+function updateProgress(message) {
+    document.querySelectorAll('button').forEach(btn => {
+        if (btn.disabled && (btn.textContent.includes('Analyzing') || btn.textContent.includes('Classifying') || btn.textContent.includes('Searching') || btn.textContent.includes('Building') || btn.textContent.includes('Initializing'))) {
+            btn.innerHTML = `<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span> ${message}`;
+        }
+    });
 }
 
 /**
  * Call the fact-check API
  */
-async function checkFact(input) {
+async function checkFact(input, signal) {
     const response = await fetch(`${API_BASE_URL}/api/fact-check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input }),
+        signal: signal  // Allow request cancellation
     });
 
     if (!response.ok) {
@@ -178,7 +260,7 @@ function displayResults(result) {
     // Update claim title and summary
     const claimTitle = document.getElementById('claimTitle');
     const claimSummary = document.getElementById('claimSummary');
-    if (claimTitle) claimTitle.textContent = `"${result.claim}"`;
+    if (claimTitle) claimTitle.textContent = `"${cleanClaimText(result.claim)}"`;
     if (claimSummary) claimSummary.textContent = `Analyzing claim from ${result.input_type} input. Found ${result.source_count} sources for verification.`;
 
     // Render content for the current tab
@@ -201,6 +283,26 @@ function formatInputType(type) {
         'url': 'URL'
     };
     return types[type] || type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+/**
+ * Clean claim text by removing publication timestamps
+ * Removes patterns like "Published - January 09, 2026 03:06 pm IST"
+ */
+function cleanClaimText(text) {
+    if (!text) return '';
+
+    // Remove "Published - DATE TIME TIMEZONE" pattern
+    let cleaned = text.replace(/^Published\s*[-–—]\s*\w+\s+\d{1,2},?\s+\d{4}\s+\d{1,2}:\d{2}\s*(am|pm)?\s*[A-Z]{0,4}\s*/i, '');
+
+    // Remove standalone date patterns at start: "January 09, 2026 -" or "09 Jan 2026:"
+    cleaned = cleaned.replace(/^\w+\s+\d{1,2},?\s+\d{4}\s*[-–—:]\s*/i, '');
+    cleaned = cleaned.replace(/^\d{1,2}\s+\w+\s+\d{4}\s*[-–—:]\s*/i, '');
+
+    // Remove ISO date patterns at start: "2026-01-09 -"
+    cleaned = cleaned.replace(/^\d{4}-\d{2}-\d{2}\s*[-–—:]\s*/i, '');
+
+    return cleaned.trim();
 }
 
 /**
@@ -312,7 +414,42 @@ function buildSummaryHTML(result) {
                     <span class="text-2xl font-bold text-white">${result.confidence}%</span>
                     <span class="text-lg font-medium ${getVerdictColor(result.verdict)}">${result.verdict}</span>
                 </div>
+                ${buildConfidenceBreakdown(result.confidence_breakdown)}
             </div>
+        </div>
+    `;
+}
+
+/**
+ * Build confidence breakdown visual display
+ */
+function buildConfidenceBreakdown(breakdown) {
+    if (!breakdown) return '';
+
+    const items = [
+        { label: 'Source Quality', value: breakdown.source_quality || 0, max: 25, color: 'bg-success' },
+        { label: 'Source Quantity', value: breakdown.source_quantity || 0, max: 20, color: 'bg-primary' },
+        { label: 'Fact-Check Found', value: breakdown.factcheck_found || 0, max: 25, color: 'bg-warning' },
+        { label: 'Consensus', value: breakdown.consensus || 0, max: 30, color: 'bg-purple-500' }
+    ];
+
+    const barsHTML = items.map(item => {
+        const percentage = (item.value / item.max) * 100;
+        return `
+            <div class="flex items-center gap-2 text-xs">
+                <span class="text-slate-400 w-24 shrink-0">${item.label}</span>
+                <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full ${item.color} rounded-full transition-all" style="width: ${percentage}%"></div>
+                </div>
+                <span class="text-slate-300 w-12 text-right">${item.value}/${item.max}</span>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="mt-4 pt-3 border-t border-white/5">
+            <p class="text-slate-400 text-xs uppercase tracking-wider mb-2">Confidence Breakdown</p>
+            <div class="space-y-2">${barsHTML}</div>
         </div>
     `;
 }
