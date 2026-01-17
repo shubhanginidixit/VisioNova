@@ -90,6 +90,52 @@ def check_fact_get():
     return jsonify(result)
 
 
+@app.route('/api/fact-check/deep', methods=['POST'])
+def deep_check_fact():
+    """
+    Deep fact-check endpoint - performs enhanced analysis with multiple searches.
+    
+    Request body:
+        {
+            "input": "The claim or URL to check"
+        }
+    
+    Response:
+        Same as regular fact-check but with additional fields:
+        - deep_scan: true
+        - queries_used: number of search queries used
+        - total_sources_found: total sources before deduplication
+        - unique_sources: unique sources after deduplication
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'input' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing "input" field in request body'
+            }), 400
+        
+        user_input = data['input'].strip()
+        
+        if not user_input:
+            return jsonify({
+                'success': False,
+                'error': 'Input cannot be empty'
+            }), 400
+        
+        # Run deep fact-check
+        result = fact_checker.deep_check(user_input)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     print("Starting VisioNova Fact-Check API Server...")
     print("API available at: http://localhost:5000")

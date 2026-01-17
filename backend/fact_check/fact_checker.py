@@ -140,6 +140,123 @@ class FactChecker:
         
         return result
     
+    def deep_check(self, user_input: str) -> dict:
+        """
+        Run an enhanced fact-checking pipeline with multiple search queries.
+        Searches for more sources to provide comprehensive results.
+        
+        Args:
+            user_input: Text claim, question, or URL to verify
+            
+        Returns:
+            dict with verdict, confidence, sources, and explanation (enhanced)
+        """
+        # Step 1: Classify input
+        classification = self.classifier.classify(user_input)
+        input_type = classification['type']
+        
+        # Step 2: Extract claim(s) to verify
+        if input_type == 'url':
+            extracted = self.extractor.extract_from_url(user_input)
+            if not extracted['success']:
+                return self._error_response(
+                    user_input,
+                    f"Could not fetch URL: {extracted['error']}"
+                )
+            claims = extracted['claims']
+            claim = claims[0] if claims else extracted['title']
+            classification['claim'] = claim
+            classification['url_title'] = extracted['title']
+            classification['url_content'] = extracted['content']
+        else:
+            claim = classification['claim']
+        
+        if not claim:
+            return self._error_response(user_input, "Could not extract a claim to verify")
+        
+        # Step 3: DEEP SEARCH - Multiple query variations
+        all_sources = []
+        search_queries = self._generate_search_queries(claim)
+        
+        for query in search_queries:
+            try:
+                search_results = self.searcher.search(query)
+                sources = search_results.get('sources', [])
+                # Add query origin to each source
+                for source in sources:
+                    source['search_query'] = query
+                all_sources.extend(sources)
+            except Exception as e:
+                print(f"Search failed for query '{query}': {e}")
+                continue
+        
+        # Deduplicate sources by URL
+        seen_urls = set()
+        unique_sources = []
+        for source in all_sources:
+            url = source.get('url', '')
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                unique_sources.append(source)
+        
+        if not unique_sources:
+            return self._build_response(
+                classification,
+                Verdict.UNVERIFIABLE,
+                confidence=10,
+                sources=[],
+                explanation="Could not find any sources to verify this claim."
+            )
+        
+        # Step 4: Enhanced AI analysis with more sources
+        ai_result = self._analyze_sources(claim, unique_sources)
+        
+        # Step 5: Build response with deep scan metadata
+        result = self._build_response(
+            classification,
+            ai_result,
+            unique_sources
+        )
+        
+        # Add deep scan metadata
+        result['deep_scan'] = True
+        result['queries_used'] = len(search_queries)
+        result['total_sources_found'] = len(all_sources)
+        result['unique_sources'] = len(unique_sources)
+        result['cached'] = False
+        
+        return result
+    
+    def _generate_search_queries(self, claim: str) -> list:
+        """
+        Generate multiple search query variations for deep scanning.
+        
+        Args:
+            claim: The main claim to search for
+            
+        Returns:
+            list of search queries
+        """
+        queries = [claim]  # Original claim
+        
+        # Add fact-check focused query
+        queries.append(f"fact check {claim}")
+        
+        # Add verification query
+        queries.append(f"is it true that {claim}")
+        
+        # Extract key entities/keywords for additional searches
+        words = claim.split()
+        if len(words) > 5:
+            # Use first 5 significant words
+            key_words = [w for w in words if len(w) > 3][:5]
+            queries.append(" ".join(key_words) + " fact check")
+        
+        # Add news-focused query
+        queries.append(f"{claim} news verification")
+        
+        return queries[:5]  # Limit to 5 queries to avoid rate limiting
+    
     def _analyze_sources(self, claim: str, sources: list) -> dict:
         """
         Analyze sources using AI with fallback to heuristic analysis.

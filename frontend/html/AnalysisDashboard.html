@@ -47,6 +47,8 @@
     </script>
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <!-- Storage Utilities - must load before inline scripts -->
+    <script src="../js/storage-utils.js"></script>
 </head>
 
 <body
@@ -432,7 +434,153 @@
                         updateStep();
                     }
 
-                    document.addEventListener('DOMContentLoaded', () => {
+                    // API configuration
+                    const API_BASE_URL = 'http://localhost:5000';
+
+                    // Progress tracking
+                    let progressCallbacks = {};
+
+                    // Update a specific step's progress
+                    function updateStepProgress(stepIndex, status, progress) {
+                        const steps = document.querySelectorAll('[data-step]');
+                        if (stepIndex >= steps.length) return;
+
+                        const step = steps[stepIndex];
+                        const bar = step.querySelector('.step-bar');
+                        const statusEl = step.querySelector('.step-status');
+
+                        if (status === 'processing') {
+                            bar.className = 'step-bar h-full bg-accent-blue rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-500';
+                            bar.style.width = `${progress}%`;
+                            statusEl.textContent = 'Processing...';
+                            statusEl.className = 'step-status text-accent-blue font-mono';
+                        } else if (status === 'complete') {
+                            bar.className = 'step-bar h-full bg-accent-green rounded-full shadow-[0_0_10px_rgba(0,217,145,0.4)] transition-all duration-500';
+                            bar.style.width = '100%';
+                            statusEl.textContent = 'Complete';
+                            statusEl.className = 'step-status text-accent-green font-mono';
+                        }
+                    }
+
+                    // Update loading status text
+                    function updateLoadingStatus(text) {
+                        const statusEl = document.getElementById('loadingStatus');
+                        if (statusEl) statusEl.textContent = text;
+                    }
+
+                    // Call actual analysis API with progress updates
+                    async function performAnalysisWithProgress(mediaType, config) {
+                        // Get stored input data
+                        if (typeof VisioNovaStorage === 'undefined') {
+                            console.error('[Dashboard] VisioNovaStorage not available');
+                            return null;
+                        }
+
+                        const inputData = VisioNovaStorage.getFile(mediaType);
+                        if (!inputData || !inputData.data) {
+                            console.log('[Dashboard] No input data found for:', mediaType);
+                            return null;
+                        }
+
+                        console.log('[Dashboard] Performing analysis for:', mediaType);
+
+                        try {
+                            if (mediaType === 'url') {
+                                // Step 1: Content Extraction - Start
+                                updateStepProgress(0, 'processing', 30);
+                                updateLoadingStatus(config.statusMessages[0] || 'Fetching content...');
+
+                                // Animate progress while waiting for API
+                                let progressValue = 30;
+                                const progressInterval = setInterval(() => {
+                                    if (progressValue < 75) {
+                                        progressValue += 3;
+                                        updateStepProgress(0, 'processing', progressValue);
+                                    }
+                                }, 500);
+
+                                // Call fact-check API with timeout
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+                                try {
+                                    const response = await fetch(`${API_BASE_URL}/api/fact-check`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ input: inputData.data }),
+                                        signal: controller.signal
+                                    });
+
+                                    clearTimeout(timeoutId);
+                                    clearInterval(progressInterval);
+
+                                    // Step 1: Got response
+                                    updateStepProgress(0, 'processing', 90);
+                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
+
+                                    if (!response.ok) {
+                                        throw new Error(`API error: ${response.status}`);
+                                    }
+
+                                    // Step 1: Complete
+                                    updateStepProgress(0, 'complete', 100);
+
+                                    // Step 2: Source Credibility Check - Start
+                                    updateStepProgress(1, 'processing', 30);
+                                    updateLoadingStatus(config.statusMessages[2] || 'Checking sources...');
+
+                                    // Parse response
+                                    const result = await response.json();
+                                    console.log('[Dashboard] Fact-check result received');
+
+                                    // Step 2: Processing
+                                    updateStepProgress(1, 'processing', 70);
+                                    await new Promise(r => setTimeout(r, 300)); // Brief pause for visual
+
+                                    // Step 2: Complete
+                                    updateStepProgress(1, 'complete', 100);
+
+                                    // Step 3: Claim Verification - Start
+                                    updateStepProgress(2, 'processing', 50);
+                                    updateLoadingStatus(config.statusMessages[3] || 'Verifying claims...');
+
+                                    // Store the result
+                                    sessionStorage.setItem('visioNova_factcheck_result', JSON.stringify(result));
+                                    VisioNovaStorage.clearFile('url');
+
+                                    await new Promise(r => setTimeout(r, 400)); // Brief pause for visual
+
+                                    // Step 3: Complete
+                                    updateStepProgress(2, 'complete', 100);
+                                    updateLoadingStatus('Analysis complete!');
+
+                                    return result;
+                                } catch (fetchError) {
+                                    clearInterval(progressInterval);
+                                    throw fetchError; // Re-throw to be caught by outer catch
+                                }
+                            } else {
+                                // For other media types, simulate progress
+                                for (let i = 0; i < config.steps.length; i++) {
+                                    updateStepProgress(i, 'processing', 30);
+                                    updateLoadingStatus(config.statusMessages[i] || 'Processing...');
+                                    await new Promise(r => setTimeout(r, 600));
+                                    updateStepProgress(i, 'processing', 70);
+                                    await new Promise(r => setTimeout(r, 400));
+                                    updateStepProgress(i, 'complete', 100);
+                                }
+                                VisioNovaStorage.clearFile(mediaType);
+                                return null;
+                            }
+                        } catch (error) {
+                            console.error('[Dashboard] Analysis error:', error);
+                            updateLoadingStatus('Analysis failed: ' + error.message);
+                            sessionStorage.setItem('visioNova_analysis_error', error.message);
+                            return null;
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', async () => {
                         const params = new URLSearchParams(window.location.search);
                         const isAnalyzing = params.get('analyzing') === 'true';
                         const nextUrl = params.get('next');
@@ -446,17 +594,17 @@
                         renderAnalysisSteps(config.steps);
 
                         if (isAnalyzing) {
-                            // Run the animation
-                            animateProgress(config, () => {
-                                // Redirect after completion
-                                setTimeout(() => {
-                                    if (nextUrl) {
-                                        window.location.href = decodeURIComponent(nextUrl);
-                                    } else {
-                                        window.location.href = 'ResultPage.html';
-                                    }
-                                }, 500);
-                            });
+                            // Run analysis with real progress updates
+                            await performAnalysisWithProgress(mediaType, config);
+
+                            // Redirect after completion
+                            setTimeout(() => {
+                                if (nextUrl) {
+                                    window.location.href = decodeURIComponent(nextUrl);
+                                } else {
+                                    window.location.href = 'ResultPage.html';
+                                }
+                            }, 500);
                         }
                     });
                 </script>
