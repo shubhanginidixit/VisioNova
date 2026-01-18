@@ -1,0 +1,230 @@
+{
+    "factcheck_sites": {
+        "snopes.com": {
+            "trust": 95,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Independent fact-checking organization"
+        },
+        "politifact.com": {
+            "trust": 92,
+            "bias": "center-left",
+            "category": "factcheck",
+            "description": "Pulitzer Prize-winning fact-checking site"
+        },
+        "factcheck.org": {
+            "trust": 93,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "University of Pennsylvania fact-checker"
+        },
+        "fullfact.org": {
+            "trust": 90,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "UK's independent fact-checking charity"
+        },
+        "leadstories.com": {
+            "trust": 88,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "IFCN-verified fact-checker"
+        },
+        "altnews.in": {
+            "trust": 87,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Indian fact-checking website"
+        },
+        "boomlive.in": {
+            "trust": 86,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Indian fact-checking organization"
+        },
+        "thequint.com": {
+            "trust": 82,
+            "bias": "center-left",
+            "category": "factcheck",
+            "description": "Indian news with WebQoof fact-check"
+        },
+        "factchecker.in": {
+            "trust": 85,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Data journalism and fact-checking"
+        },
+        "vishvasnews.com": {
+            "trust": 84,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Indian fact verification platform"
+        },
+        "factly.in": {
+            "trust": 83,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "IFCN-certified Indian fact-checker"
+        }
+    },
+    "news_agencies": {
+        "reuters.com": {
+            "trust": 90,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "International news agency"
+        },
+        "apnews.com": {
+            "trust": 89,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "Associated Press news"
+        },
+        "afp.com": {
+            "trust": 88,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "Agence France-Presse"
+        }
+    },
+    "major_news": {
+        "bbc.com": {
+            "trust": 85,
+            "bias": "center-left",
+            "category": "news",
+            "description": "BBC News"
+        },
+        "bbc.co.uk": {
+            "trust": 85,
+            "bias": "center-left",
+            "category": "news",
+            "description": "BBC News UK"
+        },
+        "nytimes.com": {
+            "trust": 82,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The New York Times"
+        },
+        "washingtonpost.com": {
+            "trust": 81,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The Washington Post"
+        },
+        "theguardian.com": {
+            "trust": 80,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The Guardian"
+        },
+        "cnn.com": {
+            "trust": 75,
+            "bias": "left",
+            "category": "news",
+            "description": "CNN News"
+        },
+        "nbcnews.com": {
+            "trust": 78,
+            "bias": "center-left",
+            "category": "news",
+            "description": "NBC News"
+        },
+        "cbsnews.com": {
+            "trust": 77,
+            "bias": "center-left",
+            "category": "news",
+            "description": "CBS News"
+        },
+        "economist.com": {
+            "trust": 84,
+            "bias": "center",
+            "category": "news",
+            "description": "The Economist"
+        },
+        "thehindu.com": {
+            "trust": 79,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The Hindu (India)"
+        },
+        "indianexpress.com": {
+            "trust": 78,
+            "bias": "center",
+            "category": "news",
+            "description": "Indian Express"
+        },
+        "ndtv.com": {
+            "trust": 76,
+            "bias": "center-left",
+            "category": "news",
+            "description": "NDTV India"
+        },
+        "hindustantimes.com": {
+            "trust": 75,
+            "bias": "center",
+            "category": "news",
+            "description": "Hindustan Times"
+        }
+    },
+    "reference": {
+        "wikipedia.org": {
+            "trust": 80,
+            "bias": "center",
+            "category": "reference",
+            "description": "Wikipedia encyclopedia"
+        },
+        "britannica.com": {
+            "trust": 88,
+            "bias": "center",
+            "category": "reference",
+            "description": "Encyclopedia Britannica"
+        }
+    },
+    "government_health": {
+        "nasa.gov": {
+            "trust": 95,
+            "bias": "center",
+            "category": "government",
+            "description": "NASA official site"
+        },
+        "who.int": {
+            "trust": 90,
+            "bias": "center",
+            "category": "health",
+            "description": "World Health Organization"
+        },
+        "cdc.gov": {
+            "trust": 92,
+            "bias": "center",
+            "category": "health",
+            "description": "Centers for Disease Control"
+        },
+        "nih.gov": {
+            "trust": 93,
+            "bias": "center",
+            "category": "health",
+            "description": "National Institutes of Health"
+        }
+    },
+    "unreliable": {
+        "infowars.com": {
+            "trust": 5,
+            "bias": "extreme-right",
+            "category": "unreliable",
+            "description": "Conspiracy theory site"
+        },
+        "naturalnews.com": {
+            "trust": 8,
+            "bias": "right",
+            "category": "unreliable",
+            "description": "Pseudoscience and conspiracy"
+        },
+        "beforeitsnews.com": {
+            "trust": 10,
+            "bias": "unknown",
+            "category": "unreliable",
+            "description": "Unverified citizen journalism"
+        }
+    }
+}

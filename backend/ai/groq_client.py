@@ -55,6 +55,14 @@ Provide a comprehensive analysis in the following JSON format:
     "verdict": "TRUE" | "FALSE" | "PARTIALLY TRUE" | "MISLEADING" | "UNVERIFIABLE",
     "confidence": <number 0-100>,
     
+    "confidence_breakdown": {{
+        "source_quality": <0-25 based on trustworthiness of sources>,
+        "source_quantity": <0-20 based on number of sources>,
+        "factcheck_found": <0-25 if fact-check sites found, else 0>,
+        "consensus": <0-30 based on agreement between sources>,
+        "explanation": "<brief explanation of confidence calculation>"
+    }},
+    
     "summary": {{
         "one_liner": "<One sentence verdict summary>",
         "key_points": ["<key point 1>", "<key point 2>", "<key point 3>"]
@@ -66,6 +74,17 @@ Provide a comprehensive analysis in the following JSON format:
         "context": "<Important context about the claim>",
         "limitations": "<Any limitations in the verification>"
     }},
+    
+    "source_analysis": [
+        {{
+            "source_title": "<source title>",
+            "stance": "SUPPORTS" | "REFUTES" | "NEUTRAL",
+            "relevance": <0-100>,
+            "key_excerpt": "<most relevant quote from this source>"
+        }}
+    ],
+    
+    "contradictions_found": <true if sources contradict each other, false otherwise>,
     
     "claims": [
         {{
@@ -82,6 +101,9 @@ Rules:
 - If sources directly contradict the claim, verdict is FALSE  
 - If claim has some truth but is exaggerated/missing context, verdict is PARTIALLY TRUE or MISLEADING
 - If sources don't provide enough information, verdict is UNVERIFIABLE
+- Calculate confidence breakdown components accurately
+- Analyze each source's stance (SUPPORTS/REFUTES/NEUTRAL) individually
+- Flag contradictions_found as true if sources disagree significantly
 - Break down the main claim into individual verifiable statements in the "claims" array
 - Provide thorough analysis in detailed_analysis section
 
@@ -118,6 +140,13 @@ Respond ONLY with valid JSON, no other text."""
             return {
                 'verdict': result.get('verdict', 'UNVERIFIABLE'),
                 'confidence': min(100, max(0, int(result.get('confidence', 50)))),
+                'confidence_breakdown': result.get('confidence_breakdown', {
+                    'source_quality': 0,
+                    'source_quantity': 0,
+                    'factcheck_found': 0,
+                    'consensus': 0,
+                    'explanation': 'Breakdown unavailable'
+                }),
                 'summary': result.get('summary', {
                     'one_liner': 'Analysis completed.',
                     'key_points': []
@@ -128,13 +157,20 @@ Respond ONLY with valid JSON, no other text."""
                     'context': '',
                     'limitations': ''
                 }),
+                'source_analysis': result.get('source_analysis', []),
+                'contradictions_found': result.get('contradictions_found', False),
                 'claims': result.get('claims', []),
                 'explanation': result.get('summary', {}).get('one_liner', 'Analysis completed.'),
                 'ai_analyzed': True
             }
             
+        except json.JSONDecodeError as e:
+            print(f"AI JSON parsing error: {e}")
+            print(f"Raw response: {content[:500]}")
+            return self._fallback_analysis(sources)
         except Exception as e:
             print(f"AI analysis error: {e}")
+            print(f"Error type: {type(e).__name__}")
             return self._fallback_analysis(sources)
     
     def _build_source_context(self, sources: list) -> str:

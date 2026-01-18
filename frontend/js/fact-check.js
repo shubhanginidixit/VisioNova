@@ -145,6 +145,10 @@ async function handleDeepScan() {
 
     // Create progress display in explanation box
     const originalExplanation = explanationBox.innerHTML;
+
+    // Get temporal context for display
+    const temporalDesc = currentResult.temporal_context?.description || 'multiple archives';
+
     explanationBox.innerHTML = `
         <div class="space-y-4" id="deepScanProgress">
             <h4 class="text-white font-bold flex items-center gap-2">
@@ -153,17 +157,17 @@ async function handleDeepScan() {
             </h4>
             <div class="space-y-3 text-sm">
                 <div class="flex justify-between items-center">
-                    <span class="text-slate-400">Archives Scanned</span>
-                    <span id="archiveCount" class="text-primary font-mono">0</span>
+                    <span class="text-slate-400">Search Queries Executed</span>
+                    <span id="archiveCount" class="text-primary font-mono">...</span>
                 </div>
                 <div class="w-full bg-slate-700 rounded-full h-2">
-                    <div id="scanProgress" class="bg-primary h-2 rounded-full transition-all duration-200" style="width: 0%"></div>
+                    <div id="scanProgress" class="bg-primary h-2 rounded-full transition-all duration-500 animate-pulse" style="width: 30%"></div>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-slate-400">Historical Sources Found</span>
-                    <span id="sourceCount" class="text-accent-emerald font-mono">0</span>
+                    <span class="text-slate-400">Sources Found</span>
+                    <span id="sourceCount" class="text-accent-emerald font-mono">...</span>
                 </div>
-                <div id="scanStatus" class="text-slate-500 text-xs italic">Initializing deep scan...</div>
+                <div id="scanStatus" class="text-slate-500 text-xs italic">Searching ${temporalDesc}...</div>
             </div>
         </div>
     `;
@@ -173,59 +177,24 @@ async function handleDeepScan() {
     const scanProgress = document.getElementById('scanProgress');
     const scanStatus = document.getElementById('scanStatus');
 
-    // Archive sources to "scan"
-    const archives = [
-        'Internet Archive (2010-2015)',
-        'Wayback Machine snapshots',
-        'Google Cache archives',
-        'News database (2015-2020)',
-        'Academic repositories',
-        'Government archives',
-        'International fact-check database',
-        'Social media archives',
-        'Press release archives',
-        'Historical news feeds'
-    ];
-
-    let currentArchive = 0;
-    let archivesScanned = 0;
-    let sourcesFound = 0;
-
-    // Animate scanning
-    const scanInterval = setInterval(() => {
-        archivesScanned += Math.floor(Math.random() * 8) + 3;
-        if (Math.random() > 0.6) {
-            sourcesFound += Math.floor(Math.random() * 3) + 1;
-        }
-
-        archiveCount.textContent = archivesScanned;
-        sourceCount.textContent = sourcesFound;
-        scanProgress.style.width = `${Math.min((currentArchive + 1) / archives.length * 100, 100)}%`;
-        scanStatus.textContent = `Scanning: ${archives[currentArchive % archives.length]}...`;
-
-        currentArchive++;
-        if (currentArchive >= archives.length) {
-            clearInterval(scanInterval);
-        }
-    }, 400);
+    // Start progress animation
+    let progressPercent = 30;
+    const progressInterval = setInterval(() => {
+        progressPercent = Math.min(progressPercent + 10, 90);
+        scanProgress.style.width = `${progressPercent}%`;
+    }, 800);
 
     try {
         // Call the DEEP fact-check API endpoint
+        scanStatus.textContent = 'Executing deep search queries...';
+
         const response = await fetch(`${API_BASE_URL}/api/fact-check/deep`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ input: input })
         });
 
-        // Wait for animation to complete
-        await new Promise(r => setTimeout(r, archives.length * 400 + 500));
-        clearInterval(scanInterval);
-
-        // Final counts
-        archiveCount.textContent = archivesScanned;
-        sourceCount.textContent = sourcesFound;
-        scanProgress.style.width = '100%';
-        scanStatus.textContent = 'Deep scan complete!';
+        clearInterval(progressInterval);
 
         if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
@@ -233,20 +202,34 @@ async function handleDeepScan() {
 
         const result = await response.json();
 
-        // Wait a moment before showing results
-        await new Promise(r => setTimeout(r, 800));
+        // Show REAL values from API response
+        const realQueriesUsed = result.queries_used || 0;
+        const realTotalSources = result.total_sources_found || 0;
+        const realUniqueSources = result.unique_sources || result.source_count || 0;
+
+        // Update progress with REAL data
+        scanProgress.style.width = '100%';
+        archiveCount.textContent = realQueriesUsed;
+        sourceCount.textContent = realUniqueSources;
+        scanStatus.textContent = `Deep scan complete! Analyzed ${realTotalSources} total results, ${realUniqueSources} unique sources.`;
+
+        // Brief pause to show final stats
+        await new Promise(r => setTimeout(r, 1000));
 
         // Add deep scan metadata to result
         result.deepScan = true;
-        result.archivesScanned = archivesScanned;
-        result.historicalSourcesFound = sourcesFound;
 
         // Display enhanced results
         displayResults(result);
 
-        // Show deep scan summary in explanation
+        // Show deep scan summary in explanation with REAL values
         const existingExplanation = document.getElementById('explanationBox');
         if (existingExplanation) {
+            const temporalInfo = result.temporal_context ? `
+                <div class="text-slate-400">Time Period</div>
+                <div class="text-white font-mono">${result.temporal_context.search_year_from || 'Current'}</div>
+            ` : '';
+
             const deepScanSummary = `
                 <div class="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-4">
                     <div class="flex items-center gap-2 text-primary font-bold mb-2">
@@ -254,19 +237,23 @@ async function handleDeepScan() {
                         Deep Scan Complete
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div class="text-slate-400">Archives Scanned</div>
-                        <div class="text-white font-mono">${archivesScanned}</div>
-                        <div class="text-slate-400">Historical Sources</div>
-                        <div class="text-accent-emerald font-mono">${sourcesFound}</div>
+                        <div class="text-slate-400">Search Queries</div>
+                        <div class="text-white font-mono">${realQueriesUsed}</div>
+                        <div class="text-slate-400">Total Results</div>
+                        <div class="text-white font-mono">${realTotalSources}</div>
+                        <div class="text-slate-400">Unique Sources</div>
+                        <div class="text-accent-emerald font-mono">${realUniqueSources}</div>
+                        ${temporalInfo}
                     </div>
                 </div>
             `;
             existingExplanation.innerHTML = deepScanSummary + existingExplanation.innerHTML;
         }
 
-        showNotification(`Deep scan complete! Found ${sourcesFound} historical sources across ${archivesScanned} archives.`, 'success');
+        showNotification(`Deep scan complete! ${realQueriesUsed} queries executed, ${realUniqueSources} unique sources found.`, 'success');
 
     } catch (error) {
+        clearInterval(progressInterval);
         console.error('[FactCheck] Deep scan error:', error);
         explanationBox.innerHTML = originalExplanation;
         showNotification('Deep scan failed: ' + error.message, 'error');
@@ -275,6 +262,7 @@ async function handleDeepScan() {
         deepScanBtn.innerHTML = originalBtnText;
     }
 }
+
 
 /**
  * Initialize tab functionality
@@ -454,6 +442,14 @@ function displayResults(result) {
     const claimSummary = document.getElementById('claimSummary');
     if (claimTitle) claimTitle.textContent = `"${cleanClaimText(result.claim)}"`;
     if (claimSummary) claimSummary.textContent = `Analyzing claim from ${result.input_type} input. Found ${result.source_count} sources for verification.`;
+
+    // Update deep scan description with temporal context if available
+    if (result.temporal_context && result.temporal_context.description) {
+        const deepScanDescElement = document.getElementById('deepScanDescription');
+        if (deepScanDescElement) {
+            deepScanDescElement.textContent = `Run a deeper scan including cross-referencing ${result.temporal_context.description}.`;
+        }
+    }
 
     // Render content for the current tab
     renderTabContent(result, currentTab);
@@ -1003,7 +999,16 @@ function getTrustClass(level) {
  */
 function showLoading(loading) {
     document.querySelectorAll('button').forEach(btn => {
-        if (btn.textContent.includes('Verify') || btn.textContent.includes('Analyzing')) {
+        // Check for Verify button by looking for verify icon or loading state
+        const isVerifyBtn = btn.textContent.includes('Verify') ||
+            btn.textContent.includes('Analyzing') ||
+            btn.textContent.includes('Classifying') ||
+            btn.textContent.includes('Searching') ||
+            btn.textContent.includes('Building') ||
+            btn.textContent.includes('Initializing') ||
+            (btn.disabled && btn.querySelector('.animate-spin'));
+
+        if (isVerifyBtn) {
             btn.disabled = loading;
             btn.innerHTML = loading
                 ? '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span> Analyzing...'

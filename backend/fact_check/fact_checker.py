@@ -3,10 +3,12 @@ Fact Checker - Main Pipeline
 Orchestrates the fact-checking process with AI-powered analysis.
 """
 import hashlib
+from datetime import datetime
 from functools import lru_cache
 from .input_classifier import InputClassifier
 from .content_extractor import ContentExtractor
 from .web_searcher import WebSearcher
+from .temporal_analyzer import TemporalAnalyzer
 from .config import Verdict
 
 # Import AI analyzer from separate ai module
@@ -16,10 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai import AIAnalyzer
 
 
-# Module-level cache for fact-check results
-# Using a dictionary with TTL would be better for production
+# Module-level cache for fact-check results with TTL support
+# Cache structure: {cache_key: {'result': dict, 'timestamp': float, 'access_count': int}}
 _claim_cache = {}
 _CACHE_MAX_SIZE = 50
+_CACHE_TTL_HOURS = 24  # Default TTL: 24 hours
 
 
 class FactChecker:
@@ -34,23 +37,50 @@ class FactChecker:
         self.extractor = ContentExtractor()
         self.searcher = WebSearcher()
         self.ai_analyzer = AIAnalyzer()
+        self.temporal_analyzer = TemporalAnalyzer()
     
     def _get_cache_key(self, user_input: str) -> str:
         """Generate a hash key for caching claim results."""
         return hashlib.md5(user_input.strip().lower().encode()).hexdigest()
     
+    def _is_cache_valid(self, cache_entry: dict) -> bool:
+        """Check if a cache entry is still valid based on TTL."""
+        import time
+        current_time = time.time()
+        cache_time = cache_entry.get('timestamp', 0)
+        age_hours = (current_time - cache_time) / 3600
+        return age_hours < _CACHE_TTL_HOURS
+    
     def _get_cached_result(self, cache_key: str) -> dict:
-        """Check if result exists in cache."""
-        return _claim_cache.get(cache_key)
+        """Check if result exists in cache and is still valid."""
+        cache_entry = _claim_cache.get(cache_key)
+        if cache_entry and self._is_cache_valid(cache_entry):
+            # Update access metadata
+            cache_entry['access_count'] = cache_entry.get('access_count', 0) + 1
+            cache_entry['last_accessed'] = __import__('time').time()
+            return cache_entry['result']
+        elif cache_entry:
+            # Cache expired, remove it
+            del _claim_cache[cache_key]
+        return None
     
     def _cache_result(self, cache_key: str, result: dict):
-        """Store result in cache with size limit."""
+        """Store result in cache with TTL and metadata."""
+        import time
         global _claim_cache
         # Simple LRU-like behavior: if cache is full, remove oldest entry
         if len(_claim_cache) >= _CACHE_MAX_SIZE:
-            oldest_key = next(iter(_claim_cache))
+            # Remove oldest by timestamp
+            oldest_key = min(_claim_cache.keys(), 
+                           key=lambda k: _claim_cache[k].get('timestamp', 0))
             del _claim_cache[oldest_key]
-        _claim_cache[cache_key] = result
+        
+        _claim_cache[cache_key] = {
+            'result': result,
+            'timestamp': time.time(),
+            'access_count': 1,
+            'last_accessed': time.time()
+        }
     
     def clear_cache(self):
         """Clear the claim cache."""
@@ -59,9 +89,15 @@ class FactChecker:
     
     def cache_info(self) -> dict:
         """Get cache statistics."""
+        import time
+        valid_entries = sum(1 for entry in _claim_cache.values() 
+                          if self._is_cache_valid(entry))
         return {
             'size': len(_claim_cache),
-            'max_size': _CACHE_MAX_SIZE
+            'valid_entries': valid_entries,
+            'expired_entries': len(_claim_cache) - valid_entries,
+            'max_size': _CACHE_MAX_SIZE,
+            'ttl_hours': _CACHE_TTL_HOURS
         }
     
     def check(self, user_input: str) -> dict:
@@ -143,20 +179,22 @@ class FactChecker:
     def deep_check(self, user_input: str) -> dict:
         """
         Run an enhanced fact-checking pipeline with multiple search queries.
-        Searches for more sources to provide comprehensive results.
+        Now includes temporal analysis to search from the relevant year.
         
         Args:
             user_input: Text claim, question, or URL to verify
             
         Returns:
-            dict with verdict, confidence, sources, and explanation (enhanced)
+            dict with verdict, confidence, sources, temporal context, and explanation (enhanced)
         """
         # Step 1: Classify input
         classification = self.classifier.classify(user_input)
         input_type = classification['type']
         
         # Step 2: Extract claim(s) to verify
+        url_for_temporal = None
         if input_type == 'url':
+            url_for_temporal = user_input
             extracted = self.extractor.extract_from_url(user_input)
             if not extracted['success']:
                 return self._error_response(
@@ -174,9 +212,18 @@ class FactChecker:
         if not claim:
             return self._error_response(user_input, "Could not extract a claim to verify")
         
-        # Step 3: DEEP SEARCH - Multiple query variations
+        # Step 2.5: TEMPORAL ANALYSIS - Extract time context
+        temporal_context = self.temporal_analyzer.extract_temporal_context(
+            claim, 
+            url=url_for_temporal
+        )
+        search_period_description = self.temporal_analyzer.format_search_period_description(
+            temporal_context
+        )
+        
+        # Step 3: DEEP SEARCH - Multiple query variations with temporal context
         all_sources = []
-        search_queries = self._generate_search_queries(claim)
+        search_queries = self._generate_search_queries(claim, temporal_context)
         
         for query in search_queries:
             try:
@@ -218,21 +265,31 @@ class FactChecker:
             unique_sources
         )
         
-        # Add deep scan metadata
+        # Add deep scan metadata with temporal context
         result['deep_scan'] = True
         result['queries_used'] = len(search_queries)
         result['total_sources_found'] = len(all_sources)
         result['unique_sources'] = len(unique_sources)
+        result['temporal_context'] = {
+            'search_year_from': temporal_context['search_year_from'],
+            'time_period': temporal_context['time_period'],
+            'is_historical': temporal_context['is_historical'],
+            'is_recent': temporal_context['is_recent'],
+            'description': search_period_description,
+            'years_mentioned': temporal_context['years_mentioned']
+        }
         result['cached'] = False
         
         return result
     
-    def _generate_search_queries(self, claim: str) -> list:
+    def _generate_search_queries(self, claim: str, temporal_context: dict = None) -> list:
         """
         Generate multiple search query variations for deep scanning.
+        Now includes temporal context for year-specific searches.
         
         Args:
             claim: The main claim to search for
+            temporal_context: Optional temporal context with years and time period
             
         Returns:
             list of search queries
@@ -245,6 +302,19 @@ class FactChecker:
         # Add verification query
         queries.append(f"is it true that {claim}")
         
+        # Add temporal queries if context is available
+        if temporal_context and temporal_context.get('search_year_from'):
+            year = temporal_context['search_year_from']
+            
+            # Add year-specific queries for historical claims
+            if temporal_context.get('is_historical'):
+                queries.append(f"{claim} {year}")
+                queries.append(f"{claim} archive {year}")
+            
+            # Add "since year" query for context
+            if year < datetime.now().year:
+                queries.append(f"{claim} since {year}")
+        
         # Extract key entities/keywords for additional searches
         words = claim.split()
         if len(words) > 5:
@@ -255,7 +325,7 @@ class FactChecker:
         # Add news-focused query
         queries.append(f"{claim} news verification")
         
-        return queries[:5]  # Limit to 5 queries to avoid rate limiting
+        return queries[:7]  # Limit to 7 queries to balance coverage and rate limiting
     
     def _analyze_sources(self, claim: str, sources: list) -> dict:
         """

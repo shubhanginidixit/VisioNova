@@ -7,9 +7,9 @@ import requests
 from urllib.parse import urlparse
 from ddgs import DDGS
 from .config import (
-    USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS,
-    TRUSTED_FACTCHECK_DOMAINS, TRUSTED_DOMAINS
+    USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS
 )
+from .credibility_manager import CredibilityManager
 
 
 class WebSearcher:
@@ -25,6 +25,7 @@ class WebSearcher:
             'Accept-Language': 'en-US,en;q=0.5',
         }
         self._last_request_time = 0
+        self.credibility_manager = CredibilityManager()
     
     def _throttle(self):
         """
@@ -171,34 +172,28 @@ class WebSearcher:
         return ""
     
     def _score_sources(self, sources: list) -> list:
-        """Score and categorize sources by reliability."""
+        """Score and categorize sources by reliability using credibility database."""
         scored = []
         
         for source in sources:
             domain = source.get('domain', '').lower()
             
-            # Determine trust level
-            if any(trusted in domain for trusted in TRUSTED_FACTCHECK_DOMAINS):
-                trust_level = 'high'
-                trust_score = 0.9
-                is_factcheck = True
-            elif any(trusted in domain for trusted in TRUSTED_DOMAINS):
-                trust_level = 'medium-high'
-                trust_score = 0.7
-                is_factcheck = False
-            else:
-                trust_level = 'unknown'
-                trust_score = 0.3
-                is_factcheck = False
+            # Get credibility info from database
+            cred_info = self.credibility_manager.get_credibility(domain)
+            trust_score = cred_info.get('trust', 50) / 100  # Normalize to 0-1
+            trust_level = self.credibility_manager.get_trust_level(domain)
+            is_factcheck = self.credibility_manager.is_factcheck_site(domain)
             
             scored.append({
                 **source,
                 'trust_level': trust_level,
                 'trust_score': trust_score,
-                'is_factcheck_site': is_factcheck
+                'is_factcheck_site': is_factcheck,
+                'bias': cred_info.get('bias', 'unknown'),
+                'source_category': cred_info.get('category', 'unknown')
             })
         
-        # Sort by trust score
+        # Sort by trust score (descending)
         scored.sort(key=lambda x: x['trust_score'], reverse=True)
         
         return scored

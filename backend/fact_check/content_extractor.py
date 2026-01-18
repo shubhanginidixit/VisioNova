@@ -3,8 +3,43 @@ Content Extractor
 Extracts main text content from URLs (articles, web pages).
 """
 import requests
+import time
 from bs4 import BeautifulSoup
+from functools import wraps
 from .config import REQUEST_TIMEOUT
+
+
+def retry_with_backoff(max_retries=3, initial_delay=1):
+    """
+    Decorator to retry failed requests with exponential backoff.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay in seconds (doubles each retry)
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = initial_delay
+            last_exception = None
+            
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except requests.RequestException as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        print(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}")
+                        print(f"Retrying in {delay}s...")
+                        time.sleep(delay)
+                        delay *= 2  # Exponential backoff
+                    else:
+                        print(f"All {max_retries} attempts failed")
+            
+            # If all retries failed, raise the last exception
+            raise last_exception
+        return wrapper
+    return decorator
 
 
 class ContentExtractor:
@@ -27,6 +62,7 @@ class ContentExtractor:
             'Cache-Control': 'max-age=0',
         }
     
+    @retry_with_backoff(max_retries=3, initial_delay=1)
     def extract_from_url(self, url: str) -> dict:
         """
         Extract main content from a URL.
@@ -74,6 +110,25 @@ class ContentExtractor:
                 'error': None
             }
             
+        except requests.HTTPError as e:
+            error_msg = f"HTTP {e.response.status_code}: {e}"
+            return {
+                'success': False,
+                'url': url,
+                'title': None,
+                'content': None,
+                'claims': [],
+                'error': error_msg
+            }
+        except requests.Timeout:
+            return {
+                'success': False,
+                'url': url,
+                'title': None,
+                'content': None,
+                'claims': [],
+                'error': 'Request timed out'
+            }
         except requests.RequestException as e:
             return {
                 'success': False,

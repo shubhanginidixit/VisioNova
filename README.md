@@ -45,6 +45,14 @@ VisioNova is an AI-powered platform designed to verify the authenticity of digit
 - AI-Powered Analysis using Llama 3.3 70B via Groq API
 - Multi-Source Verification through DuckDuckGo and Wikipedia
 - Smart Claim Extraction supporting URLs, questions, and claims
+- **NEW:** Detailed Confidence Breakdown (source quality, quantity, consensus, factcheck presence)
+- **NEW:** Per-Source Stance Analysis (SUPPORTS/REFUTES/NEUTRAL)
+- **NEW:** Contradiction Detection between sources
+- **NEW:** Dynamic Source Credibility Database (70+ rated domains)
+- **NEW:** User Feedback System for reporting incorrect verdicts
+- **NEW:** TTL-based caching with 24-hour expiration
+- **NEW:** Rate limiting (5 req/min) and input validation for security
+- **NEW:** Retry logic with exponential backoff for failed requests
 - Tabbed Results Interface with Summary, Detailed Analysis, and Claims & Evidence views
 - Trust Level Scoring for source credibility assessment
 - Clickable Source Links for direct access to verification sources
@@ -107,7 +115,7 @@ VisioNova/
 
 3. Install dependencies
    ```bash
-   pip install flask flask-cors python-dotenv requests beautifulsoup4 groq ddgs
+   pip install flask flask-cors flask-limiter python-dotenv requests beautifulsoup4 groq ddgs
    ```
 
 4. Set up environment variables
@@ -172,7 +180,10 @@ VisioNova uses a Unified Credibility Score (0-100) that combines:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Health check |
-| POST | `/api/fact-check` | Verify a claim or URL |
+| GET | `/api/health` | Enhanced health check with cache stats |
+| POST | `/api/fact-check` | Verify a claim or URL (5 req/min limit) |
+| POST | `/api/fact-check/deep` | Deep scan with multiple search queries |
+| POST | `/api/fact-check/feedback` | Submit user feedback on verdicts |
 | GET | `/api/fact-check?q=` | Quick claim verification |
 
 ## Contributors
