@@ -999,7 +999,16 @@ function getTrustClass(level) {
  */
 function showLoading(loading) {
     document.querySelectorAll('button').forEach(btn => {
-        if (btn.textContent.includes('Verify') || btn.textContent.includes('Analyzing')) {
+        // Check for Verify button by looking for verify icon or loading state
+        const isVerifyBtn = btn.textContent.includes('Verify') ||
+            btn.textContent.includes('Analyzing') ||
+            btn.textContent.includes('Classifying') ||
+            btn.textContent.includes('Searching') ||
+            btn.textContent.includes('Building') ||
+            btn.textContent.includes('Initializing') ||
+            (btn.disabled && btn.querySelector('.animate-spin'));
+
+        if (isVerifyBtn) {
             btn.disabled = loading;
             btn.innerHTML = loading
                 ? '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span> Analyzing...'
