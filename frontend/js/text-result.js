@@ -13,35 +13,75 @@ let analysisResults = null;
  * Initialize the page
  */
 document.addEventListener('DOMContentLoaded', async function () {
+    console.log('[TextResult] Page loaded');
+    console.log('[TextResult] Checking for data...');
+
     textData = VisioNovaStorage.getFile('text');
+    console.log('[TextResult] textData from storage:', textData);
 
     // Check for cached result from dashboard
     const cachedResult = sessionStorage.getItem('visioNova_text_result');
+    console.log('[TextResult] Cached result exists:', !!cachedResult);
+
     let preloadedResult = null;
     if (cachedResult) {
         try {
             preloadedResult = JSON.parse(cachedResult);
             sessionStorage.removeItem('visioNova_text_result');
             console.log('[TextResult] Using cached result from dashboard');
+            console.log('[TextResult] Result keys:', Object.keys(preloadedResult));
         } catch (e) {
             console.warn('[TextResult] Failed to parse cached result');
         }
     }
 
-    if (textData && textData.data) {
-        // Update page title
+    // Check if this was a document upload (PDF/DOCX)
+    const isDocument = sessionStorage.getItem('visioNova_isDocument') === 'true';
+    const documentFileName = sessionStorage.getItem('visioNova_documentFileName');
+    console.log('[TextResult] isDocument:', isDocument);
+    console.log('[TextResult] documentFileName:', documentFileName);
+
+    // For documents, we don't have textData from storage (file was sent directly)
+    if (isDocument && preloadedResult) {
+        console.log('[TextResult] Processing document result');
+
+        // Document was processed by backend
+        sessionStorage.removeItem('visioNova_isDocument');
+        sessionStorage.removeItem('visioNova_documentFileName');
+
+        updateElement('pageTitle', 'Analysis: ' + (documentFileName || 'Document'));
+        updateElement('analysisDate', formatAnalysisDate(new Date()));
+
+        // Show document info
+        let displayTextContent = `[Document: ${documentFileName || 'Uploaded Document'}]\n\n`;
+        if (preloadedResult.file_info) {
+            const info = preloadedResult.file_info;
+            displayTextContent += `Format: ${info.format?.toUpperCase() || 'PDF'}\n`;
+            displayTextContent += `Pages: ${info.pages || 'N/A'}\n`;
+            displayTextContent += `Characters: ${(info.char_count || 0).toLocaleString()}\n\n`;
+        }
+        displayTextContent += 'Document text extracted and analyzed successfully.';
+
+        console.log('[TextResult] Displaying document info');
+        displayText(displayTextContent);
+        await analyzeText('', preloadedResult);  // Pass empty text, use preloaded result
+
+    } else if (textData && textData.data) {
+        console.log('[TextResult] Processing regular text');
+
+        // Regular text input
         updateElement('pageTitle', 'Analysis: ' + (textData.fileName || 'Text'));
         updateElement('analysisDate', formatAnalysisDate(new Date()));
 
-        // Display the uploaded text
         displayText(textData.data);
-
-        // Run analysis (will use preloaded result if available)
         await analyzeText(textData.data, preloadedResult);
-
-        // Clear storage after loading
         VisioNovaStorage.clearFile('text');
     } else {
+        console.warn('[TextResult] No data found!');
+        console.log('[TextResult] textData:', textData);
+        console.log('[TextResult] preloadedResult:', preloadedResult);
+        console.log('[TextResult] isDocument:', isDocument);
+
         updateElement('pageTitle', 'Text Analysis');
         showNoTextState();
     }
@@ -88,10 +128,32 @@ function showNoTextState() {
  * @param {object} preloadedResult - Optional preloaded result from dashboard
  */
 async function analyzeText(text, preloadedResult = null) {
-    // Calculate local metrics (for supplemental charts)
-    const metrics = calculateTextMetrics(text);
-    const claims = extractClaims(text);
-    const sources = analyzeSourceReliability(text);
+    // Detect if this is a document file (PDF/DOCX) - skip client-side metrics for binary data
+    const isDocument = text.startsWith('data:application/');
+
+    // Calculate local metrics (skip for documents - use backend metrics instead)
+    let metrics, claims, sources;
+    if (isDocument && preloadedResult && preloadedResult.metrics) {
+        // Use backend metrics for documents
+        metrics = {
+            wordCount: preloadedResult.metrics.word_count || 0,
+            charCount: preloadedResult.file_info?.char_count || 0,
+            sentenceCount: preloadedResult.metrics.sentence_count || 0,
+            perplexity: preloadedResult.metrics.perplexity?.average || 50,
+            burstiness: preloadedResult.metrics.burstiness?.score || 0.5
+        };
+        claims = [];
+        sources = analyzeSourceReliability('');
+    } else if (!isDocument) {
+        metrics = calculateTextMetrics(text);
+        claims = extractClaims(text);
+        sources = analyzeSourceReliability(text);
+    } else {
+        // Document without preloaded result - minimal metrics
+        metrics = { wordCount: 0, charCount: 0, sentenceCount: 0, perplexity: 50, burstiness: 0.5 };
+        claims = [];
+        sources = analyzeSourceReliability('');
+    }
 
     // Try to use preloaded result from dashboard first
     let aiProbability = null;

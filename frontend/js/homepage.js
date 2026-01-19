@@ -91,24 +91,46 @@ function setupFileInputs() {
         }
     });
 
-    // Text file input
+    // Text file input - handles TXT (as text) and PDF/DOCX (as File for backend parsing)
     document.getElementById('textFileInput').addEventListener('change', async function (e) {
         if (e.target.files.length > 0) {
             const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const textarea = document.querySelector('#text-upload textarea');
-                if (textarea) {
-                    textarea.value = event.target.result;
-                }
+            const fileName = file.name.toLowerCase();
+            const isPdfOrDocx = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc');
+
+            if (isPdfOrDocx) {
+                // For PDF/DOCX, store the File object directly for FormData upload
+                VisioNovaStorage.saveDocumentFile(file, file.name);
                 uploadedFiles.text = {
-                    data: event.target.result,
+                    isDocument: true,
                     fileName: file.name,
-                    mimeType: 'text/plain'
+                    mimeType: file.type || 'application/octet-stream'
                 };
                 showUploadSuccess('text', file.name);
-            };
-            reader.readAsText(file);
+                const textarea = document.querySelector('#text-upload textarea');
+                if (textarea) {
+                    textarea.value = `[Document: ${file.name}]\n\nThis document will be sent to the backend for text extraction and AI analysis.`;
+                    textarea.disabled = true;
+                }
+            } else {
+                // For plain text files, read as text
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const textarea = document.querySelector('#text-upload textarea');
+                    if (textarea) {
+                        textarea.value = event.target.result;
+                        textarea.disabled = false;
+                    }
+                    uploadedFiles.text = {
+                        data: event.target.result,
+                        fileName: file.name,
+                        mimeType: 'text/plain',
+                        isDocument: false
+                    };
+                    showUploadSuccess('text', file.name);
+                };
+                reader.readAsText(file);
+            }
         }
     });
 }
@@ -255,10 +277,16 @@ function navigateToResult() {
         }
     } else if (activeTab === 'text') {
         const textarea = document.querySelector('#text-upload textarea');
-        if (textarea && textarea.value.trim()) {
+        if (uploadedFiles.text && uploadedFiles.text.isDocument) {
+            // PDF/DOCX file - already stored via saveDocumentFile, just set the flag
+            sessionStorage.setItem('visioNova_isDocument', 'true');
+            sessionStorage.setItem('visioNova_documentFileName', uploadedFiles.text.fileName);
+        } else if (textarea && textarea.value.trim() && !textarea.disabled) {
             VisioNovaStorage.saveFile('text', textarea.value.trim(), 'Pasted Text', 'text/plain');
+            sessionStorage.removeItem('visioNova_isDocument');
         } else if (uploadedFiles.text) {
             VisioNovaStorage.saveFile('text', uploadedFiles.text.data, uploadedFiles.text.fileName, 'text/plain');
+            sessionStorage.removeItem('visioNova_isDocument');
         }
     } else if (activeTab === 'url') {
         const urlInput = document.querySelector('#url-upload input[type="url"]');

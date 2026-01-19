@@ -1,0 +1,295 @@
+"""
+VisioNova Document Parser
+Extracts text from PDFs, DOCX, and TXT files with intelligent chunking.
+"""
+import os
+import re
+from typing import List, Dict, Optional, Tuple
+from io import BytesIO
+
+
+class DocumentParser:
+    """
+    Extract text from various document formats and chunk for analysis.
+    
+    Supported formats:
+    - PDF (.pdf) using PyMuPDF
+    - Word (.docx) using python-docx  
+    - Plain text (.txt)
+    """
+    
+    # Default chunk size (characters)
+    DEFAULT_CHUNK_SIZE = 2000
+    MIN_CHUNK_SIZE = 500
+    MAX_CHUNK_SIZE = 5000
+    
+    # Supported file extensions
+    SUPPORTED_EXTENSIONS = {'.pdf', '.docx', '.txt', '.doc'}
+    
+    def __init__(self, chunk_size: int = DEFAULT_CHUNK_SIZE):
+        """Initialize parser with configurable chunk size."""
+        self.chunk_size = max(self.MIN_CHUNK_SIZE, min(chunk_size, self.MAX_CHUNK_SIZE))
+    
+    def parse_file(self, file_path: str) -> Dict:
+        """
+        Parse a file and extract text.
+        
+        Args:
+            file_path: Path to the document file
+            
+        Returns:
+            dict with 'text', 'chunks', 'metadata', 'error'
+        """
+        if not os.path.exists(file_path):
+            return {"error": f"File not found: {file_path}"}
+        
+        ext = os.path.splitext(file_path)[1].lower()
+        
+        if ext not in self.SUPPORTED_EXTENSIONS:
+            return {"error": f"Unsupported file format: {ext}"}
+        
+        try:
+            if ext == '.pdf':
+                text, metadata = self._extract_pdf(file_path)
+            elif ext in ['.docx', '.doc']:
+                text, metadata = self._extract_docx(file_path)
+            else:  # .txt
+                text, metadata = self._extract_txt(file_path)
+            
+            if not text or not text.strip():
+                return {"error": "No text content found in file"}
+            
+            chunks = self.chunk_text(text)
+            
+            return {
+                "text": text,
+                "chunks": chunks,
+                "metadata": metadata,
+                "error": None
+            }
+            
+        except Exception as e:
+            return {"error": f"Failed to parse file: {str(e)}"}
+    
+    def parse_bytes(self, file_bytes: bytes, filename: str) -> Dict:
+        """
+        Parse file from bytes (for file uploads).
+        
+        Args:
+            file_bytes: File content as bytes
+            filename: Original filename (for extension detection)
+            
+        Returns:
+            dict with 'text', 'chunks', 'metadata', 'error'
+        """
+        ext = os.path.splitext(filename)[1].lower()
+        
+        if ext not in self.SUPPORTED_EXTENSIONS:
+            return {"error": f"Unsupported file format: {ext}"}
+        
+        try:
+            if ext == '.pdf':
+                text, metadata = self._extract_pdf_bytes(file_bytes)
+            elif ext in ['.docx', '.doc']:
+                text, metadata = self._extract_docx_bytes(file_bytes)
+            else:  # .txt
+                text = file_bytes.decode('utf-8', errors='ignore')
+                metadata = {"format": "txt", "char_count": len(text)}
+            
+            if not text or not text.strip():
+                return {"error": "No text content found in file"}
+            
+            chunks = self.chunk_text(text)
+            
+            return {
+                "text": text,
+                "chunks": chunks,
+                "metadata": metadata,
+                "error": None
+            }
+            
+        except Exception as e:
+            return {"error": f"Failed to parse file: {str(e)}"}
+    
+    def _extract_pdf(self, file_path: str) -> Tuple[str, Dict]:
+        """Extract text from PDF file."""
+        try:
+            import fitz  # PyMuPDF
+        except ImportError:
+            raise ImportError("PyMuPDF not installed. Run: pip install PyMuPDF")
+        
+        doc = fitz.open(file_path)
+        text_parts = []
+        
+        for page in doc:
+            # Use sort=True for natural reading order (top-left to bottom-right)
+            text_parts.append(page.get_text(sort=True))
+        
+        doc.close()
+        
+        full_text = "\n\n".join(text_parts)
+        metadata = {
+            "format": "pdf",
+            "pages": len(text_parts),
+            "char_count": len(full_text)
+        }
+        
+        return full_text, metadata
+    
+    def _extract_pdf_bytes(self, file_bytes: bytes) -> Tuple[str, Dict]:
+        """Extract text from PDF bytes."""
+        try:
+            import fitz  # PyMuPDF
+        except ImportError:
+            raise ImportError("PyMuPDF not installed. Run: pip install PyMuPDF")
+        
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        text_parts = []
+        
+        for page in doc:
+            # Use sort=True for natural reading order
+            text_parts.append(page.get_text(sort=True))
+        
+        doc.close()
+        
+        full_text = "\n\n".join(text_parts)
+        metadata = {
+            "format": "pdf",
+            "pages": len(text_parts),
+            "char_count": len(full_text)
+        }
+        
+        return full_text, metadata
+    
+    def _extract_docx(self, file_path: str) -> Tuple[str, Dict]:
+        """Extract text from DOCX file."""
+        try:
+            from docx import Document
+        except ImportError:
+            raise ImportError("python-docx not installed. Run: pip install python-docx")
+        
+        doc = Document(file_path)
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        
+        full_text = "\n\n".join(paragraphs)
+        metadata = {
+            "format": "docx",
+            "paragraphs": len(paragraphs),
+            "char_count": len(full_text)
+        }
+        
+        return full_text, metadata
+    
+    def _extract_docx_bytes(self, file_bytes: bytes) -> Tuple[str, Dict]:
+        """Extract text from DOCX bytes."""
+        try:
+            from docx import Document
+        except ImportError:
+            raise ImportError("python-docx not installed. Run: pip install python-docx")
+        
+        doc = Document(BytesIO(file_bytes))
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        
+        full_text = "\n\n".join(paragraphs)
+        metadata = {
+            "format": "docx",
+            "paragraphs": len(paragraphs),
+            "char_count": len(full_text)
+        }
+        
+        return full_text, metadata
+    
+    def _extract_txt(self, file_path: str) -> Tuple[str, Dict]:
+        """Extract text from TXT file."""
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            text = f.read()
+        
+        metadata = {
+            "format": "txt",
+            "char_count": len(text)
+        }
+        
+        return text, metadata
+    
+    def chunk_text(self, text: str) -> List[Dict]:
+        """
+        Split text into chunks at sentence boundaries.
+        
+        Args:
+            text: Full text to chunk
+            
+        Returns:
+            List of chunk dicts with text, start, end positions
+        """
+        if len(text) <= self.chunk_size:
+            return [{
+                "text": text,
+                "start": 0,
+                "end": len(text),
+                "index": 0
+            }]
+        
+        # Split into sentences
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        chunks = []
+        current_chunk = ""
+        current_start = 0
+        chunk_index = 0
+        
+        for sentence in sentences:
+            # If adding this sentence exceeds chunk size, save current chunk
+            if len(current_chunk) + len(sentence) > self.chunk_size and current_chunk:
+                chunks.append({
+                    "text": current_chunk.strip(),
+                    "start": current_start,
+                    "end": current_start + len(current_chunk),
+                    "index": chunk_index
+                })
+                chunk_index += 1
+                current_start += len(current_chunk)
+                current_chunk = ""
+            
+            current_chunk += sentence + " "
+        
+        # Don't forget the last chunk
+        if current_chunk.strip():
+            chunks.append({
+                "text": current_chunk.strip(),
+                "start": current_start,
+                "end": current_start + len(current_chunk),
+                "index": chunk_index
+            })
+        
+        return chunks
+    
+    @staticmethod
+    def is_supported(filename: str) -> bool:
+        """Check if file format is supported."""
+        ext = os.path.splitext(filename)[1].lower()
+        return ext in DocumentParser.SUPPORTED_EXTENSIONS
+    
+    @staticmethod
+    def get_supported_formats() -> List[str]:
+        """Get list of supported file extensions."""
+        return list(DocumentParser.SUPPORTED_EXTENSIONS)
+
+
+if __name__ == "__main__":
+    # Test the parser
+    parser = DocumentParser()
+    
+    # Test chunking
+    sample_text = """
+    This is the first sentence. Here is the second sentence with more words.
+    And now a third sentence that follows. The fourth sentence continues the thought.
+    We have a fifth sentence here. Sixth sentence adds more content.
+    Seventh sentence keeps going. Eighth provides additional text.
+    Ninth sentence wraps up this paragraph. Tenth sentence concludes.
+    """ * 10
+    
+    chunks = parser.chunk_text(sample_text)
+    print(f"Text length: {len(sample_text)}")
+    print(f"Number of chunks: {len(chunks)}")
+    for i, chunk in enumerate(chunks[:3]):
+        print(f"Chunk {i}: {len(chunk['text'])} chars")

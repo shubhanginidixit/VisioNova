@@ -362,6 +362,104 @@ class AIContentDetector:
         
         return result
     
+    def analyze_chunks(self, chunks: List[Dict], include_per_chunk: bool = True) -> Dict:
+        """
+        Analyze multiple text chunks and aggregate results.
+        Used for large documents that are split into chunks.
+        
+        Args:
+            chunks: List of chunk dicts from DocumentParser (with 'text' key)
+            include_per_chunk: Include individual chunk results
+            
+        Returns:
+            Aggregated detection result
+        """
+        if not chunks:
+            return {"error": "No chunks provided"}
+        
+        chunk_results = []
+        total_weight = 0
+        weighted_ai_score = 0
+        weighted_human_score = 0
+        all_patterns = []
+        
+        for chunk in chunks:
+            chunk_text = chunk.get("text", "")
+            if not chunk_text.strip():
+                continue
+            
+            # Analyze this chunk
+            result = self.predict(chunk_text, detailed=False)
+            
+            if "error" in result:
+                continue
+            
+            # Weight by chunk length (longer chunks = more weight)
+            weight = len(chunk_text)
+            total_weight += weight
+            
+            weighted_ai_score += result["scores"]["ai_generated"] * weight
+            weighted_human_score += result["scores"]["human"] * weight
+            
+            # Collect patterns
+            patterns = result.get("detected_patterns", {})
+            if patterns.get("total_count", 0) > 0:
+                all_patterns.extend([
+                    {"chunk_index": chunk.get("index", 0), **p}
+                    for cat_info in patterns.get("categories", {}).values()
+                    for p in [{"pattern": ex, "type": cat_info["type"]} for ex in cat_info.get("examples", [])]
+                ])
+            
+            if include_per_chunk:
+                chunk_results.append({
+                    "index": chunk.get("index", 0),
+                    "start": chunk.get("start", 0),
+                    "end": chunk.get("end", 0),
+                    "char_count": len(chunk_text),
+                    "prediction": result["prediction"],
+                    "confidence": result["confidence"],
+                    "ai_score": result["scores"]["ai_generated"],
+                    "human_score": result["scores"]["human"]
+                })
+        
+        if total_weight == 0:
+            return {"error": "No valid chunks to analyze"}
+        
+        # Calculate weighted averages
+        avg_ai = weighted_ai_score / total_weight
+        avg_human = weighted_human_score / total_weight
+        
+        prediction = "ai_generated" if avg_ai > avg_human else "human"
+        confidence = max(avg_ai, avg_human)
+        
+        # Count high-confidence chunks
+        ai_chunks = sum(1 for c in chunk_results if c.get("ai_score", 0) > 60)
+        human_chunks = sum(1 for c in chunk_results if c.get("human_score", 0) > 60)
+        
+        result = {
+            "prediction": prediction,
+            "confidence": round(confidence, 2),
+            "scores": {
+                "human": round(avg_human, 2),
+                "ai_generated": round(avg_ai, 2)
+            },
+            "chunk_summary": {
+                "total_chunks": len(chunk_results),
+                "ai_leaning_chunks": ai_chunks,
+                "human_leaning_chunks": human_chunks,
+                "total_characters": total_weight
+            },
+            "detected_patterns": {
+                "total_count": len(all_patterns),
+                "patterns": all_patterns[:20]  # Limit to 20
+            }
+        }
+        
+        if include_per_chunk:
+            result["chunks"] = chunk_results
+        
+        return result
+    
     def get_cache_info(self) -> Dict:
         """Get cache statistics."""
         info = self._cached_inference.cache_info()

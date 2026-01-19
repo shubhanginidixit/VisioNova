@@ -561,11 +561,11 @@
                                 }
                             } else if (mediaType === 'text') {
                                 // Handle text analysis with backend API
-                                const textContent = inputData.data;
+                                const isDocument = sessionStorage.getItem('visioNova_isDocument') === 'true';
 
                                 // Step 1: Linguistic Pattern Analysis
                                 updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Tokenizing text...');
+                                updateLoadingStatus(config.statusMessages[0] || 'Processing document...');
 
                                 let progressValue = 30;
                                 const progressInterval = setInterval(() => {
@@ -577,14 +577,42 @@
 
                                 try {
                                     const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+                                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s for large docs
 
-                                    const response = await fetch(`${API_BASE_URL}/api/detect-ai`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ text: textContent }),
-                                        signal: controller.signal
-                                    });
+                                    let response;
+
+                                    if (isDocument) {
+                                        // PDF/DOCX - use file upload endpoint with actual File object
+                                        updateLoadingStatus('Extracting text from document...');
+
+                                        const docFile = VisioNovaStorage.getDocumentFile();
+                                        if (!docFile || !docFile.file) {
+                                            throw new Error('Document file not found. Please re-upload.');
+                                        }
+
+                                        // Create FormData with the actual File
+                                        const formData = new FormData();
+                                        formData.append('file', docFile.file, docFile.fileName);
+                                        formData.append('explain', 'true');
+
+                                        response = await fetch(`${API_BASE_URL}/api/detect-ai/upload`, {
+                                            method: 'POST',
+                                            body: formData,
+                                            signal: controller.signal
+                                        });
+
+                                        // Clear the document file after upload
+                                        VisioNovaStorage.clearDocumentFile();
+                                    } else {
+                                        // Plain text - use regular text endpoint
+                                        const textContent = inputData.data;
+                                        response = await fetch(`${API_BASE_URL}/api/detect-ai`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ text: textContent, explain: true }),
+                                            signal: controller.signal
+                                        });
+                                    }
 
                                     clearTimeout(timeoutId);
                                     clearInterval(progressInterval);
@@ -594,10 +622,11 @@
 
                                     // Step 2: Source Attribution
                                     updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Checking sources...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Analyzing patterns...');
 
                                     const result = await response.json();
                                     console.log('[Dashboard] Text analysis result:', result);
+                                    console.log('[Dashboard] Storing result in sessionStorage');
 
                                     await new Promise(r => setTimeout(r, 400));
                                     updateStepProgress(1, 'complete', 100);
@@ -608,10 +637,18 @@
 
                                     // Store result for TextResultPage to use
                                     sessionStorage.setItem('visioNova_text_result', JSON.stringify(result));
+                                    console.log('[Dashboard] Result stored. Keys:', Object.keys(result));
+                                    console.log('[Dashboard] isDocument flag:', sessionStorage.getItem('visioNova_isDocument'));
+                                    console.log('[Dashboard] documentFileName:', sessionStorage.getItem('visioNova_documentFileName'));
+
+                                    // Don't remove isDocument flag yet - result page needs it
+                                    // sessionStorage.removeItem('visioNova_isDocument');
 
                                     await new Promise(r => setTimeout(r, 500));
                                     updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete!');
+                                    updateLoadingStatus('Analysis complete! Redirecting...');
+
+                                    console.log('[Dashboard] About to redirect to result page');
 
                                     return result;
                                 } catch (fetchError) {

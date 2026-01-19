@@ -107,6 +107,44 @@ const VisioNovaStorage = {
             reader.onerror = () => reject(reader.error);
             reader.readAsDataURL(file);
         });
+    },
+
+    /**
+     * Store a File object for document uploads (PDF, DOCX)
+     * File objects can't be stored in sessionStorage, so we use a module-level variable
+     * @param {File} file - The File object to store
+     * @param {string} fileName - Original filename
+     */
+    documentFile: null,
+
+    saveDocumentFile: function (file, fileName) {
+        this.documentFile = {
+            file: file,
+            fileName: fileName || file.name,
+            mimeType: file.type,
+            timestamp: new Date().toISOString()
+        };
+        // Also store metadata in sessionStorage for cross-page reference
+        sessionStorage.setItem('visioNova_documentFile_meta', JSON.stringify({
+            fileName: this.documentFile.fileName,
+            mimeType: this.documentFile.mimeType,
+            size: file.size,
+            timestamp: this.documentFile.timestamp
+        }));
+        return true;
+    },
+
+    getDocumentFile: function () {
+        return this.documentFile;
+    },
+
+    hasDocumentFile: function () {
+        return this.documentFile !== null;
+    },
+
+    clearDocumentFile: function () {
+        this.documentFile = null;
+        sessionStorage.removeItem('visioNova_documentFile_meta');
     }
 };
 
