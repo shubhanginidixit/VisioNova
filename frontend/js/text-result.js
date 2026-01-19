@@ -12,23 +12,76 @@ let analysisResults = null;
 /**
  * Initialize the page
  */
-document.addEventListener('DOMContentLoaded', function () {
-    textData = VisioNovaStorage.getFile('text');
+document.addEventListener('DOMContentLoaded', async function () {
+    console.log('[TextResult] Page loaded');
+    console.log('[TextResult] Checking for data...');
 
-    if (textData && textData.data) {
-        // Update page title
+    textData = VisioNovaStorage.getFile('text');
+    console.log('[TextResult] textData from storage:', textData);
+
+    // Check for cached result from dashboard
+    const cachedResult = sessionStorage.getItem('visioNova_text_result');
+    console.log('[TextResult] Cached result exists:', !!cachedResult);
+
+    let preloadedResult = null;
+    if (cachedResult) {
+        try {
+            preloadedResult = JSON.parse(cachedResult);
+            sessionStorage.removeItem('visioNova_text_result');
+            console.log('[TextResult] Using cached result from dashboard');
+            console.log('[TextResult] Result keys:', Object.keys(preloadedResult));
+        } catch (e) {
+            console.warn('[TextResult] Failed to parse cached result');
+        }
+    }
+
+    // Check if this was a document upload (PDF/DOCX)
+    const isDocument = sessionStorage.getItem('visioNova_isDocument') === 'true';
+    const documentFileName = sessionStorage.getItem('visioNova_documentFileName');
+    console.log('[TextResult] isDocument:', isDocument);
+    console.log('[TextResult] documentFileName:', documentFileName);
+
+    // For documents, we don't have textData from storage (file was sent directly)
+    if (isDocument && preloadedResult) {
+        console.log('[TextResult] Processing document result');
+
+        // Document was processed by backend
+        sessionStorage.removeItem('visioNova_isDocument');
+        sessionStorage.removeItem('visioNova_documentFileName');
+
+        updateElement('pageTitle', 'Analysis: ' + (documentFileName || 'Document'));
+        updateElement('analysisDate', formatAnalysisDate(new Date()));
+
+        // Show document info
+        let displayTextContent = `[Document: ${documentFileName || 'Uploaded Document'}]\n\n`;
+        if (preloadedResult.file_info) {
+            const info = preloadedResult.file_info;
+            displayTextContent += `Format: ${info.format?.toUpperCase() || 'PDF'}\n`;
+            displayTextContent += `Pages: ${info.pages || 'N/A'}\n`;
+            displayTextContent += `Characters: ${(info.char_count || 0).toLocaleString()}\n\n`;
+        }
+        displayTextContent += 'Document text extracted and analyzed successfully.';
+
+        console.log('[TextResult] Displaying document info');
+        displayText(displayTextContent);
+        await analyzeText('', preloadedResult);  // Pass empty text, use preloaded result
+
+    } else if (textData && textData.data) {
+        console.log('[TextResult] Processing regular text');
+
+        // Regular text input
         updateElement('pageTitle', 'Analysis: ' + (textData.fileName || 'Text'));
         updateElement('analysisDate', formatAnalysisDate(new Date()));
 
-        // Display the uploaded text
         displayText(textData.data);
-
-        // Run analysis
-        analyzeText(textData.data);
-
-        // Clear storage after loading
+        await analyzeText(textData.data, preloadedResult);
         VisioNovaStorage.clearFile('text');
     } else {
+        console.warn('[TextResult] No data found!');
+        console.log('[TextResult] textData:', textData);
+        console.log('[TextResult] preloadedResult:', preloadedResult);
+        console.log('[TextResult] isDocument:', isDocument);
+
         updateElement('pageTitle', 'Text Analysis');
         showNoTextState();
     }
@@ -70,20 +123,137 @@ function showNoTextState() {
 }
 
 /**
- * Main analysis function - runs all analysis on text
+ * Main analysis function - calls backend API first, falls back to client-side
+ * @param {string} text - The text to analyze
+ * @param {object} preloadedResult - Optional preloaded result from dashboard
  */
-function analyzeText(text) {
-    // Calculate all metrics
-    const metrics = calculateTextMetrics(text);
-    const aiProbability = calculateAIProbability(text, metrics);
-    const claims = extractClaims(text);
-    const sources = analyzeSourceReliability(text);
+async function analyzeText(text, preloadedResult = null) {
+    // Detect if this is a document file (PDF/DOCX) - skip client-side metrics for binary data
+    const isDocument = text.startsWith('data:application/') || (preloadedResult && !!preloadedResult.file_info);
 
-    // Store results
-    analysisResults = { metrics, aiProbability, claims, sources };
+    // Calculate local metrics (skip for documents - use backend metrics instead)
+    let metrics, claims, sources;
+    if (isDocument && preloadedResult && preloadedResult.metrics) {
+        // Use backend metrics for documents
+        metrics = {
+            wordCount: preloadedResult.metrics.word_count || 0,
+            charCount: preloadedResult.file_info?.char_count || 0,
+            sentenceCount: preloadedResult.metrics.sentence_count || 0,
+            perplexity: preloadedResult.metrics.perplexity?.average || 50,
+            burstiness: preloadedResult.metrics.burstiness?.score || 0.5
+        };
+        claims = [];
+        sources = analyzeSourceReliability('');
+    } else if (!isDocument) {
+        metrics = calculateTextMetrics(text);
+        claims = extractClaims(text);
+        sources = analyzeSourceReliability(text);
+    } else {
+        // Document without preloaded result - minimal metrics
+        metrics = { wordCount: 0, charCount: 0, sentenceCount: 0, perplexity: 50, burstiness: 0.5 };
+        claims = [];
+        sources = analyzeSourceReliability('');
+    }
+
+    // Try to use preloaded result from dashboard first
+    let aiProbability = null;
+    let backendMetrics = null;
+
+    if (preloadedResult && preloadedResult.success) {
+        // Use cached ML model results from dashboard
+        aiProbability = {
+            ai: preloadedResult.scores.ai_generated,
+            human: preloadedResult.scores.human,
+            isLikelyAI: preloadedResult.prediction === 'ai_generated',
+            confidence: preloadedResult.confidence / 100,
+            source: 'ml_model'
+        };
+        backendMetrics = preloadedResult.metrics || null;
+        console.log('[TextResult] Using preloaded ML result:', preloadedResult.prediction);
+    } else {
+        // Try backend ML model
+        try {
+            showLoadingState();
+            const backendResult = await callTextDetectionAPI(text);
+
+            if (backendResult && backendResult.success) {
+                aiProbability = {
+                    ai: backendResult.scores.ai_generated,
+                    human: backendResult.scores.human,
+                    isLikelyAI: backendResult.prediction === 'ai_generated',
+                    confidence: backendResult.confidence / 100,
+                    source: 'ml_model'
+                };
+                backendMetrics = backendResult.metrics || null;
+                console.log('[TextResult] Using ML model prediction:', backendResult.prediction);
+            }
+        } catch (error) {
+            console.warn('[TextResult] Backend unavailable, using client-side analysis:', error.message);
+        }
+    }
+
+    // Fall back to client-side heuristics if no ML result
+    if (!aiProbability) {
+        aiProbability = calculateAIProbability(text, metrics);
+        aiProbability.source = 'heuristics';
+        console.log('[TextResult] Using client-side heuristics');
+    }
+
+    // Merge backend metrics with local metrics if available
+    if (backendMetrics) {
+        metrics.perplexity = backendMetrics.perplexity?.average || metrics.perplexity;
+        metrics.perplexityFlow = backendMetrics.perplexity?.flow;
+        metrics.burstiness = backendMetrics.burstiness?.score || metrics.burstiness;
+        metrics.burstinenessData = backendMetrics.burstiness?.bars;
+        metrics.rhythm = backendMetrics.rhythm;
+        metrics.wordCount = backendMetrics.word_count || metrics.wordCount;
+        metrics.ngramUniformity = backendMetrics.ngram_uniformity;
+    }
+
+    // Store results including any explanation
+    analysisResults = {
+        metrics,
+        aiProbability,
+        claims,
+        sources,
+        sentenceAnalysis: preloadedResult?.sentence_analysis || backendResult?.sentence_analysis || [],
+        detectedPatterns: preloadedResult?.detected_patterns || backendResult?.detected_patterns || {},
+        explanation: preloadedResult?.explanation || backendResult?.explanation || null
+    };
 
     // Update UI with animations
     setTimeout(() => updateUI(analysisResults), 300);
+}
+
+/**
+ * Call the backend text detection API
+ * @param {string} text - Text to analyze
+ * @param {boolean} explain - Request Groq explanation
+ */
+async function callTextDetectionAPI(text, explain = true) {
+    const response = await fetch(`${API_BASE_URL}/api/detect-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, explain: explain })
+    });
+
+    if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+/**
+ * Show loading state while waiting for API
+ */
+function showLoadingState() {
+    updateElement('credibilityScore', '...');
+    updateElement('verdictBadge', 'Analyzing');
+    const verdictBadge = document.getElementById('verdictBadge');
+    if (verdictBadge) {
+        verdictBadge.className = 'px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/20 animate-pulse';
+    }
 }
 
 /**
@@ -315,11 +485,21 @@ function updateUI(results) {
     updateElement('sourceInfo', sources.info);
     updateSourceTags(sources.domains);
 
-    // Update perplexity
+    // Update perplexity chart
     updateElement('perplexityAvg', `Avg: ${metrics.perplexity}`);
+    if (metrics.perplexityFlow) {
+        updatePerplexityChart(metrics.perplexityFlow);
+    }
 
-    // Update claims table
-    updateClaimsTable(claims);
+    // Update burstiness chart
+    if (metrics.burstinenessData) {
+        updateBurstinessChart(metrics.burstinenessData);
+    }
+
+    // Update rhythm uniformity
+    if (metrics.rhythm) {
+        updateRhythmStatus(metrics.rhythm);
+    }
 }
 
 /**
@@ -436,4 +616,108 @@ function getSourceLink(source) {
         <span class="underline decoration-primary/30 group-hover:decoration-white">${source.name}</span>
         <span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100">open_in_new</span>
     </a>`;
+}
+
+/**
+ * Update the perplexity line chart with dynamic data
+ * @param {number[]} flowData - Array of perplexity values for each section
+ */
+function updatePerplexityChart(flowData) {
+    const svg = document.querySelector('.bg-primary-dark\\/40 svg');
+    if (!svg || !flowData || flowData.length < 2) return;
+
+    // Generate SVG path from flow data
+    const width = 360;
+    const height = 100;
+    const padding = 10;
+
+    const pointWidth = (width - padding * 2) / (flowData.length - 1);
+    const minVal = Math.min(...flowData);
+    const maxVal = Math.max(...flowData);
+    const range = maxVal - minVal || 1;
+
+    // Generate points
+    const points = flowData.map((val, i) => {
+        const x = padding + i * pointWidth;
+        // Invert Y because SVG Y increases downward
+        const y = height - padding - ((val - minVal) / range) * (height - padding * 2);
+        return { x, y };
+    });
+
+    // Create smooth curve path using bezier curves
+    let pathD = `M${points[0].x},${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const cpx = (prev.x + curr.x) / 2;
+        pathD += ` C${cpx},${prev.y} ${cpx},${curr.y} ${curr.x},${curr.y}`;
+    }
+
+    // Create fill path
+    const fillD = `${pathD} V ${height} H ${points[0].x} Z`;
+
+    // Update the paths in SVG
+    const paths = svg.querySelectorAll('path');
+    if (paths[0]) paths[0].setAttribute('d', pathD);
+    if (paths[1]) paths[1].setAttribute('d', fillD);
+}
+
+/**
+ * Update the burstiness bar chart with dynamic data
+ * @param {object} data - Contains document bars and human_baseline bars
+ */
+function updateBurstinessChart(data) {
+    const container = document.querySelector('.bg-primary-dark\\/40 .flex-1.flex.items-end');
+    if (!container || !data || !data.document) return;
+
+    const docBars = data.document;
+    const humanBars = data.human_baseline || [];
+
+    // Generate bar HTML
+    let barsHtml = '';
+    for (let i = 0; i < Math.max(docBars.length, 6); i++) {
+        const docHeight = docBars[i] || 20;
+        const humanHeight = humanBars[i] || 50;
+
+        barsHtml += `
+            <div class="w-full bg-white/5 rounded-t relative group transition-all" style="height: ${docHeight}%">
+                <div class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t transition-all" 
+                     style="height: ${humanHeight}%; width: 60%; left: 20%"></div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = barsHtml;
+}
+
+/**
+ * Update the rhythm uniformity status display
+ * @param {object} rhythm - Contains status and description
+ */
+function updateRhythmStatus(rhythm) {
+    // Find the rhythm card (last card in the metrics section)
+    const rhythmCard = document.querySelector('.bg-primary-dark\\/40.flex.items-center.justify-between');
+    if (!rhythmCard || !rhythm) return;
+
+    // Update the description text
+    const descEl = rhythmCard.querySelector('p.text-white\\/40');
+    if (descEl) {
+        descEl.textContent = rhythm.description;
+    }
+
+    // Update the status badge
+    const badge = rhythmCard.querySelector('span.px-3');
+    if (badge) {
+        badge.textContent = rhythm.status;
+
+        // Update badge color based on status
+        badge.className = 'px-3 py-1 rounded-full text-xs font-bold border ';
+        if (rhythm.status === 'Normal') {
+            badge.className += 'bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20';
+        } else if (rhythm.status === 'Uniform') {
+            badge.className += 'bg-accent-amber/10 text-accent-amber border-accent-amber/20';
+        } else {
+            badge.className += 'bg-white/5 text-white border-white/10';
+        }
+    }
 }

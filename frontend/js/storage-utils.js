@@ -107,6 +107,114 @@ const VisioNovaStorage = {
             reader.onerror = () => reject(reader.error);
             reader.readAsDataURL(file);
         });
+    },
+
+    /**
+     * Initialize IndexedDB for File storage
+     */
+    _initDB: function () {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('VisioNovaDB', 1);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('files')) {
+                    db.createObjectStore('files', { keyPath: 'id' });
+                }
+            };
+        });
+    },
+
+    /**
+     * Store a File object in IndexedDB for document uploads (PDF, DOCX)
+     * @param {File} file - The File object to store
+     * @param {string} fileName - Original filename
+     */
+    saveDocumentFile: async function (file, fileName) {
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+
+            const fileData = {
+                id: 'currentDocument',
+                file: file,
+                fileName: fileName || file.name,
+                mimeType: file.type,
+                size: file.size,
+                timestamp: new Date().toISOString()
+            };
+
+            await new Promise((resolve, reject) => {
+                const request = store.put(fileData);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+
+            // Also store metadata in sessionStorage as backup
+            sessionStorage.setItem('visioNova_documentFile_meta', JSON.stringify({
+                fileName: fileData.fileName,
+                mimeType: fileData.mimeType,
+                size: file.size,
+                timestamp: fileData.timestamp
+            }));
+
+            console.log('[Storage] Document file saved to IndexedDB:', fileName);
+            db.close();
+            return true;
+        } catch (error) {
+            console.error('[Storage] Error saving document file:', error);
+            return false;
+        }
+    },
+
+    getDocumentFile: async function () {
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readonly');
+            const store = transaction.objectStore('files');
+
+            const fileData = await new Promise((resolve, reject) => {
+                const request = store.get('currentDocument');
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+
+            db.close();
+            console.log('[Storage] Document file retrieved from IndexedDB:', fileData ? fileData.fileName : 'none');
+            return fileData || null;
+        } catch (error) {
+            console.error('[Storage] Error getting document file:', error);
+            return null;
+        }
+    },
+
+    hasDocumentFile: async function () {
+        const fileData = await this.getDocumentFile();
+        return fileData !== null;
+    },
+
+    clearDocumentFile: async function () {
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+
+            await new Promise((resolve, reject) => {
+                const request = store.delete('currentDocument');
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+
+            sessionStorage.removeItem('visioNova_documentFile_meta');
+            console.log('[Storage] Document file cleared from IndexedDB');
+            db.close();
+        } catch (error) {
+            console.error('[Storage] Error clearing document file:', error);
+        }
     }
 };
 

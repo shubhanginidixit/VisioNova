@@ -43,3 +43,8 @@ MANIFEST
 
 # Logs
 *.log
+
+# Training Artifacts
+datasets/
+checkpoints/
+model/

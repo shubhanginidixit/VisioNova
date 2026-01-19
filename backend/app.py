@@ -2,13 +2,14 @@
 VisioNova Backend API Server
 Flask application providing fact-checking API endpoints.
 """
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from fact_check import FactChecker
-from text_checker import AIContentDetector
-import re
+from text_detector import AIContentDetector, TextExplainer, DocumentParser
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests
@@ -24,6 +25,12 @@ limiter = Limiter(
 # Initialize the fact checker and AI content detector
 fact_checker = FactChecker()
 ai_detector = AIContentDetector()
+text_explainer = TextExplainer()
+doc_parser = DocumentParser()
+
+# File upload limits
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_EXTENSIONS = {'.pdf', '.docx', '.txt', '.doc'}
 
 # Input validation constants
 MAX_CLAIM_LENGTH = 1000
@@ -215,7 +222,8 @@ def detect_ai_content():
     
     Request body:
         {
-            "text": "The text to analyze"
+            "text": "The text to analyze",
+            "explain": true/false (optional, default false)
         }
     
     Response:
@@ -223,10 +231,11 @@ def detect_ai_content():
             "success": true,
             "prediction": "ai_generated|human",
             "confidence": 0-100,
-            "scores": {
-                "human": 0-100,
-                "ai_generated": 0-100
-            }
+            "scores": {...},
+            "metrics": {...},
+            "detected_patterns": {...},
+            "sentence_analysis": [...],
+            "explanation": {...}  // if explain=true
         }
     """
     try:
@@ -240,18 +249,25 @@ def detect_ai_content():
             }), 400
         
         text = data['text']
+        explain = data.get('explain', False)
         
-        # Validate input
-        validation = validate_input(text)
-        if not validation['valid']:
+        # Validate input (increase limit for text detection)
+        if not text or not text.strip():
             return jsonify({
                 'success': False,
-                'error': validation['error'],
+                'error': 'Input cannot be empty',
+                'error_code': 'INVALID_INPUT'
+            }), 400
+        
+        if len(text) > 10000:  # 10k char limit for text detection
+            return jsonify({
+                'success': False,
+                'error': 'Input too long (max 10,000 characters)',
                 'error_code': 'INVALID_INPUT'
             }), 400
         
         # Run detection
-        result = ai_detector.predict(text.strip())
+        result = ai_detector.predict(text.strip(), detailed=True)
         
         if "error" in result:
             return jsonify({
@@ -259,7 +275,121 @@ def detect_ai_content():
                 'error': result['error'],
                 'error_code': 'DETECTION_ERROR'
             }), 400
-            
+        
+        # Add Groq explanation if requested
+        if explain:
+            explanation = text_explainer.explain(result, text[:500])
+            result['explanation'] = explanation
+        
+        result['success'] = True
+        return jsonify(result)
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/detect-ai/upload', methods=['POST'])
+@limiter.limit("5 per minute")
+def detect_ai_file_upload():
+    """
+    Detect AI-generated content in uploaded files (PDF, DOCX, TXT).
+    Supports large documents through chunked processing.
+    
+    Request:
+        multipart/form-data with 'file' field
+        Optional: 'explain' (true/false)
+    
+    Response:
+        Detection results with chunk analysis for large documents
+    """
+    try:
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No file uploaded',
+                'error_code': 'NO_FILE'
+            }), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'error_code': 'NO_FILE'
+            }), 400
+        
+        # Check file extension
+        import os
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            return jsonify({
+                'success': False,
+                'error': f'Unsupported file format: {ext}. Allowed: PDF, DOCX, TXT',
+                'error_code': 'INVALID_FORMAT'
+            }), 400
+        
+        # Read file content
+        file_bytes = file.read()
+        
+        # Check file size
+        if len(file_bytes) > MAX_FILE_SIZE:
+            return jsonify({
+                'success': False,
+                'error': f'File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB',
+                'error_code': 'FILE_TOO_LARGE'
+            }), 400
+        
+        # Parse document
+        parse_result = doc_parser.parse_bytes(file_bytes, file.filename)
+        
+        if parse_result.get('error'):
+            return jsonify({
+                'success': False,
+                'error': parse_result['error'],
+                'error_code': 'PARSE_ERROR'
+            }), 400
+        
+        text = parse_result['text']
+        chunks = parse_result['chunks']
+        metadata = parse_result['metadata']
+        
+        # Decide processing method based on text length
+        explain = request.form.get('explain', 'false').lower() == 'true'
+        
+        if len(text) <= 5000:
+            # Small document - analyze as single text
+            result = ai_detector.predict(text, detailed=True)
+        else:
+            # Large document - use chunked analysis
+            result = ai_detector.analyze_chunks(chunks, include_per_chunk=True)
+        
+        if 'error' in result:
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'error_code': 'DETECTION_ERROR'
+            }), 400
+        
+        # Add file metadata
+        result['file_info'] = {
+            'filename': file.filename,
+            'format': metadata.get('format'),
+            'char_count': metadata.get('char_count'),
+            'pages': metadata.get('pages'),
+            'paragraphs': metadata.get('paragraphs')
+        }
+        
+        # Add Groq explanation if requested
+        if explain:
+            explanation = text_explainer.explain(result, text[:500])
+            result['explanation'] = explanation
+        
         result['success'] = True
         return jsonify(result)
     
