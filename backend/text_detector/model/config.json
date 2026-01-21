@@ -8,15 +8,7 @@
   "dropout": 0.1,
   "dtype": "float32",
   "hidden_dim": 3072,
-  "id2label": {
-    "0": "human",
-    "1": "ai_generated"
-  },
   "initializer_range": 0.02,
-  "label2id": {
-    "ai_generated": 1,
-    "human": 0
-  },
   "max_position_embeddings": 512,
   "model_type": "distilbert",
   "n_heads": 12,

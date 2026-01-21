@@ -2,11 +2,20 @@
   "version": "1.0",
   "truncation": {
     "direction": "Right",
-    "max_length": 256,
+    "max_length": 512,
     "strategy": "LongestFirst",
     "stride": 0
   },
-  "padding": null,
+  "padding": {
+    "strategy": {
+      "Fixed": 512
+    },
+    "direction": "Right",
+    "pad_to_multiple_of": null,
+    "pad_id": 0,
+    "pad_type_id": 0,
+    "pad_token": "[PAD]"
+  },
   "added_tokens": [
     {
       "id": 0,
