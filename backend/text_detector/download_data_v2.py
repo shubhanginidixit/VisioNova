@@ -18,7 +18,8 @@ from datasets import load_dataset
 from tqdm import tqdm
 
 # Constants
-DATASET_NAME = "gsingh1-py/train"
+# Constants
+DATASET_NAME = "artem9k/ai-text-detection-pile"
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "datasets")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "ai_detection_multi_model.csv")
 
