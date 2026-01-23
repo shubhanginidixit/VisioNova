@@ -13,8 +13,8 @@ import math
 import hashlib
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+# import torch
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 # Common AI-generated text patterns (expanded for better offline detection)
@@ -92,13 +92,10 @@ class AIContentDetector:
         self.use_ml_model = use_ml_model
         self.tokenizer = None
         self.model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
         
         if use_ml_model:
-            if model_path is None:
-                base_path = os.path.dirname(os.path.abspath(__file__))
-                model_path = os.path.join(base_path, self.MODEL_DIR)
-            self.model_path = model_path
+            self.model_path = model_path if model_path else os.path.join(os.path.dirname(os.path.abspath(__file__)), self.MODEL_DIR)
             self._load_model()
         else:
             print("Initialized in OFFLINE mode (no ML model, statistical detection only)")
@@ -107,6 +104,11 @@ class AIContentDetector:
     def _load_model(self):
         """Load the tokenizer and model."""
         try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            
             print(f"Loading AI detector model from {self.model_path}...")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
@@ -127,6 +129,7 @@ class AIContentDetector:
     @lru_cache(maxsize=100)
     def _cached_inference(self, text_hash: str, text: str) -> Tuple[float, float]:
         """Cached model inference. Returns (human_prob, ai_prob)."""
+        import torch
         inputs = self.tokenizer(
             text, 
             return_tensors="pt", 
@@ -208,13 +211,13 @@ class AIContentDetector:
     
     def _calculate_ngram_uniformity(self, text: str, n: int = 2) -> float:
         """
-        Calculate n-gram uniformity score.
-        AI text tends to have more uniform n-gram distributions.
-        Returns 0-1 (higher = more uniform = more AI-like)
+        Calculate n-gram repetition score.
+        AI text tends to repeat certain n-grams more often.
+        Returns 0-1 (higher = more repetitive = more AI-like)
         """
         words = text.lower().split()
-        if len(words) < n + 1:
-            return 0.5
+        if len(words) < n + 5:
+            return 0.5  # Not enough data
         
         # Generate n-grams
         ngrams = [tuple(words[i:i+n]) for i in range(len(words) - n + 1)]
@@ -227,19 +230,21 @@ class AIContentDetector:
         for ng in ngrams:
             freq[ng] = freq.get(ng, 0) + 1
         
-        # Calculate uniformity (inverse of variance in frequencies)
-        freqs = list(freq.values())
-        if len(freqs) < 2:
+        # Key insight: If all n-grams are unique, that's human-like (low score)
+        # If n-grams repeat, that's AI-like (high score)
+        total_ngrams = len(ngrams)
+        unique_ngrams = len(freq)
+        
+        if unique_ngrams == 0:
             return 0.5
         
-        mean_freq = sum(freqs) / len(freqs)
-        variance = sum((f - mean_freq) ** 2 for f in freqs) / len(freqs)
+        # Ratio of unique to total: 1.0 = all unique (human), lower = more repetition (AI)
+        uniqueness_ratio = unique_ngrams / total_ngrams
         
-        # Normalize: low variance = high uniformity
-        max_variance = mean_freq ** 2  # Theoretical max
-        uniformity = 1 - min(1, variance / max_variance) if max_variance > 0 else 0.5
+        # Invert: high repetition = high score = AI-like
+        repetition_score = 1 - uniqueness_ratio
         
-        return round(uniformity, 3)
+        return round(repetition_score, 3)
     
     def _calculate_ttr(self, text: str) -> float:
         """
@@ -254,30 +259,106 @@ class AIContentDetector:
         ttr = len(unique_words) / len(words)
         return round(ttr, 3)
     
+    def _calculate_entropy(self, text: str) -> float:
+        """
+        Calculate Shannon Entropy of character distribution.
+        Low entropy = highly predictable text = likely AI.
+        High entropy = more varied/creative = likely human.
+        Returns 0-1 (normalized, higher = more human-like)
+        """
+        if not text or len(text) < 50:
+            return 0.5  # Not enough data
+        
+        text_lower = text.lower()
+        char_freq = {}
+        total_chars = 0
+        
+        for char in text_lower:
+            if char.isalpha() or char.isspace():
+                char_freq[char] = char_freq.get(char, 0) + 1
+                total_chars += 1
+        
+        if total_chars == 0:
+            return 0.5
+        
+        # Calculate Shannon entropy: H = -sum(p * log2(p))
+        entropy = 0.0
+        for count in char_freq.values():
+            if count > 0:
+                p = count / total_chars
+                entropy -= p * math.log2(p)
+        
+        # Normalize: English text typically has entropy ~4.0-4.5
+        # AI text often has lower entropy (~3.5-4.0)
+        # Max theoretical entropy for 27 chars (a-z + space) is ~4.75
+        normalized_entropy = min(1.0, entropy / 4.75)
+        
+        return round(normalized_entropy, 3)
+    
+    def _detect_repetition(self, text: str, n: int = 4) -> float:
+        """
+        Detect repetitive n-gram patterns (proxy for watermarking/robotic patterns).
+        AI models sometimes repeat phrases or fall into loops.
+        Returns 0-1 (higher = more repetitive = more AI-like)
+        """
+        words = text.lower().split()
+        if len(words) < n + 5:
+            return 0.0  # Not enough data
+        
+        # Generate n-grams
+        ngrams = [tuple(words[i:i+n]) for i in range(len(words) - n + 1)]
+        
+        if not ngrams:
+            return 0.0
+        
+        # Count occurrences
+        freq = {}
+        for ng in ngrams:
+            freq[ng] = freq.get(ng, 0) + 1
+        
+        # Count repeated n-grams (appearing more than once)
+        repeated_count = sum(1 for count in freq.values() if count > 1)
+        total_unique = len(freq)
+        
+        if total_unique == 0:
+            return 0.0
+        
+        # Repetition ratio: what fraction of unique n-grams are repeated?
+        repetition_ratio = repeated_count / total_unique
+        
+        # Normalize (typical human text has very low repetition, AI can have more)
+        # Scale so that 10% repetition = 0.5, 20%+ = 1.0
+        normalized_repetition = min(1.0, repetition_ratio * 5)
+        
+        return round(normalized_repetition, 3)
+
+    
     def _calculate_offline_score(self, text: str, detected_patterns: List[Dict]) -> Tuple[float, float]:
         """
         Calculate AI probability using lightweight statistical methods (no ML model).
         Returns (human_prob, ai_prob) tuple.
         
-        Scoring weights:
-        - Pattern matching: 40%
-        - Burstiness: 30%
-        - N-gram uniformity: 20%
-        - Vocabulary richness: 10%
+        Scoring weights (optimized for accuracy):
+        - Pattern matching: 35% (most reliable)
+        - Burstiness: 20%
+        - N-gram repetition: 15%
+        - Vocabulary richness (TTR): 10%
+        - Entropy (Perplexity proxy): 10%
+        - Repetition (4-grams): 10%
         """
         sentences = re.split(r'[.!?]+', text)
         sentences = [s.strip() for s in sentences if s.strip()]
         sentence_count = len(sentences) if sentences else 1
         
-        # 1. Pattern matching score (30% weight) - reduced from 35%
+        # 1. Pattern matching score (30% weight) - Conservative threshold
         pattern_density = len(detected_patterns) / sentence_count
-        # Need at least 3 patterns to consider it AI-like (increased from 2)
+        # Need at least 3 patterns to consider it AI-like (stricter threshold)
         if len(detected_patterns) < 3:
             pattern_score = 0
         else:
-            pattern_score = min(1.0, pattern_density * 3) * 0.30  # Even gentler scaling
+            pattern_score = min(1.0, pattern_density * 3) * 0.30  # Gentler scaling
         
-        # 2. Burstiness score (25% weight) - inverted (low burstiness = AI)
+        # 2. Burstiness score (20% weight) - inverted (low burstiness = AI)
         words_per_sentence = [len(s.split()) for s in sentences]
         if len(words_per_sentence) > 1:
             mean = sum(words_per_sentence) / len(words_per_sentence)
@@ -285,32 +366,48 @@ class AIContentDetector:
             burstiness = min(1.0, variance / 100)
         else:
             burstiness = 0
-        # Only penalize if burstiness is VERY low (< 0.15) - stricter
+        # Only penalize if burstiness is VERY low (< 0.15) - conservative
         if burstiness < 0.15:
-            burstiness_score = (1 - burstiness) * 0.25
+            burstiness_score = (1 - burstiness) * 0.20
         else:
             burstiness_score = 0  # Normal burstiness = likely human
         
-        # 3. N-gram uniformity score (25% weight)
-        bigram_uniformity = self._calculate_ngram_uniformity(text, 2)
-        trigram_uniformity = self._calculate_ngram_uniformity(text, 3)
-        avg_uniformity = (bigram_uniformity + trigram_uniformity) / 2
-        # Only count if uniformity is VERY high (> 0.75) - stricter
-        if avg_uniformity > 0.75:
-            uniformity_score = (avg_uniformity - 0.5) * 0.25  # Scale from 0.5-1.0 range
+        # 3. N-gram repetition score (15% weight)
+        bigram_rep = self._calculate_ngram_uniformity(text, 2)
+        trigram_rep = self._calculate_ngram_uniformity(text, 3)
+        avg_rep = (bigram_rep + trigram_rep) / 2
+        # Only count if repetition is high (> 0.7) - conservative
+        if avg_rep > 0.7:
+            ngram_score = avg_rep * 0.15
         else:
-            uniformity_score = 0
+            ngram_score = 0
         
-        # 4. Vocabulary richness score (20% weight) - inverted (low TTR = AI)
+        # 4. Vocabulary richness score (15% weight) - inverted (low TTR = AI)
         ttr = self._calculate_ttr(text)
-        # Only penalize if TTR is VERY low (< 0.25) - stricter
+        # Only penalize if TTR is VERY low (< 0.25) - conservative
         if ttr < 0.25:
-            ttr_score = (1 - ttr) * 0.20
+            ttr_score = (1 - ttr) * 0.15
         else:
             ttr_score = 0  # Normal vocabulary = likely human
         
+        # 5. Entropy score (10% weight) - inverted (low entropy = AI)
+        entropy = self._calculate_entropy(text)
+        # Only penalize if entropy is low (< 0.4) - conservative
+        if entropy < 0.4:
+            entropy_score = (1 - entropy) * 0.10
+        else:
+            entropy_score = 0
+        
+        # 6. Long n-gram repetition score (10% weight) - high repetition = AI
+        repetition = self._detect_repetition(text, n=4)
+        # Only count significant repetition (> 0.5) - conservative
+        if repetition > 0.5:
+            repetition_score = repetition * 0.10
+        else:
+            repetition_score = 0
+        
         # Combine scores
-        ai_prob = pattern_score + burstiness_score + uniformity_score + ttr_score
+        ai_prob = pattern_score + burstiness_score + ngram_score + ttr_score + entropy_score + repetition_score
         ai_prob = min(1.0, max(0.0, ai_prob))  # Clamp to [0, 1]
         
         # Apply stricter threshold - need at least 0.3 AI score to classify as AI
@@ -692,8 +789,8 @@ class AIContentDetector:
 
 
 if __name__ == "__main__":
-    # Test the detector
-    detector = AIContentDetector(use_ml_model=True)
+    # Test the detector with detailed debug output
+    detector = AIContentDetector(use_ml_model=False)  # Force offline mode for testing
     
     sample_ai_text = """
     It's important to note that artificial intelligence has revolutionized many industries. 
@@ -708,19 +805,29 @@ if __name__ == "__main__":
     Gonna watch that new show everyone's been talking about tonight.
     """
     
-    print("=" * 60)
-    print("Testing AI-generated text:")
-    print("=" * 60)
-    result = detector.predict(sample_ai_text)
-    print(f"Prediction: {result['prediction']}")
-    print(f"Confidence: {result['confidence']}%")
-    print(f"Patterns found: {result['detected_patterns']['total_count']}")
-    print(f"Categories: {list(result['detected_patterns']['categories'].keys())}")
+    def debug_text(text, label):
+        patterns = detector._detect_patterns_in_text(text)
+        entropy = detector._calculate_entropy(text)
+        repetition = detector._detect_repetition(text, n=4)
+        ttr = detector._calculate_ttr(text)
+        bigram_unif = detector._calculate_ngram_uniformity(text, 2)
+        trigram_unif = detector._calculate_ngram_uniformity(text, 3)
+        
+        print(f"\n{'='*60}")
+        print(f"DEBUG - {label}")
+        print(f"{'='*60}")
+        print(f"Patterns found: {len(patterns)}")
+        print(f"Entropy: {entropy:.3f} (high=human, low=AI)")
+        print(f"Repetition: {repetition:.3f} (high=AI)")
+        print(f"TTR (vocab richness): {ttr:.3f} (high=human)")
+        print(f"Bigram Uniformity: {bigram_unif:.3f} (high=AI)")
+        print(f"Trigram Uniformity: {trigram_unif:.3f} (high=AI)")
+        
+        result = detector.predict(text)
+        print(f"\nFINAL PREDICTION: {result['prediction']}")
+        print(f"AI Score: {result['scores']['ai_generated']:.2f}%")
+        print(f"Human Score: {result['scores']['human']:.2f}%")
     
-    print("\n" + "=" * 60)
-    print("Testing human-written text:")
-    print("=" * 60)
-    result2 = detector.predict(sample_human_text)
-    print(f"Prediction: {result2['prediction']}")
-    print(f"Confidence: {result2['confidence']}%")
-    print(f"Patterns found: {result2['detected_patterns']['total_count']}")
+    debug_text(sample_ai_text, "AI-GENERATED TEXT")
+    debug_text(sample_human_text, "HUMAN-WRITTEN TEXT")
+

@@ -5,6 +5,7 @@ Provides better verdict determination and explanations.
 import os
 from groq import Groq
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 
@@ -126,7 +127,8 @@ Respond ONLY with valid JSON, no other text."""
             content = response.choices[0].message.content.strip()
             
             # Try to parse JSON from response
-            import json
+            # Try to parse JSON from response
+            # import json (moved to top-level)
             
             # Handle potential markdown code blocks
             if content.startswith('```'):
