@@ -175,15 +175,24 @@ class AIContentDetector:
         
         for category, patterns in AI_PATTERNS.items():
             for pattern in patterns:
-                matches = re.findall(pattern, text_lower, re.IGNORECASE)
-                if matches:
-                    for match in matches:
-                        match_text = match if isinstance(match, str) else match[0] if match else pattern
-                        detected.append({
-                            "pattern": match_text,
-                            "category": category,
-                            "type": self._get_pattern_type(category)
-                        })
+                # Use finditer to get positions
+                matches = re.finditer(pattern, text_lower, re.IGNORECASE)
+                for match in matches:
+                    match_text = match.group()
+                    # Get original case text using span
+                    start, end = match.span()
+                    original_text_segment = text[start:end]
+                    
+                    detected.append({
+                        "pattern": original_text_segment,
+                        "category": category,
+                        "type": self._get_pattern_type(category),
+                        "start": start,
+                        "end": end
+                    })
+        
+        # Sort by position to help frontend rendering
+        detected.sort(key=lambda x: x["start"])
         
         return detected
     
@@ -418,7 +427,24 @@ class AIContentDetector:
         if self.use_ml_model and self.model is not None:
             # ML-based prediction (cached)
             text_hash = self._get_text_hash(text)
-            human_prob, ai_prob = self._cached_inference(text_hash, text)
+            ml_human, ml_ai = self._cached_inference(text_hash, text)
+            
+            # Calculate offline score for hybrid calibration
+            # This prevents specific models from overfitting on human text
+            off_human, off_ai = self._calculate_offline_score(text, all_patterns)
+            
+            # Weighted Hybrid Score: 70% ML, 30% Linguistic analysis
+            # If ML is extremely confident (>99%), we trust it more (90/10 split)
+            if ml_ai > 0.99 or ml_human > 0.99:
+                 weight_ml = 0.90
+            else:
+                 weight_ml = 0.70
+            
+            weight_off = 1.0 - weight_ml
+            
+            ai_prob = (ml_ai * weight_ml) + (off_ai * weight_off)
+            human_prob = 1.0 - ai_prob
+            
         else:
             # Offline statistical prediction
             human_prob, ai_prob = self._calculate_offline_score(text, all_patterns)
@@ -642,7 +668,7 @@ class AIContentDetector:
 
 if __name__ == "__main__":
     # Test the detector
-    detector = AIContentDetector()
+    detector = AIContentDetector(use_ml_model=True)
     
     sample_ai_text = """
     It's important to note that artificial intelligence has revolutionized many industries. 

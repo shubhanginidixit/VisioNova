@@ -77,6 +77,7 @@ def compute_metrics(pred):
 def train_v2(
     data_path: str,
     output_dir: str = None,
+    model_name: str = "distilbert-base-uncased",
     epochs: int = 3,
     batch_size: int = 8,
     learning_rate: float = 2e-5,
@@ -180,8 +181,14 @@ def train_v2(
     # =========================================================================
     print("\n[3/5] Loading model and tokenizing...")
     
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR, num_labels=2)
+    # Check if we should load from a local directory or HuggingFace
+    load_path = model_name
+    if os.path.isdir(os.path.join(BASE_DIR, model_name)):
+        load_path = os.path.join(BASE_DIR, model_name)
+    
+    print(f"       Loading from: {load_path}")
+    tokenizer = AutoTokenizer.from_pretrained(load_path)
+    model = AutoModelForSequenceClassification.from_pretrained(load_path, num_labels=2)
     
     # Check device
     if use_gpu and torch.cuda.is_available():
@@ -345,6 +352,8 @@ if __name__ == "__main__":
                         help="Learning rate (default: 2e-5)")
     parser.add_argument("--max_length", type=int, default=512,
                         help="Maximum token length (default: 512)")
+    parser.add_argument("--model_name", type=str, default="distilbert-base-uncased",
+                        help="Base model name or path (default: distilbert-base-uncased)")
     parser.add_argument("--no_gpu", action="store_true",
                         help="Force CPU training")
     
@@ -360,5 +369,6 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         max_length=args.max_length,
+        model_name=args.model_name,
         use_gpu=not args.no_gpu
     )

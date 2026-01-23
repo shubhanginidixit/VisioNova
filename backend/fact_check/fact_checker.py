@@ -9,6 +9,7 @@ from .input_classifier import InputClassifier
 from .content_extractor import ContentExtractor
 from .web_searcher import WebSearcher
 from .temporal_analyzer import TemporalAnalyzer
+from .credibility_manager import CredibilityManager
 from .config import Verdict
 
 # Import AI analyzer from separate ai module
@@ -38,6 +39,7 @@ class FactChecker:
         self.searcher = WebSearcher()
         self.ai_analyzer = AIAnalyzer()
         self.temporal_analyzer = TemporalAnalyzer()
+        self.credibility_manager = CredibilityManager()
     
     def _get_cache_key(self, user_input: str) -> str:
         """Generate a hash key for caching claim results."""
@@ -354,32 +356,49 @@ class FactChecker:
         Returns:
             dict with verdict, confidence, explanation, and empty structured fields
         """
-        # Categorize sources by trust level
-        from .config import TRUSTED_FACTCHECK_DOMAINS, TRUSTED_DOMAINS
-        
+        # Categorize sources by trust level using CredibilityManager
         factcheck_sites = []
         high_trust = []
         medium_trust = []
+        low_trust = []
+        
+        total_trust_score = 0
+        valid_sources_count = 0
         
         for source in sources:
             domain = source.get('domain', '').lower()
-            if any(trusted in domain for trusted in TRUSTED_FACTCHECK_DOMAINS):
+            cred_info = self.credibility_manager.get_credibility(domain)
+            trust_score = cred_info.get('trust', 50)
+            category = cred_info.get('category', 'unknown')
+            
+            # Enrich source with credibility data
+            source['trust_score'] = trust_score
+            source['trust_level'] = self.credibility_manager.get_trust_level(domain)
+            source['category'] = category
+            
+            if category == 'factcheck' or trust_score >= 85:
                 factcheck_sites.append(source)
-            elif any(trusted in domain for trusted in TRUSTED_DOMAINS):
+            elif trust_score >= 70:
                 high_trust.append(source)
-            else:
+            elif trust_score >= 50:
                 medium_trust.append(source)
-        
+            else:
+                low_trust.append(source)
+            
+            total_trust_score += trust_score
+            valid_sources_count += 1
+            
+        avg_trust = total_trust_score / max(1, valid_sources_count)
         total_trusted = len(factcheck_sites) + len(high_trust)
         
         # Determine verdict based on source quality
         if factcheck_sites:
             # We have fact-check sources - give them high weight
-            confidence = min(90, 70 + len(factcheck_sites) * 10)
+            confidence = min(95, 75 + len(factcheck_sites) * 10)
             verdict = self._extract_verdict_from_snippets(factcheck_sites)
             explanation = (
-                f"Found {len(factcheck_sites)} fact-check source(s) addressing this claim. "
-                f"Total of {len(sources)} sources analyzed. (Heuristic analysis)"
+                f"Found {len(factcheck_sites)} high-trust/fact-check source(s) addressing this claim. "
+                f"Average source trust score: {avg_trust:.1f}/100. (Heuristic analysis)"
             )
         elif total_trusted >= 3:
             # Multiple trusted sources
@@ -387,7 +406,7 @@ class FactChecker:
             verdict = Verdict.TRUE
             explanation = (
                 f"Found {total_trusted} trusted sources discussing this topic. "
-                f"No explicit fact-checks found, but sources appear credible. (Heuristic analysis)"
+                f"No explicit fact-checks found, but sources appear credible (Trust > 70). (Heuristic analysis)"
             )
         elif total_trusted >= 1:
             # Some trusted sources
@@ -403,7 +422,7 @@ class FactChecker:
             verdict = Verdict.UNVERIFIABLE
             explanation = (
                 "Could not find trusted sources to verify this claim. "
-                "The sources found are of unknown reliability. (Heuristic analysis)"
+                "The sources found are of unknown or low reliability. (Heuristic analysis)"
             )
         
         # Calculate confidence breakdown for transparency

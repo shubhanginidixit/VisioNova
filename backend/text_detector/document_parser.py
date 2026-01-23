@@ -6,6 +6,12 @@ import os
 import re
 from typing import List, Dict, Optional, Tuple
 from io import BytesIO
+try:
+    from PIL import Image
+    import pytesseract
+except ImportError:
+    Image = None
+    pytesseract = None
 
 
 class DocumentParser:
@@ -139,6 +145,9 @@ class DocumentParser:
         """Extract text from PDF file."""
         try:
             import fitz  # PyMuPDF
+            # Helper to access Matrix for zooming
+            global import_fitz_matrix
+            import_fitz_matrix = fitz.Matrix
         except ImportError:
             raise ImportError("PyMuPDF not installed. Run: pip install PyMuPDF")
         
@@ -149,16 +158,54 @@ class DocumentParser:
             # Use sort=True for natural reading order (top-left to bottom-right)
             text_parts.append(page.get_text(sort=True))
         
-        doc.close()
+        # doc.close() defered to end for OCR capability ->
         
         full_text = "\n\n".join(text_parts)
+        
+        # Check for scanned PDF (low text density)
+        # Avg chars per page < 50 usually means it's an image scan or very sparse
+        avg_chars = len(full_text) / len(text_parts) if text_parts else 0
+        
+        if avg_chars < 50 and pytesseract:
+            print("[DocumentParser] Low text density detected. Attempting OCR...")
+            ocr_text = self._extract_pdf_ocr(doc)
+            if len(ocr_text) > len(full_text):
+                full_text = ocr_text
+                print(f"[DocumentParser] OCR successful (extracted {len(full_text)} chars)")
+        
+        doc.close()
+        
         metadata = {
             "format": "pdf",
             "pages": len(text_parts),
-            "char_count": len(full_text)
+            "char_count": len(full_text),
+            "ocr_applied": avg_chars < 50
         }
         
         return full_text, metadata
+    
+    def _extract_pdf_ocr(self, doc) -> str:
+        """Extract text from PDF using OCR (images)."""
+        text_parts = []
+        
+        for i, page in enumerate(doc):
+            try:
+                # Render page to image
+                # Zoom = 2.0 for better quality (300 DPI approx)
+                pix = page.get_pixmap(matrix=import_fitz_matrix(2.0, 2.0))
+                img_data = pix.tobytes("png")
+                
+                # Create PIL Image
+                img = Image.open(BytesIO(img_data))
+                
+                # Run OCR
+                text = pytesseract.image_to_string(img)
+                text_parts.append(text)
+                
+            except Exception as e:
+                print(f"OCR failed for page {i+1}: {e}")
+                
+        return "\n\n".join(text_parts)
     
     def _extract_pdf_bytes(self, file_bytes: bytes) -> Tuple[str, Dict]:
         """Extract text from PDF bytes."""
@@ -174,13 +221,25 @@ class DocumentParser:
             # Use sort=True for natural reading order
             text_parts.append(page.get_text(sort=True))
         
+        # Check for scanned PDF (low text density)
+        avg_chars = len(full_text) / len(text_parts) if text_parts else 0
+        
+        if avg_chars < 50 and pytesseract:
+            print("[DocumentParser] Low text density detected (bytes). Attempting OCR...")
+            ocr_text = self._extract_pdf_ocr(doc)
+            if len(ocr_text) > len(full_text):
+                full_text = ocr_text
+                print(f"[DocumentParser] OCR successful (extracted {len(full_text)} chars)")
+        
         doc.close()
         
-        full_text = "\n\n".join(text_parts)
+        full_text = "\n\n".join(text_parts) if avg_chars >= 50 else full_text
+        
         metadata = {
             "format": "pdf",
             "pages": len(text_parts),
-            "char_count": len(full_text)
+            "char_count": len(full_text),
+            "ocr_applied": avg_chars < 50
         }
         
         return full_text, metadata
