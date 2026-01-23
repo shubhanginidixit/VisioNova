@@ -13,8 +13,8 @@ import math
 import hashlib
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+# import torch
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 # Common AI-generated text patterns (expanded for better offline detection)
@@ -92,13 +92,10 @@ class AIContentDetector:
         self.use_ml_model = use_ml_model
         self.tokenizer = None
         self.model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
         
         if use_ml_model:
-            if model_path is None:
-                base_path = os.path.dirname(os.path.abspath(__file__))
-                model_path = os.path.join(base_path, self.MODEL_DIR)
-            self.model_path = model_path
+            self.model_path = model_path if model_path else os.path.join(os.path.dirname(os.path.abspath(__file__)), self.MODEL_DIR)
             self._load_model()
         else:
             print("Initialized in OFFLINE mode (no ML model, statistical detection only)")
@@ -107,6 +104,11 @@ class AIContentDetector:
     def _load_model(self):
         """Load the tokenizer and model."""
         try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            
             print(f"Loading AI detector model from {self.model_path}...")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
@@ -127,6 +129,7 @@ class AIContentDetector:
     @lru_cache(maxsize=100)
     def _cached_inference(self, text_hash: str, text: str) -> Tuple[float, float]:
         """Cached model inference. Returns (human_prob, ai_prob)."""
+        import torch
         inputs = self.tokenizer(
             text, 
             return_tensors="pt", 
