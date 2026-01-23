@@ -55,6 +55,11 @@ AI_PATTERNS = {
         r"\b(facilitate|facilitates|facilitating)\b",
         r"\b(endeavor|endeavors|endeavoring)\b",
         r"\b(ascertain|ascertains|ascertaining)\b",
+        r"\b(necessitate|necessitates|necessitating)\b",
+        r"\b(implement|implementation|implements)\b",
+        r"\b(comprehensive|multifaceted|systematic)\b",
+        r"\b(warrant|warrants|warranted)\b",
+        r"\b(implications)\b",
     ],
     "meta_awareness": [
         r"\b(for example, consider|imagine a scenario where)\b",
@@ -464,29 +469,9 @@ class AIContentDetector:
         
         linguistic_component = linguistic_ai_score * 0.40  # CHANGED from 0.50 to 0.40
         
-        # ===== FINAL SCORE WITH CALIBRATION =====
+        # ===== FINAL SCORE =====
         ai_prob = pattern_component + linguistic_component
         ai_prob = min(1.0, max(0.0, ai_prob))
-        
-        # Pattern-based boosting: If we have pattern evidence, ensure minimum score
-        if num_patterns >= 3:
-            # 3+ clear AI patterns is strong evidence - boost to at least 0.60
-            ai_prob = max(0.60, ai_prob)
-        elif num_patterns >= 1:
-            # 1-2 patterns: boost to at least 0.45 (was 0.55 for 4+)
-            ai_prob = max(0.45, ai_prob)
-        
-        # Calibration: Only reduce confidence for uncertain predictions
-        word_count = len(text.split())
-        if num_patterns >= 3:
-            # Clear pattern evidence - don't reduce confidence significantly
-            pass
-        elif word_count < 50:
-            # Short text with few patterns - reduce confidence slightly
-            ai_prob = 0.5 + (ai_prob - 0.5) * (word_count / 50) * 0.8
-        elif word_count < 100:
-            # Medium text - slight reduction
-            ai_prob = 0.5 + (ai_prob - 0.5) * 0.9
         
         human_prob = 1.0 - ai_prob
         

@@ -15,8 +15,8 @@ if __name__ == '__main__':
     print("\n" + "="*70, flush=True)
     print("VisioNova Backend API Server", flush=True)
     print("="*70, flush=True)
-    print(f"\n✓ Starting API server on http://localhost:5000", flush=True)
-    print(f"✓ Endpoints available:", flush=True)
+    print(f"\n[OK] Starting API server on http://localhost:5000", flush=True)
+    print(f"[OK] Endpoints available:", flush=True)
     print(f"  - POST /api/detect-ai", flush=True)
     print(f"  - POST /api/detect-ai/upload", flush=True)
     print(f"  - POST /api/fact-check", flush=True)
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     try:
         # Run without debug and without reloader
         app.run(
-            host='0.0.0.0',
+            host='127.0.0.1',
             port=5000,
             debug=False,
             use_reloader=False,
