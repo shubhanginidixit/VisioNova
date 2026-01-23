@@ -269,11 +269,15 @@ class AIContentDetector:
         sentences = [s.strip() for s in sentences if s.strip()]
         sentence_count = len(sentences) if sentences else 1
         
-        # 1. Pattern matching score (40% weight)
+        # 1. Pattern matching score (30% weight) - reduced from 35%
         pattern_density = len(detected_patterns) / sentence_count
-        pattern_score = min(1.0, pattern_density * 5) * 0.4  # Scale up (5 patterns = max)
+        # Need at least 3 patterns to consider it AI-like (increased from 2)
+        if len(detected_patterns) < 3:
+            pattern_score = 0
+        else:
+            pattern_score = min(1.0, pattern_density * 3) * 0.30  # Even gentler scaling
         
-        # 2. Burstiness score (30% weight) - inverted (low burstiness = AI)
+        # 2. Burstiness score (25% weight) - inverted (low burstiness = AI)
         words_per_sentence = [len(s.split()) for s in sentences]
         if len(words_per_sentence) > 1:
             mean = sum(words_per_sentence) / len(words_per_sentence)
@@ -281,21 +285,37 @@ class AIContentDetector:
             burstiness = min(1.0, variance / 100)
         else:
             burstiness = 0
-        burstiness_score = (1 - burstiness) * 0.3  # Invert
+        # Only penalize if burstiness is VERY low (< 0.15) - stricter
+        if burstiness < 0.15:
+            burstiness_score = (1 - burstiness) * 0.25
+        else:
+            burstiness_score = 0  # Normal burstiness = likely human
         
-        # 3. N-gram uniformity score (20% weight)
+        # 3. N-gram uniformity score (25% weight)
         bigram_uniformity = self._calculate_ngram_uniformity(text, 2)
         trigram_uniformity = self._calculate_ngram_uniformity(text, 3)
         avg_uniformity = (bigram_uniformity + trigram_uniformity) / 2
-        uniformity_score = avg_uniformity * 0.2
+        # Only count if uniformity is VERY high (> 0.75) - stricter
+        if avg_uniformity > 0.75:
+            uniformity_score = (avg_uniformity - 0.5) * 0.25  # Scale from 0.5-1.0 range
+        else:
+            uniformity_score = 0
         
-        # 4. Vocabulary richness score (10% weight) - inverted (low TTR = AI)
+        # 4. Vocabulary richness score (20% weight) - inverted (low TTR = AI)
         ttr = self._calculate_ttr(text)
-        ttr_score = (1 - ttr) * 0.1  # Invert
+        # Only penalize if TTR is VERY low (< 0.25) - stricter
+        if ttr < 0.25:
+            ttr_score = (1 - ttr) * 0.20
+        else:
+            ttr_score = 0  # Normal vocabulary = likely human
         
         # Combine scores
         ai_prob = pattern_score + burstiness_score + uniformity_score + ttr_score
         ai_prob = min(1.0, max(0.0, ai_prob))  # Clamp to [0, 1]
+        
+        # Apply stricter threshold - need at least 0.3 AI score to classify as AI
+        if ai_prob < 0.3:
+            ai_prob = 0.15  # Very likely human
         
         human_prob = 1 - ai_prob
         
@@ -433,17 +453,22 @@ class AIContentDetector:
             # This prevents specific models from overfitting on human text
             off_human, off_ai = self._calculate_offline_score(text, all_patterns)
             
-            # Weighted Hybrid Score: 70% ML, 30% Linguistic analysis
-            # If ML is extremely confident (>99%), we trust it more (90/10 split)
-            if ml_ai > 0.99 or ml_human > 0.99:
-                 weight_ml = 0.90
-            else:
-                 weight_ml = 0.70
+            # Weighted Hybrid Score: Balance ML with linguistic analysis
+            # CRITICAL: Current model is overfit and biased toward AI
+            # Until retrained, we trust linguistic analysis MUCH more
             
-            weight_off = 1.0 - weight_ml
+            # EMERGENCY FIX: Model is severely overfit, minimize its influence
+            weight_ml = 0.25  # Only 25% weight to ML (it's unreliable)
+            weight_off = 0.75  # 75% weight to linguistic analysis
             
             ai_prob = (ml_ai * weight_ml) + (off_ai * weight_off)
             human_prob = 1.0 - ai_prob
+            
+            # Apply conservative threshold - require strong evidence for AI classification
+            # If AI probability is between 0.45-0.55, lean toward human (benefit of doubt)
+            if 0.45 <= ai_prob <= 0.55:
+                ai_prob = 0.40  # Shift to human side
+                human_prob = 0.60
             
         else:
             # Offline statistical prediction
