@@ -401,45 +401,41 @@ class AIContentDetector:
         Returns (human_prob, ai_prob) tuple.
         
         Improved scoring to detect subtle AI-generated text:
-        - Pattern matching: 40% (reliable but not all AI has obvious patterns)
-        - Linguistic metrics: 60% (entropy, TTR, burstiness, n-gram repetition)
+        - Pattern matching: 50% (more weight to detected patterns - they're reliable)
+        - Linguistic metrics: 50% (entropy, TTR, burstiness, n-gram repetition)
         
         Key improvements:
-        1. Reduced pattern weight to prevent false negatives on subtle AI
-        2. Increased linguistic analysis weight (more reliable for subtle cases)
+        1. INCREASED pattern weight from 40% to 50% (formal transitions are strong AI indicators)
+        2. FIXED: Even 1 formal pattern like "In conclusion" should boost AI score to at least 0.35
         3. Better calibration for borderline cases
         """
         sentences = re.split(r'[.!?]+', text)
         sentences = [s.strip() for s in sentences if s.strip()]
         sentence_count = max(len(sentences), 1)
         
-        # ===== COMPONENT 1: PATTERN MATCHING SCORE (40% weight) =====
+        # ===== COMPONENT 1: PATTERN MATCHING SCORE (60% weight - INCREASED more) =====
         num_patterns = len(detected_patterns)
         pattern_density = num_patterns / sentence_count if sentence_count > 0 else 0
         
         if num_patterns == 0:
             pattern_ai_score = 0.0
         elif num_patterns == 1:
-            pattern_ai_score = 0.1
+            pattern_ai_score = 0.60  # CHANGED from 0.35 to 0.60 - single formal pattern is STRONG
         elif num_patterns == 2:
-            pattern_ai_score = 0.25
-        elif num_patterns == 3:
-            pattern_ai_score = 0.45
-        elif num_patterns <= 5:
-            pattern_ai_score = 0.65
-        else:
-            # 6+ patterns is very strong AI indicator
-            pattern_ai_score = min(1.0, max(0.75, pattern_density * 1.2))
+            pattern_ai_score = 0.75  # CHANGED from 0.50 to 0.75
+        elif num_patterns >= 3:
+            # 3+ patterns is very strong AI indicator
+            pattern_ai_score = min(1.0, 0.90)  # CHANGED
         
-        pattern_component = pattern_ai_score * 0.40
+        pattern_component = pattern_ai_score * 0.60  # CHANGED from 0.50 to 0.60
         
-        # ===== COMPONENT 2: LINGUISTIC METRICS (60% weight) =====
+        # ===== COMPONENT 2: LINGUISTIC METRICS (40% weight - DECREASED to balance) =====
         
-        # 2a. Vocabulary Diversity (TTR) - 20% of total
+        # 2a. Vocabulary Diversity (TTR) - 10% of total (was 15%)
         ttr = self._calculate_ttr(text)
         ttr_ai_score = 1.0 - ttr  # Low vocabulary = AI-like
         
-        # 2b. Entropy/Perplexity - 20% of total
+        # 2b. Entropy/Perplexity - 10% of total (was 15%)
         entropy = self._calculate_entropy(text)
         entropy_ai_score = 1.0 - entropy  # Low entropy = AI-like
         
@@ -458,24 +454,27 @@ class AIContentDetector:
         trigram_rep = self._calculate_ngram_uniformity(text, 3)
         ngram_ai_score = (bigram_rep + trigram_rep) / 2.0  # High uniformity = AI-like
         
-        # Combine linguistic metrics
+        # Combine linguistic metrics (normalize to add up to 40%)
         linguistic_ai_score = (
-            ttr_ai_score * 0.333 +           # 20% of total (333% of 60%)
-            entropy_ai_score * 0.333 +       # 20% of total
-            burstiness_ai_score * 0.167 +    # 10% of total
-            ngram_ai_score * 0.167           # 10% of total
+            ttr_ai_score * 0.25 +           # 10% of total (250% of 40%)
+            entropy_ai_score * 0.25 +       # 10% of total
+            burstiness_ai_score * 0.25 +    # 10% of total
+            ngram_ai_score * 0.25           # 10% of total
         )
         
-        linguistic_component = linguistic_ai_score * 0.60
+        linguistic_component = linguistic_ai_score * 0.40  # CHANGED from 0.50 to 0.40
         
         # ===== FINAL SCORE WITH CALIBRATION =====
         ai_prob = pattern_component + linguistic_component
         ai_prob = min(1.0, max(0.0, ai_prob))
         
-        # Pattern-based boosting: If we have strong pattern evidence, boost the score
-        if num_patterns >= 4:
-            # 4+ clear AI patterns is strong evidence - boost to at least 0.55
-            ai_prob = max(0.55, ai_prob)
+        # Pattern-based boosting: If we have pattern evidence, ensure minimum score
+        if num_patterns >= 3:
+            # 3+ clear AI patterns is strong evidence - boost to at least 0.60
+            ai_prob = max(0.60, ai_prob)
+        elif num_patterns >= 1:
+            # 1-2 patterns: boost to at least 0.45 (was 0.55 for 4+)
+            ai_prob = max(0.45, ai_prob)
         
         # Calibration: Only reduce confidence for uncertain predictions
         word_count = len(text.split())
@@ -636,20 +635,12 @@ class AIContentDetector:
             ai_prob = (ml_ai * weight_ml) + (off_ai * weight_off)
             human_prob = 1.0 - ai_prob
             
-            # Apply conservative threshold - require strong evidence for AI classification
-            # If AI probability is between 0.45-0.55, lean toward human (benefit of doubt)
-            if 0.45 <= ai_prob <= 0.55:
-                ai_prob = 0.40  # Shift to human side
-                human_prob = 0.60
-            
         else:
             # Offline statistical prediction
             human_prob, ai_prob = self._calculate_offline_score(text, all_patterns)
         
         prediction = "ai_generated" if ai_prob > human_prob else "human"
         confidence = max(human_prob, ai_prob) * 100
-        
-        # Linguistic metrics (OPTIMIZED: calculate once, use for all)
         metrics = self._calculate_linguistic_metrics(text)
         
         # Group patterns by category
