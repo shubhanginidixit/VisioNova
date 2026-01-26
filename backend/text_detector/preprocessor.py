@@ -23,17 +23,22 @@ class TextPreprocessor:
             self.stop_words = set(stopwords.words('english'))
         except Exception:
             logger.warning("Stopwords not found. Downloading...")
-            nltk.download('stopwords')
+            nltk.download('stopwords', quiet=True)
             self.stop_words = set(stopwords.words('english'))
             
         if self.lemmatize:
             try:
                 self.lemmatizer = WordNetLemmatizer()
+                # Test the lemmatizer by calling it once
+                self.lemmatizer.lemmatize('test')
             except Exception:
                 logger.warning("WordNet not found. Downloading...")
-                nltk.download('wordnet')
-                nltk.download('omw-1.4')
+                nltk.download('wordnet', quiet=True)
+                nltk.download('omw-1.4', quiet=True)
+                nltk.download('wordnet_ic', quiet=True)
                 self.lemmatizer = WordNetLemmatizer()
+        else:
+            self.lemmatizer = None
 
     def clean_text(self, text: str) -> str:
         """
@@ -71,8 +76,11 @@ class TextPreprocessor:
         if self.remove_stopwords:
             tokens = [w for w in tokens if w not in self.stop_words]
             
-        if self.lemmatize:
-            tokens = [self.lemmatizer.lemmatize(w) for w in tokens]
+        if self.lemmatize and self.lemmatizer:
+            try:
+                tokens = [self.lemmatizer.lemmatize(w) for w in tokens]
+            except Exception as e:
+                logger.warning(f"Lemmatization failed: {e}. Using tokens as-is.")
             
         return " ".join(tokens)
 
