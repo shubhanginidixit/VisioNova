@@ -45,7 +45,7 @@ class DocumentParser:
         # Initialize AI client if requested
         if self.use_ai:
             try:
-                from .ai_client import AIDocumentExtractor
+                from AI import AIDocumentExtractor
                 self.ai_extractor = AIDocumentExtractor()
                 print("[DocumentParser] AI extraction enabled")
             except Exception as e:

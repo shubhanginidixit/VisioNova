@@ -11,7 +11,7 @@ from fact_check import FactChecker
 from text_detector import AIContentDetector, TextExplainer, DocumentParser
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)  # Enable CORS for frontend requests
 
 # Initialize rate limiter
@@ -75,6 +75,10 @@ def validate_input(user_input: str) -> dict:
 
 
 @app.route('/')
+def serve_home():
+    """Serve the homepage."""
+    return app.send_static_file('html/homepage.html')
+
 @app.route('/api/health')
 def health_check():
     """Enhanced health check endpoint with system status."""

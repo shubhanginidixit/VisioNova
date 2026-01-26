@@ -102,6 +102,7 @@ Rules:
 - If sources directly contradict the claim, verdict is FALSE  
 - If claim has some truth but is exaggerated/missing context, verdict is PARTIALLY TRUE or MISLEADING
 - If sources don't provide enough information, verdict is UNVERIFIABLE
+- If verdict is definitively TRUE or FALSE based on reliable sources, you MUST set confidence to 100. Do not hesitate.
 - Calculate confidence breakdown components accurately
 - Analyze each source's stance (SUPPORTS/REFUTES/NEUTRAL) individually
 - Flag contradictions_found as true if sources disagree significantly
@@ -175,6 +176,94 @@ Respond ONLY with valid JSON, no other text."""
             print(f"Error type: {type(e).__name__}")
             return self._fallback_analysis(sources)
     
+    def identify_knowledge_gaps(self, claim: str, sources: list) -> list:
+        """
+        Analyze current findings and identify missing information.
+        Returns a list of targeted search queries to fill those gaps.
+        """
+        if not self.client or not sources:
+            return []
+            
+        try:
+            context = self._build_source_context(sources)
+            
+            prompt = f"""You are a research assistant. We are verifying this claim: "{claim}"
+            
+            Current Findings:
+            {context}
+            
+            Do we have enough information to definitively verify this claim (TRUE/FALSE)?
+            If NO, what specific checks are missing?
+            
+            Generate up to 3 very specific search queries to find the missing info.
+            Focus on: dates, official denials, original sources, or consensus.
+            
+            Format response as valid JSON:
+            {{
+                "has_enough_info": boolean,
+                "missing_details": "brief explanation",
+                "search_queries": ["query 1", "query 2"]
+            }}"""
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            
+            if result.get("has_enough_info", False):
+                return []
+                
+            return result.get("search_queries", [])[:3]
+            
+        except Exception as e:
+            print(f"Gap analysis failed: {e}")
+            return []
+
+    def decompose_claim(self, text: str) -> list:
+        """
+        Break down a complex text/claim into atomic, verifiable facts.
+        Example: "Obama was born in Kenya and earth is flat" 
+        -> ["Obama was born in Kenya", "The earth is flat"]
+        """
+        if not self.client:
+            return [text]
+            
+        try:
+            prompt = f"""Break this text into individual, atomic, verifiable factual claims. 
+            Ignore opinions and filler words. Make each claim standalone.
+            
+            TEXT: "{text}"
+            
+            Return a JSON object with a "claims" list of strings.
+            Example: {{ "claims": ["claim 1", "claim 2"] }}"""
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a logic engine. Split text into atomic facts."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            claims = result.get("claims", [])
+            
+            # Fallback if empty
+            if not claims:
+                return [text]
+                
+            return claims
+            
+        except Exception as e:
+            print(f"Claim decomposition failed: {e}")
+            return [text]
+    
     def _build_source_context(self, sources: list) -> str:
         """Build a text context from sources for the AI prompt."""
         if not sources:
@@ -187,10 +276,16 @@ Respond ONLY with valid JSON, no other text."""
             
             source_type = "[FACT-CHECK SITE]" if is_factcheck else f"[{trust.upper()}]"
             
+            content = source.get('snippet', '')
+            if source.get('full_text_available'):
+                 content_display = f"*** FULL ARTICLE TEXT ***\n{content}\n*** END ARTICLE TEXT ***"
+            else:
+                 content_display = f"Snippet: {content[:300]}"
+
             context_parts.append(
                 f"{i}. {source_type} {source.get('title', 'Untitled')}\n"
                 f"   Domain: {source.get('domain', 'unknown')}\n"
-                f"   Content: {source.get('snippet', '')[:250]}"
+                f"   {content_display}"
             )
         
         return "\n\n".join(context_parts)

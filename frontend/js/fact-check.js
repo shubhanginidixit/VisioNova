@@ -27,8 +27,9 @@ function initFactCheck() {
     // Initialize tabs
     initTabs();
 
-    // Create results container
-    createResultsContainer();
+    // Initialize tabs
+    initTabs();
+
 
     // Find the verify button and attach handler
     const buttons = document.querySelectorAll('button');
@@ -437,11 +438,9 @@ function displayResults(result) {
         `;
     }
 
-    // Update claim title and summary
+    // Update claim title only (Summary removed as per request)
     const claimTitle = document.getElementById('claimTitle');
-    const claimSummary = document.getElementById('claimSummary');
-    if (claimTitle) claimTitle.textContent = `"${cleanClaimText(result.claim)}"`;
-    if (claimSummary) claimSummary.textContent = `Analyzing claim from ${result.input_type} input. Found ${result.source_count} sources for verification.`;
+    if (claimTitle) claimTitle.textContent = "Verification Results";
 
     // Update deep scan description with temporal context if available
     if (result.temporal_context && result.temporal_context.description) {
@@ -454,11 +453,7 @@ function displayResults(result) {
     // Render content for the current tab
     renderTabContent(result, currentTab);
 
-    // Also update the legacy results container if it exists
-    if (resultsContainer) {
-        resultsContainer.classList.remove('hidden');
-        resultsContainer.innerHTML = buildResultsHTML(result);
-    }
+
 }
 
 /**
@@ -971,13 +966,8 @@ function buildResultsHTML(result) {
                 </h3>
                 <span class="text-xs text-slate-400">${result.source_count} sources analyzed</span>
             </div>
-            <div class="mb-4 p-3 rounded-lg bg-background-dark/50 border border-white/5">
-                <p class="text-xs text-slate-400 mb-1">Analyzed claim:</p>
-                <p class="text-white text-sm font-medium">"${result.claim}"</p>
-            </div>
-            <div class="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
-                <p class="text-primary text-sm">${result.explanation}</p>
-            </div>
+
+
             <h4 class="text-white font-medium text-sm mb-3">Sources Found:</h4>
             <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                 ${sourcesHTML || '<p class="text-slate-400 text-sm">No sources found.</p>'}

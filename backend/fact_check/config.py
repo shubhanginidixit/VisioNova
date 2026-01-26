@@ -10,6 +10,9 @@ load_dotenv()
 GOOGLE_SEARCH_RESULTS = 10  # Number of search results to fetch
 REQUEST_TIMEOUT = 10  # Seconds to wait for HTTP requests
 
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
+
 # Trusted fact-check domains (highest weight in scoring)
 TRUSTED_FACTCHECK_DOMAINS = [
     # International fact-checkers

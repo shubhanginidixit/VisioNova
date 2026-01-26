@@ -1,6 +1,8 @@
 """
 AI Module - Provides LLM-powered analysis capabilities.
 """
-from .groq_client import AIAnalyzer
+from .fact_analysis import AIAnalyzer
+from .document_extraction import AIDocumentExtractor
+from .text_explanation import TextExplainer
 
-__all__ = ['AIAnalyzer']
+__all__ = ['AIAnalyzer', 'AIDocumentExtractor', 'TextExplainer']

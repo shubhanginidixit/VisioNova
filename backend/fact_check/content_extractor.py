@@ -7,6 +7,16 @@ import time
 from bs4 import BeautifulSoup
 from functools import wraps
 from .config import REQUEST_TIMEOUT
+import random
+
+# List of common User-Agents to rotate
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+]
 
 
 def retry_with_backoff(max_retries=3, initial_delay=1):
@@ -46,9 +56,8 @@ class ContentExtractor:
     """Extracts text content from web pages."""
     
     def __init__(self):
-        # More realistic browser headers to avoid 403 blocks
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        # Base headers
+        self.base_headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
@@ -61,6 +70,12 @@ class ContentExtractor:
             'Sec-Fetch-User': '?1',
             'Cache-Control': 'max-age=0',
         }
+    
+    def _get_random_headers(self):
+        """Generate headers with a random User-Agent."""
+        headers = self.base_headers.copy()
+        headers['User-Agent'] = random.choice(USER_AGENTS)
+        return headers
     
     @retry_with_backoff(max_retries=3, initial_delay=1)
     def extract_from_url(self, url: str) -> dict:
@@ -80,11 +95,13 @@ class ContentExtractor:
             # Add referer based on the URL domain
             from urllib.parse import urlparse
             parsed = urlparse(url)
-            self.headers['Referer'] = f"{parsed.scheme}://{parsed.netloc}/"
+            headers = self._get_random_headers()
+            parsed = urlparse(url)
+            headers['Referer'] = f"{parsed.scheme}://{parsed.netloc}/"
             
             response = session.get(
                 url, 
-                headers=self.headers, 
+                headers=headers, 
                 timeout=REQUEST_TIMEOUT,
                 allow_redirects=True
             )

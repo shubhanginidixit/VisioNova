@@ -27,6 +27,7 @@ In an era of generative AI and digital manipulation, VisioNova serves as a secur
 *   See [Text Detection Documentation](docs/TextDetection_Documentation.md) for technical details.
 
 ### Fact Checking
+*   **Atomic Claim Verification:** Decomposes complex multi-part rumors into individual atomic facts for precise verification.
 *   **Claim Verification:** Cross-references claims against trusted news sources and fact-checking databases.
 *   **Temporal Analysis:** Contextualizes claims within their correct time period (historical vs. current).
 *   **Source Credibility:** Scores the reliability of sources based on a curated database of domain trust ratings.
