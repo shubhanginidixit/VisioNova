@@ -436,6 +436,11 @@
 
                     // API configuration
                     const API_BASE_URL = 'http://localhost:5000';
+                    
+                    // Logging helper
+                    function logDebug(message, data = null) {
+                        console.log(`[VisioNova] ${message}`, data || '');
+                    }
 
                     // Progress tracking
                     let progressCallbacks = {};
@@ -472,17 +477,21 @@
                     async function performAnalysisWithProgress(mediaType, config) {
                         // Get stored input data
                         if (typeof VisioNovaStorage === 'undefined') {
-                            console.error('[Dashboard] VisioNovaStorage not available');
+                            logDebug('ERROR: VisioNovaStorage not available');
+                            updateLoadingStatus('Error: Storage module not loaded');
                             return null;
                         }
 
                         const inputData = VisioNovaStorage.getFile(mediaType);
+                        logDebug(`Input data for ${mediaType}:`, inputData);
+                        
                         if (!inputData || !inputData.data) {
-                            console.log('[Dashboard] No input data found for:', mediaType);
+                            logDebug(`No input data found for: ${mediaType}`);
+                            updateLoadingStatus('Error: No input data found. Please go back and upload/enter data.');
                             return null;
                         }
 
-                        console.log('[Dashboard] Performing analysis for:', mediaType);
+                        logDebug(`Performing analysis for: ${mediaType}`);
 
                         try {
                             if (mediaType === 'url') {
@@ -519,19 +528,18 @@
                                     updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
 
                                     if (!response.ok) {
-                                        throw new Error(`API error: ${response.status}`);
+                                        const errorText = await response.text();
+                                        logDebug(`API error response: ${response.status}`, errorText);
+                                        throw new Error(`API error: ${response.status} - ${errorText}`);
                                     }
 
-                                    // Step 1: Complete
-                                    updateStepProgress(0, 'complete', 100);
-
-                                    // Step 2: Source Credibility Check - Start
-                                    updateStepProgress(1, 'processing', 30);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Checking sources...');
+                                    // Step 1: Got response
+                                    updateStepProgress(0, 'processing', 90);
+                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
 
                                     // Parse response
                                     const result = await response.json();
-                                    console.log('[Dashboard] Fact-check result received');
+                                    logDebug('Fact-check result received:', result);
 
                                     // Step 2: Processing
                                     updateStepProgress(1, 'processing', 70);
@@ -619,6 +627,12 @@
                                     clearTimeout(timeoutId);
                                     clearInterval(progressInterval);
 
+                                    if (!response.ok) {
+                                        const errorText = await response.text();
+                                        logDebug(`Text API error: ${response.status}`, errorText);
+                                        throw new Error(`Text analysis failed: ${response.status}`);
+                                    }
+
                                     // Step 1: Complete
                                     updateStepProgress(0, 'complete', 100);
 
@@ -627,8 +641,8 @@
                                     updateLoadingStatus(config.statusMessages[1] || 'Analyzing patterns...');
 
                                     const result = await response.json();
-                                    console.log('[Dashboard] Text analysis result:', result);
-                                    console.log('[Dashboard] Storing result in sessionStorage');
+                                    logDebug('Text analysis result:', result);
+                                    logDebug('Storing result in sessionStorage');
 
                                     await new Promise(r => setTimeout(r, 400));
                                     updateStepProgress(1, 'complete', 100);
@@ -639,9 +653,9 @@
 
                                     // Store result for TextResultPage to use
                                     sessionStorage.setItem('visioNova_text_result', JSON.stringify(result));
-                                    console.log('[Dashboard] Result stored. Keys:', Object.keys(result));
-                                    console.log('[Dashboard] isDocument flag:', sessionStorage.getItem('visioNova_isDocument'));
-                                    console.log('[Dashboard] documentFileName:', sessionStorage.getItem('visioNova_documentFileName'));
+                                    logDebug('Result stored. Keys:', Object.keys(result));
+                                    logDebug('isDocument flag:', sessionStorage.getItem('visioNova_isDocument'));
+                                    logDebug('documentFileName:', sessionStorage.getItem('visioNova_documentFileName'));
 
                                     // Don't remove isDocument flag yet - result page needs it
                                     // sessionStorage.removeItem('visioNova_isDocument');
@@ -650,12 +664,12 @@
                                     updateStepProgress(2, 'complete', 100);
                                     updateLoadingStatus('Analysis complete! Redirecting...');
 
-                                    console.log('[Dashboard] About to redirect to result page');
+                                    logDebug('About to redirect to result page');
 
                                     return result;
                                 } catch (fetchError) {
                                     clearInterval(progressInterval);
-                                    console.warn('[Dashboard] Text API error, will use client-side analysis:', fetchError);
+                                    logDebug('Text API error, will use client-side analysis:', fetchError);
                                     // Continue to result page - it will use client-side fallback
                                     for (let i = 0; i < config.steps.length; i++) {
                                         updateStepProgress(i, 'complete', 100);
@@ -684,10 +698,13 @@
                     }
 
                     document.addEventListener('DOMContentLoaded', async () => {
+                        logDebug('AnalysisDashboard loaded');
                         const params = new URLSearchParams(window.location.search);
                         const isAnalyzing = params.get('analyzing') === 'true';
                         const nextUrl = params.get('next');
                         const mediaType = params.get('media')?.toLowerCase() || 'default';
+
+                        logDebug(`URL params: analyzing=${isAnalyzing}, media=${mediaType}, next=${nextUrl}`);
 
                         // Get config for this media type
                         const config = ANALYSIS_CONFIGS[mediaType] || DEFAULT_CONFIG;
@@ -697,10 +714,12 @@
                         renderAnalysisSteps(config.steps);
 
                         if (isAnalyzing) {
+                            logDebug(`Starting analysis for media type: ${mediaType}`);
                             // Run analysis with real progress updates
                             await performAnalysisWithProgress(mediaType, config);
 
                             // Redirect after completion
+                            logDebug(`Analysis complete, redirecting to: ${nextUrl || 'ResultPage.html'}`);
                             setTimeout(() => {
                                 if (nextUrl) {
                                     window.location.href = decodeURIComponent(nextUrl);
@@ -708,6 +727,8 @@
                                     window.location.href = 'ResultPage.html';
                                 }
                             }, 500);
+                        } else {
+                            logDebug('Not analyzing, just displaying dashboard');
                         }
                     });
                 </script>
