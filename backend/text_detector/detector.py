@@ -419,6 +419,62 @@ class AIContentDetector:
         
         return round(normalized_repetition, 3)
 
+    def _detect_watermark_signals(self, text: str) -> float:
+        """
+        Detect statistical watermark signals (Green/Red list proxy).
+        
+        Watermarking works by boosting the probability of 'Green List' tokens.
+        This simplified detector checks for the 'unusually high' frequency of
+        common/predictable words that often serve as watermarking carriers.
+        
+        Returns 0-1 (higher = stronger watermark signal = more AI-like)
+        """
+        words = [w.lower() for w in text.split() if w.isalpha()]
+        count = len(words)
+        if count < 20: 
+            return 0.0
+            
+        # 1. Check for 'Green List' bias (common stop words + high freq words)
+        # Watermarked text often has slightly distorted distributions of these
+        # We use a known list of 'safe' high-freq tokens
+        green_list_tokens = {
+            'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 
+            'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 
+            'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 
+            'she', 'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 
+            'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who', 'get', 
+            'which', 'go', 'me'
+        }
+        
+        green_hits = sum(1 for w in words if w in green_list_tokens)
+        green_ratio = green_hits / count
+        
+        # Human text typically has green_ratio around 0.40 - 0.50
+        # Watermarked/AI text can be unnaturally high (> 0.55) or consistent
+        
+        # 2. Check for "Red List" avoidance (complex/rare words)
+        # Watermarking often avoids rare tokens to stay in the 'Green' zone
+        # We roughly approximate this by word length (longer ~ rarer)
+        complex_words = sum(1 for w in words if len(w) > 7)
+        complex_ratio = complex_words / count
+        
+        # Scoring logic:
+        # High Green Ratio (>0.55) + Low Complex Ratio (<0.15) = Suspected Watermark
+        
+        score = 0.0
+        
+        # Penalty for high green list usage (robotic/safe)
+        if green_ratio > 0.55:
+            score += 0.4
+        elif green_ratio > 0.60:
+            score += 0.7
+            
+        # Penalty for low complexity (avoidance of creative words)
+        if complex_ratio < 0.12:
+            score += 0.3
+        
+        return min(1.0, score)
+
     
     def _calculate_offline_score(self, text: str, detected_patterns: List[Dict]) -> Tuple[float, float]:
         """
@@ -489,8 +545,23 @@ class AIContentDetector:
         
         linguistic_component = linguistic_ai_score * self.LINGUISTIC_WEIGHT
         
+        # ===== COMPONENT 3: WATERMARK SIGNAL (15% weight - NEW) =====
+        watermark_score = self._detect_watermark_signals(text)
+        watermark_component = watermark_score * 0.15
+        
+        # Adjust weights: Patterns (50%) + Linguistic (35%) + Watermark (15%)
+        # Current LINGUISTIC_WEIGHT is 0.35, need to ensure logic holds
+        
         # ===== FINAL SCORE =====
-        ai_prob = pattern_component + linguistic_component
+        # Note: Weights in code are tunable constants, but here we explicitly sum components
+        # We normalize to ensure max is 1.0
+        
+        # Base confidence from main components
+        base_ai_prob = (pattern_component * 0.8) + linguistic_component # Rescale
+        
+        # Add watermark boost
+        ai_prob = base_ai_prob + watermark_component
+        
         ai_prob = min(1.0, max(0.0, ai_prob))
         
         human_prob = 1.0 - ai_prob
