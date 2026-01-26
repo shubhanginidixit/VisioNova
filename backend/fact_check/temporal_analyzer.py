@@ -126,7 +126,8 @@ class TemporalAnalyzer:
                 return max(url_years)
         
         # Default to current year
-        return self.current_year
+        # Default to None if no specific year context is found
+        return None
     
     def _categorize_period(self, year: Optional[int]) -> str:
         """Categorize the time period."""

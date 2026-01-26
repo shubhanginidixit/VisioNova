@@ -17,7 +17,7 @@ class WebSearcher:
     """Searches multiple sources to verify claims."""
     
     # Rate limiting settings
-    MIN_REQUEST_INTERVAL = 0.5  # Minimum 500ms between requests
+    MIN_REQUEST_INTERVAL = 1.0  # Increased to 1.0s to prevent DDG blocking during deep scans
     
     def __init__(self):
         self.headers = {
@@ -26,7 +26,11 @@ class WebSearcher:
             'Accept-Language': 'en-US,en;q=0.5',
         }
         self._last_request_time = 0
+        self._last_request_time = 0
         self.credibility_manager = CredibilityManager()
+        
+        # Circuit breaker for Google Search (disable if auth fails)
+        self.google_broken = False
     
     def _throttle(self):
         """
@@ -50,13 +54,14 @@ class WebSearcher:
         """
         sources = []
         
-        if GOOGLE_API_KEY and GOOGLE_CSE_ID:
+        if GOOGLE_API_KEY and GOOGLE_CSE_ID and not self.google_broken:
             google_results = self._search_google_custom(claim)
             if google_results:
                 sources.extend(google_results)
             else:
-                # Fallback to DuckDuckGo if Google fails
-                print("Google search failed/empty. Falling back to DuckDuckGo.")
+                # Fallback to DuckDuckGo if Google fails (or if circuit breaker tripped)
+                if not self.google_broken:
+                     print("Google search failed/empty. Falling back to DuckDuckGo.")
                 ddg_results = self._search_duckduckgo(claim)
                 sources.extend(ddg_results)
         else:
@@ -112,7 +117,14 @@ class WebSearcher:
                 })
                 
         except Exception as e:
-            print(f"Google search error: {e}")
+            # Check for auth errors (403/401) to trip circuit breaker
+            if "403" in str(e) or "401" in str(e):
+                if not self.google_broken:
+                    print(f"Google Search API Auth Error: {e}")
+                    print("Disabling Google Search for this session and falling back to DuckDuckGo.")
+                    self.google_broken = True
+            else:
+                print(f"Google search error: {e}")
             return []
             
         return results
