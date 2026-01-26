@@ -7,7 +7,8 @@ import requests
 from urllib.parse import urlparse
 from ddgs import DDGS
 from .config import (
-    USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS
+    USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS,
+    GOOGLE_API_KEY, GOOGLE_CSE_ID
 )
 from .credibility_manager import CredibilityManager
 
@@ -49,11 +50,21 @@ class WebSearcher:
         """
         sources = []
         
-        # Search DuckDuckGo
-        ddg_results = self._search_duckduckgo(claim)
-        sources.extend(ddg_results)
+        if GOOGLE_API_KEY and GOOGLE_CSE_ID:
+            google_results = self._search_google_custom(claim)
+            if google_results:
+                sources.extend(google_results)
+            else:
+                # Fallback to DuckDuckGo if Google fails
+                print("Google search failed/empty. Falling back to DuckDuckGo.")
+                ddg_results = self._search_duckduckgo(claim)
+                sources.extend(ddg_results)
+        else:
+            # Direct DuckDuckGo if no keys
+            ddg_results = self._search_duckduckgo(claim)
+            sources.extend(ddg_results)
         
-        # Search Wikipedia
+        # Search Wikipedia (always useful)
         wiki_result = self._search_wikipedia(claim)
         if wiki_result:
             sources.append(wiki_result)
@@ -66,6 +77,45 @@ class WebSearcher:
             'sources': scored_sources,
             'total_found': len(scored_sources)
         }
+    
+    def _search_google_custom(self, query: str, num_results: int = None) -> list:
+        """Search using Google Custom Search JSON API."""
+        if num_results is None:
+            num_results = GOOGLE_SEARCH_RESULTS
+            
+        results = []
+        try:
+            url = "https://www.googleapis.com/customsearch/v1"
+            params = {
+                'key': GOOGLE_API_KEY,
+                'cx': GOOGLE_CSE_ID,
+                'q': query,
+                'num': min(num_results, 10)  # Max 10 per request
+            }
+            
+            # Rate limit
+            self._throttle()
+            
+            response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            
+            data = response.json()
+            items = data.get('items', [])
+            
+            for item in items:
+                results.append({
+                    'source': 'google',
+                    'url': item.get('link', ''),
+                    'title': item.get('title', 'No title'),
+                    'snippet': item.get('snippet', '')[:300],
+                    'domain': urlparse(item.get('link', '')).netloc
+                })
+                
+        except Exception as e:
+            print(f"Google search error: {e}")
+            return []
+            
+        return results
     
     def _search_duckduckgo(self, query: str, num_results: int = None) -> list:
         """Search using DuckDuckGo API library."""

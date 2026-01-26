@@ -127,22 +127,25 @@ class FactChecker:
         if input_type == 'url':
             # Extract content from URL
             extracted = self.extractor.extract_from_url(user_input)
+            
             if not extracted['success']:
-                return self._error_response(
-                    user_input,
-                    f"Could not fetch URL: {extracted['error']}"
-                )
-            
-            # Use title + first claim as the search query
-            claims = extracted['claims']
-            if claims:
-                claim = claims[0]
+                print(f"URL extraction failed ({extracted.get('error')}), falling back to search verification.")
+                # Fallback: Use the URL itself as the claim to check via search
+                claim = user_input
+                classification['claim'] = claim
+                classification['url_title'] = "Content Unavailable (Verification via Search)"
+                classification['url_content'] = ""
             else:
-                claim = extracted['title']
-            
-            classification['claim'] = claim
-            classification['url_title'] = extracted['title']
-            classification['url_content'] = extracted['content']
+                # Use title + first claim as the search query
+                claims = extracted['claims']
+                if claims:
+                    claim = claims[0]
+                else:
+                    claim = extracted['title']
+                
+                classification['claim'] = claim
+                classification['url_title'] = extracted['title']
+                classification['url_content'] = extracted['content']
         else:
             claim = classification['claim']
         
@@ -198,16 +201,19 @@ class FactChecker:
         if input_type == 'url':
             url_for_temporal = user_input
             extracted = self.extractor.extract_from_url(user_input)
+            
             if not extracted['success']:
-                return self._error_response(
-                    user_input,
-                    f"Could not fetch URL: {extracted['error']}"
-                )
-            claims = extracted['claims']
-            claim = claims[0] if claims else extracted['title']
-            classification['claim'] = claim
-            classification['url_title'] = extracted['title']
-            classification['url_content'] = extracted['content']
+                print(f"Deep check URL extraction failed ({extracted.get('error')}), falling back to search.")
+                claim = user_input
+                classification['claim'] = claim
+                classification['url_title'] = "Content Unavailable (Verification via Search)"
+                classification['url_content'] = ""
+            else:
+                claims = extracted['claims']
+                claim = claims[0] if claims else extracted['title']
+                classification['claim'] = claim
+                classification['url_title'] = extracted['title']
+                classification['url_content'] = extracted['content']
         else:
             claim = classification['claim']
         
