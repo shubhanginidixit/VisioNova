@@ -82,7 +82,8 @@ def health_check():
     return jsonify({
         'status': 'ok',
         'service': 'VisioNova Fact-Check API',
-        'version': '1.0.0',
+        'version': '1.0.0', 7
+        ok
         'cache': cache_info,
         'endpoints': {
             'fact_check': '/api/fact-check (POST)',
