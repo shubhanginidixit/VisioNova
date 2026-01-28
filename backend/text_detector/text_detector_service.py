@@ -3,7 +3,7 @@ VisioNova Text Detector
 AI-generated text detection with sentence-level analysis, pattern detection, and caching.
 
 Architecture:
-- ML Model (DistilBERT): Fast, accurate detection
+- ML Model (DeBERTa-v3): Transformer-based detection (Microsoft/DeBERTa-v3-base)
 - Linguistic Analysis: Perplexity, burstiness, patterns
 - Caching: LRU cache for repeated texts
 """

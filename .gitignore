@@ -49,3 +49,4 @@ datasets/
 checkpoints/
 model/
 model_backup_*/
+results/
