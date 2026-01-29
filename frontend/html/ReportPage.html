@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 
-<html class="dark" lang="en">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>VisioNova - Reports</title>
+    <!-- Blocking theme script to prevent FOUC -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('visioNova_theme') || 'dark';
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
         tailwind.config = {
@@ -14,12 +21,14 @@
                 extend: {
                     colors: {
                         "primary": "#3A8DFF",
-                        "background-light": "#f5f7f8",
-                        "background-dark": "#0F121A", /* Charcoal */
-                        "surface-dark": "#0D1B2A", /* Navy */
-                        "accent-green": "#00D991",
-                        "accent-amber": "#FFB74A",
-                        "accent-red": "#FF4A4A",
+                        "accent-success": "#00D991",
+                        "accent-warning": "#FFB74A",
+                        "accent-danger": "#FF4A4A",
+                        "background-light": "#F5F7FA",
+                        "background-dark": "#0F121A",
+                        "surface-dark": "#0D1B2A",
+                        "panel-dark": "#161B2E",
+                        "card-dark": "#1E2338",
                     },
                     fontFamily: {
                         "display": ["Inter", "sans-serif"]
@@ -39,10 +48,11 @@
         rel="stylesheet" />
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/report.css">
+    <script src="../js/theme-toggle.js"></script>
 </head>
 
 <body
-    class="relative flex h-screen w-full flex-col bg-background-dark dark text-white overflow-hidden selection:bg-primary selection:text-white">
+    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
     <div class="fixed inset-0 z-0 pointer-events-none">
         <div
             class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
@@ -80,16 +90,12 @@
                 <span
                     class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
             </button>
-            <button
-                class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5">
-                <div class="size-8 rounded-lg bg-gradient-to-tr from-primary to-purple-500 flex items-center justify-center text-white font-bold text-xs"
-                    data-alt="User avatar gradient">
-                    JD
-                </div>
-                <div class="hidden lg:flex flex-col items-start">
-                    <span class="text-xs font-semibold text-white">John Doe</span>
-                    <span class="text-[10px] text-accent-success">Pro Plan</span>
-                </div>
+            <button id="themeToggle"
+                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
+                title="Toggle Dark/Light Mode">
+                <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
+                <span
+                    class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
             </button>
         </div>
     </header>
@@ -286,7 +292,7 @@
                 <!-- Forensic Visuals -->
                 <div class="glass-panel overflow-hidden rounded-xl">
                     <div
-                        class="border-b border-white/5 bg-surface-dark/50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+                        class="border-b border-white/5 bg-surface-dark/50 bg-panel-dark px-6 py-3 flex flex-wrap items-center justify-between gap-4">
                         <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Forensic Visual
                             Analysis</h3>
                         <div class="flex gap-2 rounded-lg bg-background-dark p-1">
