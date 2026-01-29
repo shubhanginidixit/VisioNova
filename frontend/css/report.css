@@ -1,11 +1,5 @@
 /* VisioNova - Report Page Styles */
 
-.glass-panel {
-    background: rgba(13, 27, 42, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
 .scanned-image-overlay {
     background: linear-gradient(90deg, transparent 50%, rgba(58, 141, 255, 0.1) 50%),
         repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.2) 3px);
@@ -14,4 +8,13 @@
 
 .text-glow-red {
     text-shadow: 0 0 20px rgba(255, 74, 74, 0.5);
+}
+
+/* ============================================
+   LIGHT MODE OVERRIDES
+   ============================================ */
+
+.light .text-glow-red {
+    text-shadow: 0 0 20px rgba(255, 74, 74, 0.3) !important;
+    color: #dc2626 !important;
 }

@@ -6,6 +6,12 @@
 
 body {
     font-family: 'Inter', sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Smooth theme transitions for major elements */
+header, aside, main, section, div, nav {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 /* ============================================
@@ -115,4 +121,508 @@ body {
 
 .animate-fade-in-up {
     animation: fadeInUp 0.6s ease-out;
+}
+
+/* ============================================
+   LIGHT MODE OVERRIDES
+   ============================================ */
+
+/* Light mode body and backgrounds */
+html.light,
+html.light body,
+body.light {
+    background-color: #f5f7fa !important;
+    color: #1a202c !important;
+}
+
+/* Header in light mode */
+.light header,
+.light header[class*="bg-"] {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+/* Sidebar in light mode */
+.light aside,
+.light aside[class*="bg-"] {
+    background-color: #ffffff !important;
+    border-right-color: #e2e8f0 !important;
+}
+
+/* Main content area */
+.light main,
+.light main[class*="bg-"] {
+    background-color: #f5f7fa !important;
+}
+
+/* All dark background overrides - comprehensive list */
+.light .bg-\[#161b2e\],
+.light .bg-\[#0D1B2A\],
+.light .bg-\[#0d1b2a\],
+.light .bg-\[#1E2338\],
+.light .bg-\[#1e2338\],
+.light .bg-\[#0F121A\],
+.light .bg-\[#0f121a\],
+.light .bg-\[#0f1723\],
+.light .bg-\[#17202d\],
+.light .bg-\[#17202e\],
+.light .bg-\[#162030\],
+.light .bg-\[#212f4a\],
+.light .bg-\[#20324b\],
+.light .bg-\[#0a0f16\],
+.light .bg-panel-dark,
+.light .bg-surface-dark,
+.light .bg-card-dark,
+.light .bg-background-dark,
+.light .bg-secondary,
+.light .bg-surface {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Background with opacity - use attribute selectors */
+.light [class*="bg-\[#0D1B2A\]"],
+.light [class*="bg-\[#0d1b2a\]"],
+.light [class*="bg-\[#1E2338\]"],
+.light [class*="bg-\[#1e2338\]"],
+.light [class*="bg-\[#0F121A\]"],
+.light [class*="bg-\[#0f121a\]"] {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Nav pill container */
+.light nav[class*="bg-\[#1E2338\]"],
+.light nav.rounded-full {
+    background-color: rgba(241, 245, 249, 0.9) !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Text colors in light mode */
+.light .text-white {
+    color: #1a202c !important;
+}
+
+.light .text-\[#94A3B8\],
+.light .text-\[#94a3b8\] {
+    color: #64748b !important;
+}
+
+.light .text-\[#64748B\] {
+    color: #94a3b8 !important;
+}
+
+/* Border colors in light mode */
+.light .border-\[#1E2338\],
+.light .border-\[#2A3450\],
+.light .border-white\/5,
+.light .border-white\/10 {
+    border-color: #e2e8f0 !important;
+}
+
+/* Input fields in light mode */
+.light input,
+.light textarea {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Scrollbar for light mode */
+.light ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.light ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+    background: #3A8DFF;
+}
+
+/* Nav pills in light mode */
+.light nav.bg-\[#1E2338\]\/50 {
+    background-color: rgba(241, 245, 249, 0.8) !important;
+    border-color: #e2e8f0 !important;
+}
+
+.light .inactive-tab {
+    color: #64748b;
+}
+
+.light .inactive-tab:hover {
+    color: #1a202c;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Feature cards in light mode */
+.light .feature-card {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.light .feature-card:hover {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+/* Hero gradient for light mode */
+.light .bg-hero-gradient {
+    background-image: radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.05) 0%, transparent 60%);
+}
+
+/* ==================================================
+   ADDITIONAL CUSTOM THEME OVERRIDES (Fixing "Ugly" Mode)
+   ================================================== */
+
+/* Override custom tailwind classes used in various pages (FactCheck, VideoResult, etc) */
+.light .bg-card-dark,
+.light .bg-surface-dark,
+.light .bg-visio-card,
+.light .bg-visio-navy,
+.light .bg-visio-charcoal,
+.light .bg-card-bg,
+.light .glass-panel,
+.light .bg-primary-dark\/50,
+.light .bg-primary-dark\/40,
+.light .bg-\[#0a0f16\],
+.light .bg-\[#0D1B2A\],
+.light .bg-\[#212f4a\],
+.light .bg-\[#0f121a\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1a202c !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Ensure backdrop filters don't mess up white backgrounds */
+.light .glass-panel {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(12px);
+}
+
+/* Fix Button Text Contrast: Keep text white on primary/accent buttons */
+.light .bg-primary.text-white,
+.light .bg-accent-red.text-white,
+.light .bg-accent-green.text-white,
+.light .bg-accent-amber.text-white,
+.light button.bg-primary,
+.light a.bg-primary,
+.light .bg-accent-danger,
+.light .bg-\[#20324b\],
+/* Setup Analysis buttons */
+.light .bg-\[#212f4a\] {
+    color: #ffffff !important;
+}
+
+/* Fix specific gradient text or icons */
+.light .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+}
+
+/* Fix various opacity text helpers */
+.light .text-white\/70,
+.light .text-white\/60,
+.light .text-white\/50,
+.light .text-white\/40,
+.light .text-white\/30,
+.light .text-gray-400,
+.light .text-slate-400 {
+    color: #64748b !important;
+}
+
+/* Fix specific IDs if needed */
+.light #trustScore,
+.light #credibilityScore {
+    color: #1a202c !important;
+}
+
+/* ============================================
+   ADDITIONAL LIGHT MODE FIXES
+   ============================================ */
+
+/* Buttons in light mode */
+.light button[class*="bg-\[#1E2338\]"],
+.light button[class*="bg-\[#2A3450\]"] {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+.light button[class*="bg-\[#1E2338\]"]:hover,
+.light button[class*="bg-\[#2A3450\]"]:hover {
+    background-color: #cbd5e1 !important;
+}
+
+/* Sidebar links */
+.light a[class*="hover:bg-\[#1E2338\]"]:hover {
+    background-color: #e2e8f0 !important;
+}
+
+/* Dividers - be specific to not affect progress bar tracks */
+.light div.h-px.bg-\[#1E2338\],
+.light div.w-full.h-px.bg-\[#1E2338\] {
+    background-color: #e2e8f0 !important;
+}
+
+/* Upload areas / drop zones */
+.light .border-dashed {
+    border-color: #cbd5e1 !important;
+    background-color: #f8fafc !important;
+}
+
+/* Tab navigation */
+.light .bg-primary\/20 {
+    background-color: rgba(58, 141, 255, 0.15) !important;
+}
+
+/* Noise overlay - reduce opacity in light mode (only for decorative overlays) */
+.light .fixed [class*="noise"],
+.light .fixed [class*="grainy"],
+.light .pointer-events-none [class*="noise"] {
+    opacity: 0.05 !important;
+}
+
+/* Grid lines / decorative backgrounds - only on main bg */
+.light .pointer-events-none [style*="grid"] {
+    opacity: 0.3 !important;
+}
+
+/* Icon colors */
+.light .text-\[#94A3B8\] .material-symbols-outlined,
+.light .material-symbols-outlined {
+    color: inherit !important;
+}
+
+/* Badge/status indicators - keep colored */
+.light .bg-accent-danger,
+.light .bg-accent-success,
+.light .bg-accent-warning,
+.light .bg-primary {
+    color: #ffffff !important;
+}
+
+/* ============================================
+   COMPREHENSIVE LIGHT MODE PANEL FIXES
+   ============================================ */
+
+/* Main container backgrounds - be specific to avoid breaking accent colors */
+.light body,
+.light main,
+.light aside,
+.light header,
+.light .bg-background-dark,
+.light .bg-surface-dark,
+.light .bg-panel-dark,
+.light .bg-card-dark {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Cards and panels with shadows */
+.light .bg-card-dark.rounded-2xl,
+.light .bg-card-dark.rounded-xl,
+.light [class*="bg-card-dark"],
+.light [class*="from-card-dark"],
+.light [class*="to-surface-dark"] {
+    background-color: #ffffff !important;
+    background-image: none !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Gradient backgrounds in light mode */
+.light .bg-gradient-to-r.from-card-dark,
+.light [class*="bg-gradient"][class*="from-card-dark"] {
+    background: #f8fafc !important;
+}
+
+/* Specific hex backgrounds for panels (not accent elements) */
+.light > .bg-\[#0F121A\],
+.light > .bg-\[#0D1B2A\],
+.light > .bg-\[#161b2e\],
+.light > .bg-\[#1E2338\],
+.light main .bg-\[#0F121A\],
+.light main .bg-\[#0D1B2A\],
+.light main .bg-\[#161b2e\],
+.light main .bg-\[#1E2338\],
+.light section .bg-\[#0F121A\],
+.light section .bg-\[#0D1B2A\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Tab containers and navigation panels */
+.light .bg-card-dark\/50,
+.light [class*="bg-card-dark"]:not(.scan-line):not([class*="accent"]),
+.light [class*="bg-surface-dark"]:not(.scan-line):not([class*="accent"]),
+.light [class*="bg-panel-dark"]:not(.scan-line):not([class*="accent"]),
+.light [class*="bg-background-dark"]:not(.scan-line):not([class*="accent"]) {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Active tabs should have light background */
+.light .tab-btn.bg-card-dark,
+.light button.bg-card-dark {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+/* Modal/dialog backgrounds - be more specific */
+.light .glass-panel,
+.light .shadow-2xl.rounded-2xl,
+.light .shadow-xl.rounded-2xl,
+.light .shadow-xl.rounded-xl {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Upload area inner containers */
+.light .border-dashed[class*="bg-"] {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Scorecard and info panels */
+.light #analysisInfo,
+.light .bg-card-dark.rounded-2xl {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Progress bars background */
+.light .bg-background-dark\/50,
+.light [class*="bg-background-dark"] {
+    background-color: #f1f5f9 !important;
+}
+
+/* Download/action buttons with dark backgrounds */
+.light button[class*="bg-surface-dark"],
+.light button[class*="bg-card-dark"],
+.light a[class*="bg-surface-dark"],
+.light a[class*="bg-card-dark"] {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* White text on light backgrounds - fix contrast */
+.light .text-white:not(.bg-primary):not(.bg-accent-success):not(.bg-accent-danger):not(.bg-accent-warning) {
+    color: #1a202c !important;
+}
+
+/* Slate text colors */
+.light .text-slate-400,
+.light .text-slate-500 {
+    color: #64748b !important;
+}
+
+.light .text-slate-300 {
+    color: #475569 !important;
+}
+
+/* Border with white opacity */
+.light .border-white\/5,
+.light .border-white\/10,
+.light [class*="border-white\/"] {
+    border-color: #e2e8f0 !important;
+}
+
+/* Background with opacity variations */
+.light .bg-white\/5,
+.light .bg-white\/10,
+.light [class*="bg-white\/"] {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Specific gradient backgrounds */
+.light [class*="bg-primary\/5"],
+.light [class*="bg-primary\/10"],
+.light [class*="bg-primary\/20"] {
+    background-color: rgba(58, 141, 255, 0.1) !important;
+}
+
+/* Analysis stream/content panels */
+.light #contentStream,
+.light .analysis-panel,
+.light [id*="Panel"],
+.light [id*="panel"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Fix SVG strokes in gauges */
+.light svg circle[stroke="#20324b"] {
+    stroke: #e2e8f0 !important;
+}
+
+/* Media tab bar */
+.light #mediaTabs,
+.light [id="mediaTabs"] {
+    background-color: #ffffff !important;
+}
+
+.light .media-tab.inactive-tab {
+    color: #64748b !important;
+}
+
+.light .media-tab.inactive-tab:hover {
+    color: #1a202c !important;
+    background-color: #f1f5f9 !important;
+}
+
+/* Unified Credibility Scorecard footer */
+.light .bg-surface-dark.rounded-2xl,
+.light footer[class*="bg-"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Fix any remaining dark backgrounds in specific containers */
+.light .shadow-xl[class*="bg-"],
+.light .shadow-2xl[class*="bg-"] {
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Keep primary colored buttons with white text */
+.light button.bg-primary,
+.light a.bg-primary,
+.light .bg-primary.rounded-2xl {
+    background-color: #3A8DFF !important;
+    color: #ffffff !important;
+}
+
+/* Analyzing Media modal fixes */
+.light .backdrop-blur-sm[class*="bg-"] {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Report page button */
+.light button[class*="bg-"][class*="rounded-full"] {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+/* Keep accent colored elements properly colored */
+.light .bg-accent-success,
+.light .bg-accent-danger,
+.light .bg-accent-warning {
+    color: #ffffff !important;
+}
+
+.light .text-accent-success {
+    color: #00D991 !important;
+}
+
+.light .text-accent-danger {
+    color: #FF4A4A !important;
 }
