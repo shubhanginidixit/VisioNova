@@ -21,7 +21,7 @@ Homepage → Analysis Dashboard → [Media Result Pages] → Report Page
 |------|---------|
 | `homepage.html` | Landing page with feature overview |
 | `AnalysisDashboard.html` | Central hub for uploading/analyzing media |
-| `ResultPage.html` | Image analysis results |
+| `ImageResultPage.html` | Image analysis results |
 | `VideoResultPage.html` | Video/deepfake detection results |
 | `AudioResultPage.html` | Audio forensics results |
 | `TextResultPage.html` | AI text detection results |
