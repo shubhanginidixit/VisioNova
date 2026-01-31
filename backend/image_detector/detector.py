@@ -258,7 +258,7 @@ class ImageDetector:
         from scipy import ndimage
         
         # Use Laplacian to estimate noise
-        laplacian = ndimage.laplacian(gray.astype(float))
+        laplacian = ndimage.laplace(gray.astype(float))
         noise_std = np.std(laplacian)
         
         # Real photos typically have noise_std in range 5-30
@@ -323,7 +323,7 @@ class ImageDetector:
             gray = img
         
         # Use variance of Laplacian as texture measure
-        laplacian = ndimage.laplacian(gray.astype(float))
+        laplacian = ndimage.laplace(gray.astype(float))
         
         # Analyze texture in patches
         patch_size = 32
