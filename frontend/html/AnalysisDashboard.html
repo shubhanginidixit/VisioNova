@@ -722,12 +722,12 @@
                             await performAnalysisWithProgress(mediaType, config);
 
                             // Redirect after completion
-                            logDebug(`Analysis complete, redirecting to: ${nextUrl || 'ResultPage.html'}`);
+                            logDebug(`Analysis complete, redirecting to: ${nextUrl || 'ImageResultPage.html'}`);
                             setTimeout(() => {
                                 if (nextUrl) {
                                     window.location.href = decodeURIComponent(nextUrl);
                                 } else {
-                                    window.location.href = 'ResultPage.html';
+                                    window.location.href = 'ImageResultPage.html';
                                 }
                             }, 500);
                         } else {

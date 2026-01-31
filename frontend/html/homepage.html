@@ -200,7 +200,7 @@
                         class="bg-[#161b2e] bg-panel-dark border border-[#1E2338] rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm">
                         <!-- Tabs -->
                         <div class="flex border-b border-[#1E2338] overflow-x-auto" id="mediaTabs">
-                            <button data-tab="image" data-result="ResultPage.html"
+                            <button data-tab="image" data-result="ImageResultPage.html"
                                 class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 active-tab transition-colors min-w-[100px]">
                                 <span class="material-symbols-outlined">image</span>
                                 <span class="text-xs font-bold uppercase tracking-wider">Image</span>
@@ -231,38 +231,69 @@
                         <div id="uploadContents">
                             <!-- Image Upload -->
                             <div id="image-upload"
-                                class="upload-content p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 bg-surface-dark relative group">
-                                <div
-                                    class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                </div>
-                                <div
-                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-primary/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A] bg-surface-dark">
-                                    <div
-                                        class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-primary group-hover:text-white group-hover:bg-primary transition-all shadow-glow">
-                                        <span class="material-symbols-outlined !text-3xl">cloud_upload</span>
+                                class="upload-content p-6 md:p-8 flex flex-col items-center justify-center bg-[#0F121A]/50 bg-surface-dark relative">
+                                
+                                <!-- Drop Zone Container -->
+                                <div id="image-drop-zone"
+                                    class="border-2 border-dashed border-[#2A3450] hover:border-primary/50 transition-all duration-300 rounded-2xl w-full min-h-[300px] flex items-center justify-center bg-[#0D1B2A]/80 cursor-pointer relative overflow-hidden"
+                                    tabindex="0">
+                                    
+                                    <!-- DEFAULT STATE -->
+                                    <div id="image-upload-default" class="flex flex-col items-center justify-center gap-4 p-8 transition-opacity duration-300">
+                                        <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-primary border border-primary/20">
+                                            <span class="material-symbols-outlined !text-4xl">cloud_upload</span>
+                                        </div>
+                                        <div class="text-center">
+                                            <p class="text-xl font-semibold text-white mb-2">Drag &amp; Drop image here</p>
+                                            <p class="text-sm text-[#94A3B8]">or <span
+                                                    class="text-primary cursor-pointer hover:underline font-medium" id="imageBrowseLink">browse files</span>
+                                                from your computer</p>
+                                        </div>
+                                        <div class="flex flex-wrap items-center justify-center gap-3 mt-2">
+                                            <button id="pasteImageBtn" type="button"
+                                                class="flex items-center gap-2 px-5 py-2.5 bg-[#1E2338] hover:bg-primary/20 border border-[#2A3450] hover:border-primary/50 rounded-xl text-sm text-[#94A3B8] hover:text-white transition-all duration-200">
+                                                <span class="material-symbols-outlined text-lg">content_paste</span>
+                                                Paste from Clipboard
+                                            </button>
+                                            <span class="text-xs text-[#64748B]">or press <kbd class="px-2 py-1 bg-[#1E2338] rounded-md text-[#94A3B8] font-mono text-[11px] border border-[#2A3450]">Ctrl+V</kbd></span>
+                                        </div>
+                                        <p class="text-xs text-[#64748B] mt-2">Supports JPG, PNG, WEBP up to 50MB</p>
                                     </div>
-                                    <div class="text-center">
-                                        <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop image here</p>
-                                        <p class="text-sm text-[#94A3B8]">or <span
-                                                class="text-primary cursor-pointer hover:underline">browse files</span>
-                                            from your computer</p>
+
+                                    <!-- PREVIEW STATE (hidden by default) -->
+                                    <div id="image-preview-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 bg-[#0D1B2A] transition-opacity duration-300">
+                                        <!-- Preview Image Container -->
+                                        <div class="relative flex items-center justify-center mb-4 max-h-[180px]">
+                                            <img id="image-preview-img" class="max-h-[180px] max-w-full rounded-xl object-contain shadow-2xl ring-1 ring-white/10" alt="Preview" />
+                                        </div>
+                                        <!-- File Info & Actions -->
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-green-500/30 rounded-full">
+                                                <span class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
+                                                <span id="image-file-name" class="text-green-400 text-sm font-medium truncate max-w-[180px]">image.png</span>
+                                            </div>
+                                            <button id="clearImageBtn" type="button" 
+                                                class="flex items-center gap-1.5 px-4 py-2 bg-[#1E2338] hover:bg-red-500/20 border border-[#2A3450] hover:border-red-500/40 rounded-full text-sm text-[#94A3B8] hover:text-red-400 transition-all duration-200">
+                                                <span class="material-symbols-outlined text-lg">close</span>
+                                                Clear
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-[#64748B] mt-2">Supports JPG, PNG, WEBP up to 50MB</p>
                                 </div>
-                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+
+                                <!-- URL Input & Analyze Button -->
+                                <div class="w-full mt-5 flex flex-col md:flex-row items-center gap-3">
                                     <div class="flex-1 w-full">
-                                        <div
-                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                        <div class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-xl focus-within:border-primary/50 transition-colors duration-200">
                                             <span class="material-symbols-outlined text-[#64748B]">link</span>
-                                            <input
+                                            <input id="imageUrlInput"
                                                 class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
                                                 placeholder="Or paste an image URL here..." type="text" />
                                         </div>
                                     </div>
                                     <button id="analyzeBtn" onclick="navigateToResult()"
-                                        class="w-full md:w-auto px-8 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
-                                        <span
-                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        class="w-full md:w-auto px-7 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-xl shadow-glow hover:shadow-glow-hover transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
                                         Analyze Credibility
                                     </button>
                                 </div>

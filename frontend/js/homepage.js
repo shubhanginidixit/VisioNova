@@ -145,7 +145,7 @@ async function handleFileUpload(type, file) {
             mimeType: file.type
         };
         showUploadSuccess(type, file.name);
-        showPreview(type, dataURL, file.type);
+        showPreview(type, dataURL, file.type, file.name);
     } catch (error) {
         console.error('Error reading file:', error);
         alert('Error reading file. Please try again.');
@@ -154,10 +154,15 @@ async function handleFileUpload(type, file) {
 
 // Show upload success indicator
 function showUploadSuccess(type, fileName) {
+    // For image type, we now use the preview state instead of floating indicator
+    if (type === 'image') {
+        return; // Handled by showPreview
+    }
+    
     const uploadArea = document.getElementById(type + '-upload');
     if (!uploadArea) return;
 
-    // Find or create success indicator
+    // Find or create success indicator for non-image types
     let indicator = uploadArea.querySelector('.upload-success-indicator');
     if (!indicator) {
         indicator = document.createElement('div');
@@ -172,7 +177,37 @@ function showUploadSuccess(type, fileName) {
 }
 
 // Show preview for uploaded file
-function showPreview(type, dataURL, mimeType) {
+function showPreview(type, dataURL, mimeType, fileName) {
+    if (type === 'image') {
+        // Use the new state-switching UI for images
+        const defaultState = document.getElementById('image-upload-default');
+        const previewState = document.getElementById('image-preview-state');
+        const previewImg = document.getElementById('image-preview-img');
+        const fileNameEl = document.getElementById('image-file-name');
+        
+        if (defaultState && previewState && previewImg) {
+            // Set preview image
+            previewImg.src = dataURL;
+            
+            // Set filename
+            if (fileNameEl && fileName) {
+                fileNameEl.textContent = fileName;
+            }
+            
+            // Switch states with fade effect
+            defaultState.classList.add('opacity-0');
+            setTimeout(() => {
+                defaultState.classList.add('hidden');
+                previewState.classList.remove('hidden');
+                setTimeout(() => {
+                    previewState.classList.remove('opacity-0');
+                }, 10);
+            }, 150);
+        }
+        return;
+    }
+    
+    // Handle video/audio with original method
     const uploadArea = document.getElementById(type + '-upload');
     if (!uploadArea) return;
 
@@ -185,9 +220,7 @@ function showPreview(type, dataURL, mimeType) {
 
     // Create preview based on type
     let previewHTML = '';
-    if (type === 'image') {
-        previewHTML = `<img src="${dataURL}" alt="Preview" class="max-h-48 max-w-full rounded-lg object-contain" />`;
-    } else if (type === 'video') {
+    if (type === 'video') {
         previewHTML = `<video src="${dataURL}" class="max-h-48 max-w-full rounded-lg" controls></video>`;
     } else if (type === 'audio') {
         previewHTML = `<audio src="${dataURL}" class="w-full max-w-md" controls></audio>`;
@@ -198,6 +231,57 @@ function showPreview(type, dataURL, mimeType) {
         previewDiv.className = 'file-preview flex flex-col items-center gap-2 mt-4';
         previewDiv.innerHTML = previewHTML;
         dropZone.appendChild(previewDiv);
+    }
+}
+
+// Clear image preview and reset to default state
+function clearImagePreview() {
+    const defaultState = document.getElementById('image-upload-default');
+    const previewState = document.getElementById('image-preview-state');
+    const previewImg = document.getElementById('image-preview-img');
+    
+    if (defaultState && previewState) {
+        // Switch back to default state with fade
+        previewState.classList.add('opacity-0');
+        setTimeout(() => {
+            previewState.classList.add('hidden');
+            if (previewImg) previewImg.src = '';
+            defaultState.classList.remove('hidden');
+            setTimeout(() => {
+                defaultState.classList.remove('opacity-0');
+            }, 10);
+        }, 150);
+    }
+    
+    // Clear stored file data
+    uploadedFiles.image = null;
+    
+    // Clear URL input
+    const urlInput = document.getElementById('imageUrlInput');
+    if (urlInput) urlInput.value = '';
+    
+    // Reset file input
+    const fileInput = document.getElementById('imageFileInput');
+    if (fileInput) fileInput.value = '';
+}
+
+// Setup clear button handler
+function setupClearButton() {
+    const clearBtn = document.getElementById('clearImageBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearImagePreview();
+        });
+    }
+    
+    // Also setup browse link
+    const browseLink = document.getElementById('imageBrowseLink');
+    if (browseLink) {
+        browseLink.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('imageFileInput').click();
+        });
     }
 }
 
@@ -242,6 +326,200 @@ function setupDragAndDrop() {
             }
         });
     });
+}
+
+// Setup clipboard paste for images
+function setupClipboardPaste() {
+    // Paste button click handler
+    const pasteBtn = document.getElementById('pasteImageBtn');
+    if (pasteBtn) {
+        pasteBtn.addEventListener('click', async () => {
+            await pasteImageFromClipboard();
+        });
+    }
+
+    // Global paste handler (Ctrl+V)
+    document.addEventListener('paste', async (e) => {
+        // Only handle paste when image tab is active
+        if (activeTab !== 'image') return;
+        
+        // Don't intercept paste in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        await handlePasteEvent(e);
+    });
+
+    // Also allow paste when image drop zone is focused
+    const dropZone = document.getElementById('image-drop-zone');
+    if (dropZone) {
+        dropZone.addEventListener('paste', async (e) => {
+            e.preventDefault();
+            await handlePasteEvent(e);
+        });
+
+        // Allow keyboard focus for accessibility
+        dropZone.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                document.getElementById('imageFileInput').click();
+            }
+        });
+    }
+}
+
+// Handle paste event
+async function handlePasteEvent(e) {
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    // Check for image in clipboard
+    const items = clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            const file = items[i].getAsFile();
+            if (file) {
+                await handleFileUpload('image', file);
+                showPasteSuccess();
+            }
+            return;
+        }
+    }
+
+    // Check for image URL in text
+    const text = clipboardData.getData('text');
+    if (text && isImageUrl(text)) {
+        e.preventDefault();
+        const urlInput = document.querySelector('#image-upload input[type="text"]');
+        if (urlInput) {
+            urlInput.value = text;
+            showPasteSuccess('URL pasted');
+        }
+    }
+}
+
+// Paste image from clipboard using Clipboard API
+async function pasteImageFromClipboard() {
+    try {
+        // Check if Clipboard API is available
+        if (!navigator.clipboard || !navigator.clipboard.read) {
+            // Fallback: prompt user to use Ctrl+V
+            showPasteError('Please use Ctrl+V to paste, or grant clipboard permission');
+            return;
+        }
+
+        const clipboardItems = await navigator.clipboard.read();
+        
+        for (const item of clipboardItems) {
+            // Check for image types
+            const imageTypes = item.types.filter(type => type.startsWith('image/'));
+            
+            if (imageTypes.length > 0) {
+                const blob = await item.getType(imageTypes[0]);
+                const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: imageTypes[0] });
+                await handleFileUpload('image', file);
+                showPasteSuccess();
+                return;
+            }
+
+            // Check for text that might be an image URL
+            if (item.types.includes('text/plain')) {
+                const blob = await item.getType('text/plain');
+                const text = await blob.text();
+                if (isImageUrl(text)) {
+                    const urlInput = document.getElementById('imageUrlInput');
+                    if (urlInput) {
+                        urlInput.value = text;
+                        showPasteSuccess('URL pasted');
+                    }
+                    return;
+                }
+            }
+        }
+
+        showPasteError('No image found in clipboard');
+    } catch (error) {
+        console.error('Clipboard read error:', error);
+        if (error.name === 'NotAllowedError') {
+            showPasteError('Clipboard access denied. Please use Ctrl+V to paste');
+        } else {
+            showPasteError('Could not read clipboard. Try Ctrl+V');
+        }
+    }
+}
+
+// Check if a string is an image URL
+function isImageUrl(url) {
+    if (!url) return false;
+    try {
+        const urlObj = new URL(url);
+        const path = urlObj.pathname.toLowerCase();
+        return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(path) ||
+               url.includes('images') ||
+               url.includes('imgur') ||
+               url.includes('i.redd.it');
+    } catch {
+        return false;
+    }
+}
+
+// Show paste success indicator
+function showPasteSuccess(message = 'Image pasted!') {
+    const uploadArea = document.getElementById('image-upload');
+    if (!uploadArea) return;
+
+    // Create toast notification
+    let toast = document.getElementById('paste-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'paste-toast';
+        toast.className = 'fixed bottom-6 right-6 flex items-center gap-2 px-4 py-3 bg-green-500/90 backdrop-blur-sm rounded-lg text-white text-sm font-medium shadow-lg z-50 transform translate-y-20 opacity-0 transition-all duration-300';
+        document.body.appendChild(toast);
+    }
+
+    toast.innerHTML = `
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>${message}</span>
+    `;
+
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-20', 'opacity-0');
+    });
+
+    // Remove after delay
+    setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 2500);
+}
+
+// Show paste error indicator
+function showPasteError(message) {
+    let toast = document.getElementById('paste-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'paste-toast';
+        toast.className = 'fixed bottom-6 right-6 flex items-center gap-2 px-4 py-3 bg-red-500/90 backdrop-blur-sm rounded-lg text-white text-sm font-medium shadow-lg z-50 transform translate-y-20 opacity-0 transition-all duration-300';
+        document.body.appendChild(toast);
+    }
+
+    toast.className = toast.className.replace('bg-green-500/90', 'bg-red-500/90');
+    toast.innerHTML = `
+        <span class="material-symbols-outlined">error</span>
+        <span>${message}</span>
+    `;
+
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-20', 'opacity-0');
+    });
+
+    setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+        // Reset color
+        setTimeout(() => {
+            toast.className = toast.className.replace('bg-red-500/90', 'bg-green-500/90');
+        }, 300);
+    }, 3000);
 }
 
 // Navigate to the result page based on active tab
@@ -311,4 +589,6 @@ document.addEventListener('DOMContentLoaded', function () {
     setupBrowseLinks();
     setupFileInputs();
     setupDragAndDrop();
+    setupClipboardPaste();
+    setupClearButton();
 });
