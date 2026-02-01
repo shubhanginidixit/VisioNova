@@ -8,7 +8,7 @@
     <title>VisioNova - Image Analysis</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
-        (function () {
+        (function() {
             const theme = localStorage.getItem('visioNova_theme') || 'dark';
             document.documentElement.classList.add(theme);
         })();
@@ -207,356 +207,395 @@
                     <!-- LEFT COLUMN: Evidence Viewer -->
                     <div class="xl:col-span-8 flex flex-col gap-4">
                         <!-- Toolbar -->
-                        <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
-                            <button id="btnViewOriginal"
-                                class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium shadow-md shadow-primary/20 transition-all">
-                                <span class="material-symbols-outlined text-[18px]">image</span>
-                                Original
-                            </button>
-                            <button id="btnViewHeatmap"
-                                class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-[#8da8ce] hover:text-white text-sm font-medium transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">local_fire_department</span>
-                                Heatmap
-                            </button>
-                            <button id="btnViewELA"
-                                class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-[#8da8ce] hover:text-white text-sm font-medium transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">layers</span>
-                                ELA
-                            </button>
-                            <button id="btnViewNoise"
-                                class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-[#8da8ce] hover:text-white text-sm font-medium transition-colors hidden">
-                                <span class="material-symbols-outlined text-[18px]">grain</span>
-                                Noise
-                            </button>
+                        <div
+                            class="flex flex-wrap items-center justify-between gap-4 bg-card-bg p-3 rounded-xl border border-[#20324b]">
+                            <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+                                <button
+                                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium shadow-md shadow-primary/20">
+                                    <span class="material-symbols-outlined text-[18px]">image</span>
+                                    Original
+                                </button>
+                                <button
+                                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-[#8da8ce] hover:text-white text-sm font-medium transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">local_fire_department</span>
+                                    Heatmap
+                                </button>
+                                <button
+                                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-[#8da8ce] hover:text-white text-sm font-medium transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">layers</span>
+                                    ELA
+                                </button>
+                                <button
+                                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-[#8da8ce] hover:text-white text-sm font-medium transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">grain</span>
+                                    Noise
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2 border-l border-[#20324b] pl-4">
+                                <button
+                                    class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
+                                    title="Zoom In">
+                                    <span class="material-symbols-outlined text-[20px]">add</span>
+                                </button>
+                                <button
+                                    class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
+                                    title="Zoom Out">
+                                    <span class="material-symbols-outlined text-[20px]">remove</span>
+                                </button>
+                                <button
+                                    class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
+                                    title="Reset View">
+                                    <span class="material-symbols-outlined text-[20px]">restart_alt</span>
+                                </button>
+                                <button
+                                    class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
+                                    title="Fullscreen">
+                                    <span class="material-symbols-outlined text-[20px]">fullscreen</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 border-l border-[#20324b] pl-4">
-                            <button id="btnZoomIn"
-                                class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
-                                title="Zoom In">
-                                <span class="material-symbols-outlined text-[20px]">add</span>
-                            </button>
-                            <button id="btnZoomOut"
-                                class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
-                                title="Zoom Out">
-                                <span class="material-symbols-outlined text-[20px]">remove</span>
-                            </button>
-                            <button id="btnResetView"
-                                class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
-                                title="Reset View">
-                                <span class="material-symbols-outlined text-[20px]">restart_alt</span>
-                            </button>
-                            <button id="btnFullscreen"
-                                class="p-1.5 rounded-lg hover:bg-[#20324b] text-[#8da8ce] hover:text-white transition-colors"
-                                title="Fullscreen">
-                                <span class="material-symbols-outlined text-[20px]">fullscreen</span>
-                            </button>
+                        <!-- Image Container -->
+                        <div
+                            class="relative w-full aspect-video bg-[#05080f] rounded-xl border border-[#20324b] overflow-hidden group shadow-2xl">
+                            <!-- Grid overlay for tech feel -->
+                            <div class="absolute inset-0 z-10 opacity-10 pointer-events-none"
+                                style="background-image: linear-gradient(#3A8DFF 1px, transparent 1px), linear-gradient(90deg, #3A8DFF 1px, transparent 1px); background-size: 40px 40px;">
+                            </div>
+                            <!-- Dynamic Image Container -->
+                            <div id="imageContainer" class="w-full h-full flex items-center justify-center">
+                                <div id="noImagePlaceholder" class="flex flex-col items-center gap-4 text-[#8da8ce]">
+                                    <span class="material-symbols-outlined text-6xl opacity-50">image</span>
+                                    <p class="text-sm">No image uploaded</p>
+                                    <a href="homepage.html" class="text-primary hover:underline text-sm">Upload an image
+                                        to analyze</a>
+                                </div>
+                                <img id="uploadedImage" class="hidden w-full h-full object-contain"
+                                    alt="Uploaded image for analysis" />
+                            </div>
+                            <!-- Analysis Markers (Dynamic - hidden until anomaly detected) -->
+                            <div id="anomalyMarker"
+                                class="absolute top-1/4 left-1/3 size-16 border-2 border-accent-red/80 rounded-full animate-pulse z-20 flex items-center justify-center hidden">
+                                <div class="size-2 bg-accent-red rounded-full"></div>
+                                <div
+                                    class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-dark/90 px-2 py-1 rounded text-[10px] text-accent-red whitespace-nowrap border border-accent-red/30 backdrop-blur-sm">
+                                    Anomaly Detected</div>
+                            </div>
+                            <!-- Bottom Info Bar -->
+                            <div class="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
+                                <div
+                                    class="bg-surface-dark/80 backdrop-blur-md border border-[#20324b] rounded-lg px-3 py-2 flex gap-4">
+                                    <div>
+                                        <p class="text-[#8da8ce] text-[10px] uppercase font-semibold">Resolution</p>
+                                        <p id="imgResolution" class="text-white text-xs font-mono">-- x --</p>
+                                    </div>
+                                    <div class="w-px bg-[#20324b]"></div>
+                                    <div>
+                                        <p class="text-[#8da8ce] text-[10px] uppercase font-semibold">Size</p>
+                                        <p id="imgSize" class="text-white text-xs font-mono">--</p>
+                                    </div>
+                                    <div class="w-px bg-[#20324b]"></div>
+                                    <div>
+                                        <p class="text-[#8da8ce] text-[10px] uppercase font-semibold">Type</p>
+                                        <p id="imgType" class="text-white text-xs font-mono">--</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <!-- Image Container -->
-                    <div id="mainImageContainer"
-                        class="relative w-full aspect-video bg-[#05080f] rounded-xl border border-[#20324b] overflow-hidden group shadow-2xl">
-                        <!-- Grid overlay for tech feel -->
-                        <div class="absolute inset-0 z-10 opacity-10 pointer-events-none"
-                            style="background-image: linear-gradient(#3A8DFF 1px, transparent 1px), linear-gradient(90deg, #3A8DFF 1px, transparent 1px); background-size: 40px 40px;">
-                        </div>
-                        <!-- Dynamic Image Container -->
-                        <div id="imageWrapper"
-                            class="w-full h-full flex items-center justify-center transition-transform duration-200 origin-center">
-                            <div id="noImagePlaceholder" class="flex flex-col items-center gap-4 text-[#8da8ce]">
-                                <span class="material-symbols-outlined text-6xl opacity-50">image</span>
-                                <p class="text-sm">No image uploaded</p>
-                                <a href="homepage.html" class="text-primary hover:underline text-sm">Upload an image
-                                    to analyze</a>
-                            </div>
-                            <img id="uploadedImage"
-                                class="hidden w-full h-full object-contain absolute inset-0 transition-opacity duration-300 z-10"
-                                alt="Uploaded image for analysis" />
-                            <img id="elaImage"
-                                class="hidden w-full h-full object-contain absolute inset-0 transition-opacity duration-300 z-10"
-                                alt="ELA Analysis" />
-                            <img id="heatmapImage"
-                                class="hidden w-full h-full object-contain absolute inset-0 transition-opacity duration-300 z-10"
-                                alt="Heatmap Analysis" />
-                        </div>
-                        <!-- Analysis Markers (Dynamic - hidden until anomaly detected) -->
-                        <div id="anomalyMarker"
-                            class="absolute top-1/4 left-1/3 size-16 border-2 border-accent-red/80 rounded-full animate-pulse z-20 flex items-center justify-center hidden">
-                            <div class="size-2 bg-accent-red rounded-full"></div>
+                    <!-- RIGHT COLUMN: Analysis Dashboard -->
+                    <div class="xl:col-span-4 flex flex-col gap-6">
+                        <!-- Unified Credibility Scorecard -->
+                        <div
+                            class="bg-card-bg rounded-xl p-6 border border-[#20324b] shadow-lg relative overflow-hidden">
                             <div
-                                class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-dark/90 px-2 py-1 rounded text-[10px] text-accent-red whitespace-nowrap border border-accent-red/30 backdrop-blur-sm">
-                                Anomaly Detected</div>
+                                class="absolute top-0 right-0 w-32 h-32 bg-accent-green/10 rounded-full blur-3xl -mr-10 -mt-10"
+                                id="scoreGlow">
+                            </div>
+                            <h3 class="text-white text-base font-semibold mb-6 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">verified_user</span>
+                                Unified Credibility Score
+                            </h3>
+                            <div class="flex items-center justify-between">
+                                <div class="relative size-32">
+                                    <svg class="size-full -rotate-90" viewbox="0 0 36 36">
+                                        <!-- Background Circle -->
+                                        <path class="text-[#20324b]"
+                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                            fill="none" stroke="currentColor" stroke-width="3"></path>
+                                        <!-- Progress Circle -->
+                                        <path id="scoreCircle" class="text-accent-green drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]"
+                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                            fill="none" stroke="currentColor" stroke-dasharray="0, 100"
+                                            stroke-linecap="round" stroke-width="3"></path>
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="scoreValue" class="text-3xl font-bold text-white tracking-tighter">--</span>
+                                        <span class="text-[10px] text-[#8da8ce] font-medium uppercase">/ 100</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1 pl-6">
+                                    <div class="mb-1">
+                                        <span id="verdictBadge"
+                                            class="inline-block px-3 py-1 rounded-full bg-[#20324b] text-[#8da8ce] text-xs font-bold border border-[#20324b]">ANALYZING...</span>
+                                    </div>
+                                    <p id="verdictDescription" class="text-[#8da8ce] text-sm leading-relaxed">
+                                        Analyzing image for AI generation signatures, manipulation, and metadata integrity...
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <!-- Bottom Info Bar -->
-                        <div class="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
+                        <!-- Summary Metrics Grid -->
+                        <div class="grid grid-cols-2 gap-3">
                             <div
-                                class="bg-surface-dark/80 backdrop-blur-md border border-[#20324b] rounded-lg px-3 py-2 flex gap-4">
-                                <div>
-                                    <p class="text-[#8da8ce] text-[10px] uppercase font-semibold">Resolution</p>
-                                    <p id="imgResolution" class="text-white text-xs font-mono">-- x --</p>
+                                class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-[#8da8ce] text-xs font-medium">AI Probability</p>
+                                    <span id="aiProbIcon"
+                                        class="material-symbols-outlined text-accent-blue text-lg group-hover:scale-110 transition-transform">smart_toy</span>
                                 </div>
-                                <div class="w-px bg-[#20324b]"></div>
-                                <div>
-                                    <p class="text-[#8da8ce] text-[10px] uppercase font-semibold">Size</p>
-                                    <p id="imgSize" class="text-white text-xs font-mono">--</p>
-                                </div>
-                                <div class="w-px bg-[#20324b]"></div>
-                                <div>
-                                    <p class="text-[#8da8ce] text-[10px] uppercase font-semibold">Type</p>
-                                    <p id="imgType" class="text-white text-xs font-mono">--</p>
+                                <p id="aiProbValue" class="text-white text-xl font-bold">--</p>
+                                <div class="w-full bg-[#20324b] h-1 mt-2 rounded-full overflow-hidden">
+                                    <div id="aiProbBar" class="bg-accent-blue w-[0%] h-full rounded-full transition-all duration-500"></div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- RIGHT COLUMN: Analysis Dashboard -->
-                <div class="xl:col-span-4 flex flex-col gap-6">
-                    <!-- Unified Credibility Scorecard -->
-                    <div class="bg-card-bg rounded-xl p-6 border border-[#20324b] shadow-lg relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-accent-green/10 rounded-full blur-3xl -mr-10 -mt-10"
-                            id="scoreGlow">
-                        </div>
-                        <h3 class="text-white text-base font-semibold mb-6 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">verified_user</span>
-                            Unified Credibility Score
-                        </h3>
-                        <div class="flex items-center justify-between">
-                            <div class="relative size-32">
-                                <svg class="size-full -rotate-90" viewbox="0 0 36 36">
-                                    <!-- Background Circle -->
-                                    <path class="text-[#20324b]"
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none" stroke="currentColor" stroke-width="3"></path>
-                                    <!-- Progress Circle -->
-                                    <path id="scoreCircle"
-                                        class="text-accent-green drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]"
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none" stroke="currentColor" stroke-dasharray="0, 100"
-                                        stroke-linecap="round" stroke-width="3"></path>
-                                </svg>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span id="scoreValue"
-                                        class="text-3xl font-bold text-white tracking-tighter">--</span>
-                                    <span class="text-[10px] text-[#8da8ce] font-medium uppercase">/ 100</span>
+                            <div
+                                class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-[#8da8ce] text-xs font-medium">Manipulation</p>
+                                    <span id="manipIcon"
+                                        class="material-symbols-outlined text-[#8da8ce] text-lg group-hover:scale-110 transition-transform">check_circle</span>
                                 </div>
+                                <p id="manipValue" class="text-white text-xl font-bold">--</p>
+                                <p id="manipDetail" class="text-[10px] text-[#8da8ce] mt-1">Checking...</p>
                             </div>
-                            <div class="flex-1 pl-6">
-                                <div class="mb-1">
-                                    <span id="verdictBadge"
-                                        class="inline-block px-3 py-1 rounded-full bg-[#20324b] text-[#8da8ce] text-xs font-bold border border-[#20324b]">ANALYZING...</span>
+                            <div
+                                class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-[#8da8ce] text-xs font-medium">Metadata</p>
+                                    <span id="metaIcon"
+                                        class="material-symbols-outlined text-[#8da8ce] text-lg group-hover:scale-110 transition-transform">info</span>
                                 </div>
-                                <p id="verdictDescription" class="text-[#8da8ce] text-sm leading-relaxed">
-                                    Analyzing image for AI generation signatures, manipulation, and metadata
-                                    integrity...
-                                </p>
+                                <p id="metaValue" class="text-white text-xl font-bold">--</p>
+                                <p id="metaDetail" class="text-[10px] text-[#8da8ce] mt-1">Checking...</p>
+                            </div>
+                            <div
+                                class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-[#8da8ce] text-xs font-medium">Forensics</p>
+                                    <span id="forensicsIcon"
+                                        class="material-symbols-outlined text-[#8da8ce] text-lg group-hover:scale-110 transition-transform">security</span>
+                                </div>
+                                <p id="forensicsValue" class="text-white text-xl font-bold">--</p>
+                                <p id="forensicsDetail" class="text-[10px] text-[#8da8ce] mt-1">Checking...</p>
                             </div>
                         </div>
-                    </div>
-                    <!-- Summary Metrics Grid -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div
-                            class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-[#8da8ce] text-xs font-medium">AI Probability</p>
-                                <span id="aiProbIcon"
-                                    class="material-symbols-outlined text-accent-blue text-lg group-hover:scale-110 transition-transform">smart_toy</span>
-                            </div>
-                            <p id="aiProbValue" class="text-white text-xl font-bold">--</p>
-                            <div class="w-full bg-[#20324b] h-1 mt-2 rounded-full overflow-hidden">
-                                <div id="aiProbBar"
-                                    class="bg-accent-blue w-[0%] h-full rounded-full transition-all duration-500"></div>
-                            </div>
-                        </div>
-                        <div
-                            class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-[#8da8ce] text-xs font-medium">Manipulation</p>
-                                <span id="manipIcon"
-                                    class="material-symbols-outlined text-[#8da8ce] text-lg group-hover:scale-110 transition-transform">check_circle</span>
-                            </div>
-                            <p id="manipValue" class="text-white text-xl font-bold">--</p>
-                            <p id="manipDetail" class="text-[10px] text-[#8da8ce] mt-1">Checking...</p>
-                        </div>
-                        <div
-                            class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-[#8da8ce] text-xs font-medium">Metadata</p>
-                                <span id="metaIcon"
-                                    class="material-symbols-outlined text-[#8da8ce] text-lg group-hover:scale-110 transition-transform">info</span>
-                            </div>
-                            <p id="metaValue" class="text-white text-xl font-bold">--</p>
-                            <p id="metaDetail" class="text-[10px] text-[#8da8ce] mt-1">Checking...</p>
-                        </div>
-                        <div
-                            class="bg-card-bg p-4 rounded-xl border border-[#20324b] hover:border-[#3a8dff]/50 transition-colors group">
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-[#8da8ce] text-xs font-medium">Forensics</p>
-                                <span id="forensicsIcon"
-                                    class="material-symbols-outlined text-[#8da8ce] text-lg group-hover:scale-110 transition-transform">security</span>
-                            </div>
-                            <p id="forensicsValue" class="text-white text-xl font-bold">--</p>
-                            <p id="forensicsDetail" class="text-[10px] text-[#8da8ce] mt-1">Checking...</p>
-                        </div>
-                    </div>
 
-                    <!-- Text Detection Result (from AnalysisDashboard) -->
-                    <div id="textDetectionResult" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
-                        <h4 class="text-white text-sm font-semibold mb-2">Text Detector</h4>
-                        <p id="td_prediction" class="text-[#8da8ce] text-sm">Prediction: <span
-                                class="text-white">--</span></p>
-                        <p id="td_confidence" class="text-[#8da8ce] text-sm">Confidence: <span
-                                class="text-white">--</span></p>
-                        <p id="td_decision" class="text-[#8da8ce] text-sm">Decision: <span class="text-white">--</span>
-                        </p>
-                    </div>
+                        <!-- Text Detection Result (from AnalysisDashboard) -->
+                        <div id="textDetectionResult" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+                            <h4 class="text-white text-sm font-semibold mb-2">Text Detector</h4>
+                            <p id="td_prediction" class="text-[#8da8ce] text-sm">Prediction: <span
+                                    class="text-white">--</span></p>
+                            <p id="td_confidence" class="text-[#8da8ce] text-sm">Confidence: <span
+                                    class="text-white">--</span></p>
+                            <p id="td_decision" class="text-[#8da8ce] text-sm">Decision: <span
+                                    class="text-white">--</span></p>
+                        </div>
 
-                    <!-- Watermark Detection Results -->
-                    <div id="watermarkResult" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-white text-sm font-semibold flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-lg">water_drop</span>
-                                Watermark Detection
-                            </h4>
-                            <span id="watermarkStatus"
-                                class="text-[10px] px-2 py-0.5 rounded bg-[#20324b] text-[#8da8ce]">Checking...</span>
+                        <!-- Watermark Detection Results -->
+                        <div id="watermarkResult" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-white text-sm font-semibold flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary text-lg">water_drop</span>
+                                    Watermark Detection
+                                </h4>
+                                <span id="watermarkStatus" class="text-[10px] px-2 py-0.5 rounded bg-[#20324b] text-[#8da8ce]">Checking...</span>
+                            </div>
+                            <div id="watermarkDetails" class="space-y-2">
+                                <p class="text-[#8da8ce] text-sm">Invisible Watermark: <span id="wm_detected" class="text-white">--</span></p>
+                                <p class="text-[#8da8ce] text-sm">Watermark Type: <span id="wm_type" class="text-white">--</span></p>
+                                <p class="text-[#8da8ce] text-sm">Confidence: <span id="wm_confidence" class="text-white">--</span></p>
+                                <div id="wm_details_list" class="mt-2 text-xs text-[#8da8ce]"></div>
+                            </div>
                         </div>
-                        <div id="watermarkDetails" class="space-y-2">
-                            <p class="text-[#8da8ce] text-sm">Invisible Watermark: <span id="wm_detected"
-                                    class="text-white">--</span></p>
-                            <p class="text-[#8da8ce] text-sm">Watermark Type: <span id="wm_type"
-                                    class="text-white">--</span></p>
-                            <p class="text-[#8da8ce] text-sm">Confidence: <span id="wm_confidence"
-                                    class="text-white">--</span></p>
-                            <div id="wm_details_list" class="mt-2 text-xs text-[#8da8ce]"></div>
-                        </div>
-                    </div>
 
-                    <!-- Content Credentials (C2PA) Results -->
-                    <div id="c2paResult" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
-                        <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-white text-sm font-semibold flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-lg">verified</span>
-                                Content Credentials (C2PA)
-                            </h4>
-                            <span id="c2paStatus"
-                                class="text-[10px] px-2 py-0.5 rounded bg-[#20324b] text-[#8da8ce]">Checking...</span>
+                        <!-- Content Credentials (C2PA) Results -->
+                        <div id="c2paResult" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-white text-sm font-semibold flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary text-lg">verified</span>
+                                    Content Credentials (C2PA)
+                                </h4>
+                                <span id="c2paStatus" class="text-[10px] px-2 py-0.5 rounded bg-[#20324b] text-[#8da8ce]">Checking...</span>
+                            </div>
+                            <div id="c2paDetails" class="space-y-2">
+                                <p class="text-[#8da8ce] text-sm">Credentials Found: <span id="c2pa_found" class="text-white">--</span></p>
+                                <p class="text-[#8da8ce] text-sm">AI Generated: <span id="c2pa_ai_generated" class="text-white">--</span></p>
+                                <p class="text-[#8da8ce] text-sm">Generator: <span id="c2pa_generator" class="text-white">--</span></p>
+                                <p class="text-[#8da8ce] text-sm">Signature Valid: <span id="c2pa_signature" class="text-white">--</span></p>
+                                <div id="c2pa_provenance" class="mt-2 text-xs text-[#8da8ce]"></div>
+                            </div>
                         </div>
-                        <div id="c2paDetails" class="space-y-2">
-                            <p class="text-[#8da8ce] text-sm">Credentials Found: <span id="c2pa_found"
-                                    class="text-white">--</span></p>
-                            <p class="text-[#8da8ce] text-sm">AI Generated: <span id="c2pa_ai_generated"
-                                    class="text-white">--</span></p>
-                            <p class="text-[#8da8ce] text-sm">Generator: <span id="c2pa_generator"
-                                    class="text-white">--</span></p>
-                            <p class="text-[#8da8ce] text-sm">Signature Valid: <span id="c2pa_signature"
-                                    class="text-white">--</span></p>
-                            <div id="c2pa_provenance" class="mt-2 text-xs text-[#8da8ce]"></div>
-                        </div>
-                    </div>
 
-                    <!-- Detailed Analysis Metrics -->
-                    <div class="flex flex-col gap-3">
-                        <div class="bg-card-bg border border-[#20324b] rounded-xl overflow-hidden p-4">
-                            <h3 class="text-white text-sm font-semibold mb-4 flex items-center gap-2">
+                        <!-- Deep Analysis Metrics -->
+                        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+                            <h4 class="text-white text-sm font-semibold mb-4 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary text-lg">analytics</span>
                                 Deep Analysis Metrics
-                            </h3>
-                            <div class="space-y-4">
-                                <!-- Noise Consistency -->
+                            </h4>
+                            <div class="space-y-3">
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-[#8da8ce]">Noise Consistency</span>
-                                        <span id="noiseScore" class="text-white font-mono">--</span>
+                                        <span id="noiseScore" class="text-white font-medium">--</span>
                                     </div>
-                                    <div class="w-full bg-[#20324b] h-1.5 rounded-full overflow-hidden">
-                                        <div id="noiseScoreBar"
-                                            class="bg-primary w-0 h-full rounded-full transition-all duration-500">
-                                        </div>
+                                    <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
+                                        <div id="noiseScoreBar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                                     </div>
                                 </div>
-                                <!-- Texture Quality -->
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-[#8da8ce]">Texture Quality</span>
-                                        <span id="textureScore" class="text-white font-mono">--</span>
+                                        <span id="textureScore" class="text-white font-medium">--</span>
                                     </div>
-                                    <div class="w-full bg-[#20324b] h-1.5 rounded-full overflow-hidden">
-                                        <div id="textureScoreBar"
-                                            class="bg-primary w-0 h-full rounded-full transition-all duration-500">
-                                        </div>
+                                    <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
+                                        <div id="textureScoreBar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                                     </div>
                                 </div>
-                                <!-- Edge Naturalness -->
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-[#8da8ce]">Edge Naturalness</span>
-                                        <span id="edgeScore" class="text-white font-mono">--</span>
+                                        <span id="edgeScore" class="text-white font-medium">--</span>
                                     </div>
-                                    <div class="w-full bg-[#20324b] h-1.5 rounded-full overflow-hidden">
-                                        <div id="edgeScoreBar"
-                                            class="bg-primary w-0 h-full rounded-full transition-all duration-500">
-                                        </div>
+                                    <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
+                                        <div id="edgeScoreBar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                                     </div>
                                 </div>
-                                <!-- Color Uniformity -->
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-[#8da8ce]">Color Uniformity</span>
-                                        <span id="colorScore" class="text-white font-mono">--</span>
+                                        <span id="colorScore" class="text-white font-medium">--</span>
                                     </div>
-                                    <div class="w-full bg-[#20324b] h-1.5 rounded-full overflow-hidden">
-                                        <div id="colorScoreBar"
-                                            class="bg-primary w-0 h-full rounded-full transition-all duration-500">
-                                        </div>
+                                    <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
+                                        <div id="colorScoreBar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                                     </div>
                                 </div>
-                                <!-- Frequency Anomaly -->
                                 <div>
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-[#8da8ce]">Frequency Anomaly</span>
-                                        <span id="frequencyScore" class="text-white font-mono">--</span>
+                                        <span id="frequencyScore" class="text-white font-medium">--</span>
                                     </div>
-                                    <div class="w-full bg-[#20324b] h-1.5 rounded-full overflow-hidden">
-                                        <div id="frequencyScoreBar"
-                                            class="bg-primary w-0 h-full rounded-full transition-all duration-500">
-                                        </div>
+                                    <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
+                                        <div id="frequencyScoreBar" class="bg-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Metadata Details & Anomalies -->
-                        <div id="metadataSection"
-                            class="bg-card-bg border border-[#20324b] rounded-xl overflow-hidden p-4">
-                            <h3 class="text-white text-sm font-semibold mb-4 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-accent-amber text-lg">data_object</span>
+                        <!-- Metadata Analysis Section -->
+                        <div id="metadataSection" class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+                            <h4 class="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-lg">data_object</span>
                                 Metadata Analysis
-                            </h3>
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-[#8da8ce] text-base">perm_media</span>
-                                    <p id="exifStatus" class="text-sm text-[#8da8ce]">Checking EXIF...</p>
+                            </h4>
+                            <p id="exifStatus" class="text-[#8da8ce] text-sm mb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm">description</span>
+                                Checking EXIF...
+                            </p>
+                            <div class="space-y-2 bg-[#0d1a29] rounded-lg p-3">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-[#8da8ce] uppercase text-xs">Camera</span>
+                                    <span id="cameraInfo" class="text-white">--</span>
                                 </div>
-                                <div id="metadataGrid" class="bg-[#0f121a]/50 p-3 rounded-lg border border-[#20324b]">
-                                    <div class="grid grid-cols-1 gap-2">
-                                        <div class="flex justify-between">
-                                            <span class="text-[10px] text-[#8da8ce] uppercase">Camera</span>
-                                            <span id="cameraInfo"
-                                                class="text-xs text-white font-mono text-right">--</span>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-[#8da8ce] uppercase text-xs">Software</span>
+                                    <span id="softwareInfo" class="text-white">--</span>
+                                </div>
+                            </div>
+                            <ul id="anomaliesList" class="mt-3 space-y-1"></ul>
+                        </div>
+
+                        <!-- Detailed Accordions -->
+                        <div class="flex flex-col gap-3">
+                            <!-- Detail Card 1: Open -->
+                            <div class="bg-card-bg border border-[#20324b] rounded-xl overflow-hidden">
+                                <div
+                                    class="p-4 flex items-center justify-between cursor-pointer hover:bg-[#20324b]/30 transition-colors border-b border-[#20324b]">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                            <span class="material-symbols-outlined text-lg">light_mode</span>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-[10px] text-[#8da8ce] uppercase">Software</span>
-                                            <span id="softwareInfo" class="text-xs text-[#8da8ce] text-right">--</span>
+                                        <span class="text-white text-sm font-semibold">Lighting Analysis</span>
+                                    </div>
+                                    <span class="material-symbols-outlined text-[#8da8ce]">expand_less</span>
+                                </div>
+                                <div class="p-4 bg-[#0f121a]/50">
+                                    <div class="flex gap-4">
+                                        <div class="w-16 h-16 bg-[#20324b] rounded-lg shrink-0 overflow-hidden relative"
+                                            data-alt="Thumbnail of light direction analysis">
+                                            <!-- Abstract vector representation of lighting -->
+                                            <div
+                                                class="absolute inset-0 bg-gradient-to-tr from-transparent to-primary/20">
+                                            </div>
+                                            <svg class="w-full h-full p-3 text-primary" fill="none"
+                                                stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="5"></circle>
+                                                <line x1="12" x2="12" y1="1" y2="3"></line>
+                                                <line x1="12" x2="12" y1="21" y2="23"></line>
+                                                <line x1="4.22" x2="5.64" y1="4.22" y2="5.64"></line>
+                                                <line x1="18.36" x2="19.78" y1="18.36" y2="19.78"></line>
+                                                <line x1="1" x2="3" y1="12" y2="12"></line>
+                                                <line x1="21" x2="23" y1="12" y2="12"></line>
+                                                <line x1="4.22" x2="5.64" y1="19.78" y2="18.36"></line>
+                                                <line x1="18.36" x2="19.78" y1="5.64" y2="4.22"></line>
+                                            </svg>
+                                        </div>
+                                        <div class="flex flex-col gap-1">
+                                            <p class="text-sm text-[#8da8ce]">Light source direction consistent across
+                                                foreground subjects. Shadows align with estimated sun position (approx
+                                                45° elevation).</p>
                                         </div>
                                     </div>
                                 </div>
-                                <ul id="anomaliesList" class="mt-2 space-y-1 pl-1"></ul>
+                            </div>
+                            <!-- Detail Card 2: Closed -->
+                            <div class="bg-card-bg border border-[#20324b] rounded-xl overflow-hidden">
+                                <div
+                                    class="p-4 flex items-center justify-between cursor-pointer hover:bg-[#20324b]/30 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="size-8 rounded-lg bg-accent-red/10 flex items-center justify-center text-accent-red">
+                                            <span class="material-symbols-outlined text-lg">texture</span>
+                                        </div>
+                                        <span class="text-white text-sm font-semibold">Texture Repetition</span>
+                                    </div>
+                                    <span class="material-symbols-outlined text-[#8da8ce]">expand_more</span>
+                                </div>
+                            </div>
+                            <!-- Detail Card 3: Closed -->
+                            <div class="bg-card-bg border border-[#20324b] rounded-xl overflow-hidden">
+                                <div
+                                    class="p-4 flex items-center justify-between cursor-pointer hover:bg-[#20324b]/30 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="size-8 rounded-lg bg-accent-amber/10 flex items-center justify-center text-accent-amber">
+                                            <span class="material-symbols-outlined text-lg">data_object</span>
+                                        </div>
+                                        <span class="text-white text-sm font-semibold">Metadata Anomalies</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="text-[10px] text-accent-amber bg-accent-amber/10 px-2 py-0.5 rounded border border-accent-amber/20">2
+                                            Alerts</span>
+                                        <span class="material-symbols-outlined text-[#8da8ce]">expand_more</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-    </div>
-    </main>
+        </main>
     </div>
 
     <!-- Storage Utilities -->
