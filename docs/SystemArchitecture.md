@@ -21,12 +21,29 @@ Homepage → Analysis Dashboard → [Media Result Pages] → Report Page
 |------|---------|
 | `homepage.html` | Landing page with feature overview |
 | `AnalysisDashboard.html` | Central hub for uploading/analyzing media |
-| `ImageResultPage.html` | Image analysis results |
+| `ImageResultPage.html` | Image analysis with dynamic tabbed interface |
 | `VideoResultPage.html` | Video/deepfake detection results |
 | `AudioResultPage.html` | Audio forensics results |
 | `TextResultPage.html` | AI text detection results |
-| `FactCheckPage.html` | Claim verification interface |
+| `FactCheckPage.html` | Claim verification with dynamic tabs |
 | `ReportPage.html` | Export and share analysis reports |
+
+**Dynamic Tab System:**
+
+Both `ImageResultPage` and `FactCheckPage` use a dynamic tab-based UI pattern:
+
+| Component | Function |
+|-----------|----------|
+| `initTabs()` | Attaches click handlers to tab buttons on page load |
+| `switchTab(tabName)` | Updates active tab styling and re-renders content |
+| `renderTabContent()` | Routes to appropriate content builder function |
+| Content Builders | Generate HTML dynamically based on API response |
+
+**ImageResultPage Tabs:**
+- **Summary** - Text detection, key findings, verdict overview
+- **Detection** - Watermark, C2PA credentials, metadata analysis
+- **Forensics** - ELA visualization, noise/texture/color metrics
+- **AI Vision** - Groq Vision analysis with visual artifacts
 
 ---
 
@@ -51,18 +68,20 @@ The backend is a Python Flask application (`app.py`) that exposes REST API endpo
 
 ### Layer 3: Detection Modules
 
-#### 1. Image Detector Module
+#### 1. Image Detector Module *(Implemented)*
 
 Detects AI-generated images and manipulations.
 
-| Component | Function |
-|-----------|----------|
-| **AI Image Detection** | Identifies images created by GANs (StyleGAN, MidJourney) or diffusion models (DALL-E, Stable Diffusion) using CNN classifiers |
-| **Error Level Analysis (ELA)** | Detects JPEG compression inconsistencies that indicate splicing or editing |
-| **Metadata Forensics** | Analyzes EXIF data for timestamp anomalies, missing camera info, or editing software traces |
-| **Reverse Image Search** | Cross-references against known databases to find original sources |
+| Component | File | Function |
+|-----------|------|----------|
+| **AI Image Detection** | `detector.py` | Statistical analysis detecting GAN/diffusion models (StyleGAN, DALL-E, Stable Diffusion) |
+| **Error Level Analysis (ELA)** | `detector.py` | Detects JPEG compression inconsistencies indicating splicing or editing |
+| **Metadata Forensics** | `detector.py` | Analyzes EXIF data for anomalies, AI software traces |
+| **Watermark Detection** | `watermark_detector.py` | Detects invisible AI watermarks (DWT-DCT, SynthID, Tree-Ring) |
+| **Content Credentials** | `content_credentials.py` | Validates C2PA provenance and AI generation signatures |
+| **AI Vision Explainer** | `image_explainer.py` | Groq Vision (Llama 4 Scout) for visual artifact analysis |
 
-**Output:** Authenticity score (0-100), manipulation heatmap, metadata report
+**Output:** AI probability (0-100), authenticity score, ELA visualization, watermark status, C2PA validation, AI explanation
 
 ---
 
@@ -180,6 +199,6 @@ Verifies factual claims against trusted sources.
 |--------|--------|-------|
 | Text Detection | ✅ Complete | ML model trained, API working |
 | Fact Checking | ✅ Complete | Full pipeline with LLM synthesis |
-| Image Detection | 🔲 Planned | Frontend ready, backend pending |
+| Image Detection | ✅ Complete | Full pipeline with ELA, watermark, C2PA, AI Vision |
 | Video Detection | 🔲 Planned | Frontend ready, backend pending |
 | Audio Detection | 🔲 Planned | Frontend ready, backend pending |
