@@ -6,25 +6,32 @@
 // API Configuration - Use Flask backend port
 const API_BASE_URL = 'http://localhost:5000';
 
+// State Management
+let currentResult = null;  // Store current API result for tab switching
+let currentTab = 'summary'; // Default tab
+
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('[ImageResult] Page loaded, checking for image data...');
     console.log('[ImageResult] Current URL:', window.location.href);
     console.log('[ImageResult] Protocol:', window.location.protocol);
-    
+
     // Check if accessed via file:// protocol (won't work due to CORS)
     if (window.location.protocol === 'file:') {
         console.error('[ImageResult] ERROR: Page opened from file system. CORS will block API calls.');
         displayError('Please access this page through the Flask server (http://localhost:5000) instead of opening the HTML file directly.');
         return;
     }
-    
+
+    // Initialize tab functionality
+    initTabs();
+
     const imageData = VisioNovaStorage.getFile('image');
     console.log('[ImageResult] Image data found:', imageData ? 'Yes' : 'No');
 
     if (imageData) {
         console.log('[ImageResult] File name:', imageData.fileName);
         console.log('[ImageResult] Data length:', imageData.data?.length || 0);
-        
+
         // Update page title with filename
         updateElement('pageTitle', 'Analyzing: ' + imageData.fileName);
 
@@ -77,7 +84,7 @@ document.addEventListener('DOMContentLoaded', async function () {
  */
 async function analyzeImage(imageData) {
     console.log('[ImageResult] Sending request to:', `${API_BASE_URL}/api/detect-image`);
-    
+
     const response = await fetch(`${API_BASE_URL}/api/detect-image`, {
         method: 'POST',
         headers: {
@@ -110,7 +117,7 @@ function showLoadingState() {
     if (scoreElement) {
         scoreElement.textContent = '...';
     }
-    
+
     // Add loading spinner or pulse animation
     const verdictElements = document.querySelectorAll('[class*="text-accent-green"], [class*="text-success"]');
     verdictElements.forEach(el => {
@@ -127,7 +134,7 @@ function showLoadingState() {
 function displayFailedState() {
     // Update score to show failure
     updateElement('scoreValue', '?');
-    
+
     // Update score circle to gray
     const scoreCircle = document.getElementById('scoreCircle');
     if (scoreCircle) {
@@ -135,30 +142,30 @@ function displayFailedState() {
         scoreCircle.classList.remove('text-accent-green', 'text-red-500');
         scoreCircle.classList.add('text-gray-500');
     }
-    
+
     // Update glow to gray
     const scoreGlow = document.getElementById('scoreGlow');
     if (scoreGlow) {
         scoreGlow.className = 'absolute top-0 right-0 w-32 h-32 bg-gray-500/10 rounded-full blur-3xl -mr-10 -mt-10';
     }
-    
+
     // Update verdict badge
     const verdictBadge = document.getElementById('verdictBadge');
     if (verdictBadge) {
         verdictBadge.textContent = 'CONNECTION FAILED';
         verdictBadge.className = 'inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-bold border border-yellow-500/30';
     }
-    
+
     // Update verdict description
     updateElement('verdictDescription', 'Could not connect to the analysis backend. Please ensure the Flask server is running on http://localhost:5000');
-    
+
     // Update status badge
     const statusBadge = document.getElementById('statusBadge');
     if (statusBadge) {
         statusBadge.textContent = 'FAILED';
         statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20';
     }
-    
+
     // Update cards to show error state
     updateElement('aiProbValue', '--');
     updateElement('manipValue', '--');
@@ -167,14 +174,14 @@ function displayFailedState() {
     updateElement('metaDetail', 'Backend unavailable');
     updateElement('forensicsValue', '--');
     updateElement('forensicsDetail', 'Backend unavailable');
-    
+
     // Update watermark status
     const watermarkStatus = document.getElementById('watermarkStatus');
     if (watermarkStatus) {
         watermarkStatus.textContent = 'Error';
         watermarkStatus.className = 'text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400';
     }
-    
+
     // Update C2PA status
     const c2paStatus = document.getElementById('c2paStatus');
     if (c2paStatus) {
@@ -192,7 +199,7 @@ function displayAnalysisResults(result, fileData) {
     console.log('[ImageResult] AI Probability:', result.ai_probability);
     console.log('[ImageResult] Verdict:', result.verdict);
     console.log('[ImageResult] Analysis Scores:', result.analysis_scores);
-    
+
     if (!result.success) {
         console.error('[ImageResult] Result not successful:', result.error);
         displayError(result.error || 'Analysis failed');
@@ -213,7 +220,7 @@ function displayAnalysisResults(result, fileData) {
         statusBadge.textContent = 'COMPLETED';
         statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-accent-green/10 text-accent-green border border-accent-green/20';
     }
-    
+
     // Generate and show analysis ID
     const analysisId = document.getElementById('analysisId');
     if (analysisId) {
@@ -254,7 +261,7 @@ function displayAnalysisResults(result, fileData) {
     // Update glow color
     const scoreGlow = document.getElementById('scoreGlow');
     if (scoreGlow) {
-        scoreGlow.className = isLikelyAI ? 
+        scoreGlow.className = isLikelyAI ?
             'absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -mr-10 -mt-10' :
             'absolute top-0 right-0 w-32 h-32 bg-accent-green/10 rounded-full blur-3xl -mr-10 -mt-10';
     }
@@ -282,7 +289,7 @@ function displayAnalysisResults(result, fileData) {
     const aiProbBar = document.getElementById('aiProbBar');
     if (aiProbBar) {
         aiProbBar.style.width = `${aiProbability}%`;
-        aiProbBar.className = aiProbability > 50 ? 
+        aiProbBar.className = aiProbability > 50 ?
             'bg-red-500 h-full rounded-full transition-all duration-500' :
             'bg-accent-blue h-full rounded-full transition-all duration-500';
     }
@@ -305,41 +312,10 @@ function displayAnalysisResults(result, fileData) {
     // Update file info bar
     updateFileInfoBar(result, fileData);
 
-    // Update analysis scores from API
-    if (result.analysis_scores) {
-        updateAnalysisScores(result.analysis_scores);
-    }
-
-    // Update metadata analysis
-    if (result.metadata) {
-        updateMetadataDisplay(result.metadata);
-    }
-
-    // Update ELA display
-    if (result.ela) {
-        updateELADisplay(result.ela);
-    }
-
-    // Update watermark detection display
-    if (result.watermark) {
-        updateWatermarkDisplay(result.watermark);
-    } else {
-        // Set default "not checked" state
-        updateWatermarkDisplay({ watermark_detected: false, status: 'NOT_CHECKED' });
-    }
-
-    // Update Content Credentials (C2PA) display
-    if (result.content_credentials) {
-        updateC2PADisplay(result.content_credentials);
-    } else {
-        // Set default "not checked" state
-        updateC2PADisplay({ c2pa_found: false, status: 'NOT_CHECKED' });
-    }
-
-    // Update AI Analysis display (Groq Vision - Llama 4 Scout)
-    if (result.ai_analysis) {
-        updateAIAnalysisDisplay(result.ai_analysis);
-    }
+    // Store the result for tab switching and render the current tab content
+    currentResult = result;
+    renderTabContent(result, currentTab);
+    console.log('[ImageResult] Tab content rendered for:', currentTab);
 
     // Animate progress bars based on actual scores
     animateProgressBarsWithScores(result.analysis_scores || {});
@@ -368,7 +344,7 @@ function getVerdictText(verdict) {
  */
 function getVerdictDescription(result, score) {
     const aiProb = result.ai_probability || 50;
-    
+
     if (aiProb > 80) {
         return 'This image shows strong indicators of AI generation including synthetic patterns and potential watermarks.';
     } else if (aiProb > 50) {
@@ -387,12 +363,12 @@ function updateManipulationCard(result) {
     const manipValue = document.getElementById('manipValue');
     const manipDetail = document.getElementById('manipDetail');
     const manipIcon = document.getElementById('manipIcon');
-    
+
     // Check for manipulation from ELA or metadata
     const ela = result.ela || {};
     const manipLevel = ela.manipulation_likelihood || 0;
     const cloneDetected = ela.clone_detected || false;
-    
+
     if (cloneDetected || manipLevel > 60) {
         if (manipValue) manipValue.textContent = 'Detected';
         if (manipDetail) {
@@ -433,13 +409,13 @@ function updateMetadataCard(result) {
     const metaValue = document.getElementById('metaValue');
     const metaDetail = document.getElementById('metaDetail');
     const metaIcon = document.getElementById('metaIcon');
-    
+
     const metadata = result.metadata || {};
     const hasExif = metadata.has_exif || false;
     const isComplete = metadata.is_complete || false;
     const stripped = metadata.exif_stripped || false;
     const aiTool = metadata.ai_tool_detected;
-    
+
     if (aiTool) {
         if (metaValue) metaValue.textContent = 'AI Tool';
         if (metaDetail) {
@@ -490,15 +466,15 @@ function updateForensicsCard(result) {
     const forensicsValue = document.getElementById('forensicsValue');
     const forensicsDetail = document.getElementById('forensicsDetail');
     const forensicsIcon = document.getElementById('forensicsIcon');
-    
+
     const scores = result.analysis_scores || {};
     const noiseConsistency = scores.noise_consistency || 50;
     const ela = result.ela || {};
     const elaScore = ela.ela_score || 50;
-    
+
     // Average forensics score
     const forensicsScore = (noiseConsistency + (100 - elaScore)) / 2;
-    
+
     if (forensicsScore > 70) {
         if (forensicsValue) forensicsValue.textContent = 'Pass';
         if (forensicsDetail) {
@@ -538,7 +514,7 @@ function updateForensicsCard(result) {
 function updateFileInfoBar(result, fileData) {
     const metadata = result.metadata || {};
     const dimensions = result.dimensions || {};
-    
+
     // Update resolution (from dimensions or metadata)
     const resolution = document.getElementById('imgResolution');
     if (resolution) {
@@ -550,14 +526,14 @@ function updateFileInfoBar(result, fileData) {
             resolution.textContent = 'Unknown';
         }
     }
-    
+
     // Update file size
     const sizeEl = document.getElementById('imgSize');
     if (sizeEl) {
         const bytes = result.file_size_bytes || (fileData.data.length * 0.75);
         sizeEl.textContent = formatFileSize(bytes);
     }
-    
+
     // Update file type
     const typeEl = document.getElementById('imgType');
     if (typeEl) {
@@ -571,7 +547,7 @@ function updateFileInfoBar(result, fileData) {
  */
 function updateAnalysisScores(scores) {
     console.log('[ImageResult] updateAnalysisScores called with:', scores);
-    
+
     // Map score names to display elements
     const scoreMapping = {
         'noise_consistency': 'noiseScore',
@@ -586,7 +562,7 @@ function updateAnalysisScores(scores) {
             const value = Math.round(scores[apiKey]);
             console.log(`[ImageResult] Updating ${elementId} with value: ${value}%`);
             updateElement(elementId, `${value}%`);
-            
+
             // Update progress bar if exists
             const bar = document.getElementById(`${elementId}Bar`);
             console.log(`[ImageResult] Bar element ${elementId}Bar found:`, !!bar);
@@ -695,7 +671,7 @@ function updateWatermarkDisplay(watermark) {
             confidenceEl.textContent = `${watermark.confidence || 0}%`;
             confidenceEl.className = watermark.confidence > 70 ? 'text-red-400 font-semibold' : 'text-yellow-400';
         }
-        
+
         // Add AI generator signature if found
         if (watermark.ai_generator_signature && detailsList) {
             detailsList.innerHTML += `<div class="flex items-center gap-2 text-red-400 mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
@@ -739,7 +715,7 @@ function updateWatermarkDisplay(watermark) {
         let methodsSummary = '<div class="mt-3 pt-2 border-t border-[#20324b]">';
         methodsSummary += '<p class="text-[#64748b] text-[10px] uppercase tracking-wider mb-2">Detection Methods:</p>';
         methodsSummary += '<div class="grid grid-cols-2 gap-1 text-[10px]">';
-        
+
         const methodNames = {
             'invisible_watermark': 'DWT-DCT',
             'spectral_analysis': 'Spectral',
@@ -750,7 +726,7 @@ function updateWatermarkDisplay(watermark) {
             'steganogan': 'SteganoGAN',
             'synthid': 'SynthID'
         };
-        
+
         for (const [key, value] of Object.entries(methods)) {
             const name = methodNames[key] || key;
             const detected = value.detected || value.found || value.patterns_found || value.anomaly_detected;
@@ -759,7 +735,7 @@ function updateWatermarkDisplay(watermark) {
             const note = value.note ? ` <span class="text-yellow-500">(${value.note.substring(0, 20)}...)</span>` : '';
             methodsSummary += `<div class="${color}">${icon} ${name}${note}</div>`;
         }
-        
+
         methodsSummary += '</div></div>';
         detailsList.innerHTML += methodsSummary;
     }
@@ -788,7 +764,7 @@ function updateC2PADisplay(c2pa) {
             foundEl.textContent = 'Yes';
             foundEl.className = 'text-blue-400 font-semibold';
         }
-        
+
         if (c2pa.is_ai_generated) {
             if (aiGenEl) {
                 aiGenEl.textContent = 'Yes';
@@ -808,7 +784,7 @@ function updateC2PADisplay(c2pa) {
                 generatorEl.className = 'text-[#8da8ce]';
             }
         }
-        
+
         if (signatureEl) {
             if (c2pa.signature_valid === true) {
                 signatureEl.textContent = 'Valid ✓';
@@ -821,7 +797,7 @@ function updateC2PADisplay(c2pa) {
                 signatureEl.className = 'text-yellow-400';
             }
         }
-        
+
         // Show provenance chain
         if (provenanceEl && c2pa.provenance_chain && c2pa.provenance_chain.length > 0) {
             provenanceEl.innerHTML = `
@@ -834,7 +810,7 @@ function updateC2PADisplay(c2pa) {
                 </div>
             `;
         }
-        
+
         // Show trust indicators
         if (c2pa.trust_indicators && provenanceEl) {
             const trustScore = c2pa.trust_indicators.trust_score || 0;
@@ -872,7 +848,7 @@ function updateC2PADisplay(c2pa) {
             signatureEl.textContent = 'N/A';
             signatureEl.className = 'text-[#8da8ce]';
         }
-        
+
         if (provenanceEl) {
             provenanceEl.innerHTML = `
                 <div class="mt-2 p-2 bg-[#20324b]/30 rounded-lg text-[#64748b] text-xs">
@@ -896,11 +872,11 @@ function updateC2PADisplay(c2pa) {
 function updateAIAnalysisDisplay(aiAnalysis) {
     // Find or create the AI Analysis container
     let aiAnalysisContainer = document.getElementById('aiAnalysisContainer');
-    
+
     if (!aiAnalysisContainer) {
         // Create the container if it doesn't exist
-        const detailsSection = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.gap-6') || 
-                               document.querySelector('.space-y-6');
+        const detailsSection = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.gap-6') ||
+            document.querySelector('.space-y-6');
         if (detailsSection) {
             aiAnalysisContainer = document.createElement('div');
             aiAnalysisContainer.id = 'aiAnalysisContainer';
@@ -908,19 +884,19 @@ function updateAIAnalysisDisplay(aiAnalysis) {
             detailsSection.appendChild(aiAnalysisContainer);
         }
     }
-    
+
     if (!aiAnalysisContainer) return;
-    
+
     const visualAnalysis = aiAnalysis.visual_analysis || {};
     const explanation = aiAnalysis.explanation || {};
     const combinedVerdict = aiAnalysis.combined_verdict || {};
     const success = aiAnalysis.success !== false;
-    
+
     // Determine status color
     const isLikelyAI = visualAnalysis.is_likely_ai_generated === true;
     const statusColor = isLikelyAI ? 'red' : (visualAnalysis.is_likely_ai_generated === false ? 'green' : 'yellow');
     const statusText = isLikelyAI ? 'AI DETECTED' : (visualAnalysis.is_likely_ai_generated === false ? 'LIKELY AUTHENTIC' : 'ANALYZING...');
-    
+
     // Build artifacts list
     let artifactsHtml = '';
     if (visualAnalysis.visual_artifacts_found && visualAnalysis.visual_artifacts_found.length > 0) {
@@ -944,7 +920,7 @@ function updateAIAnalysisDisplay(aiAnalysis) {
             </div>
         `;
     }
-    
+
     // Build findings list
     let findingsHtml = '';
     if (explanation.key_findings && explanation.key_findings.length > 0) {
@@ -955,7 +931,7 @@ function updateAIAnalysisDisplay(aiAnalysis) {
             </li>
         `).join('');
     }
-    
+
     // Build areas of concern
     let concernsHtml = '';
     if (visualAnalysis.areas_of_concern && visualAnalysis.areas_of_concern.length > 0) {
@@ -973,7 +949,7 @@ function updateAIAnalysisDisplay(aiAnalysis) {
             </div>
         `;
     }
-    
+
     // Build authentic indicators
     let authenticHtml = '';
     if (visualAnalysis.authentic_indicators && visualAnalysis.authentic_indicators.length > 0) {
@@ -991,7 +967,7 @@ function updateAIAnalysisDisplay(aiAnalysis) {
             </div>
         `;
     }
-    
+
     // Build recommendations
     let recommendationsHtml = '';
     if (explanation.recommendations && explanation.recommendations.length > 0) {
@@ -1012,7 +988,7 @@ function updateAIAnalysisDisplay(aiAnalysis) {
             </div>
         `;
     }
-    
+
     aiAnalysisContainer.innerHTML = `
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-white font-semibold flex items-center gap-2">
@@ -1084,8 +1060,8 @@ function updateAIAnalysisDisplay(aiAnalysis) {
                 <span>ML: ${Math.round(combinedVerdict.ml_probability || 0)}%</span>
                 <span>Vision: ${Math.round(combinedVerdict.visual_probability || 0)}%</span>
                 <span class="text-${combinedVerdict.analysis_agreement === 'STRONG_AGREEMENT' ? 'green' : 'yellow'}-400">
-                    ${combinedVerdict.analysis_agreement === 'STRONG_AGREEMENT' ? '✓ Analyses Agree' : 
-                      combinedVerdict.analysis_agreement === 'DISAGREEMENT' ? '⚠ Analyses Disagree' : 'One Analysis Only'}
+                    ${combinedVerdict.analysis_agreement === 'STRONG_AGREEMENT' ? '✓ Analyses Agree' :
+                combinedVerdict.analysis_agreement === 'DISAGREEMENT' ? '⚠ Analyses Disagree' : 'One Analysis Only'}
                 </span>
             </div>
         </div>
@@ -1104,13 +1080,13 @@ function updateAIAnalysisDisplay(aiAnalysis) {
  */
 function animateProgressBarsWithScores(scores) {
     const bars = document.querySelectorAll('.bg-accent-blue, .bg-primary, [data-score-bar]');
-    
+
     const scoreValues = Object.values(scores);
     bars.forEach((bar, index) => {
         const width = scoreValues[index % scoreValues.length] || 50;
         bar.style.transition = 'width 1s ease-out';
         bar.style.width = width + '%';
-        
+
         // Color based on score (higher = more AI-like = red)
         if (width > 60) {
             bar.style.backgroundColor = '#FF4A4A';
@@ -1127,7 +1103,7 @@ function animateProgressBarsWithScores(scores) {
  */
 function displayError(message) {
     console.error('Analysis error:', message);
-    
+
     const verdictElements = document.querySelectorAll('[class*="text-accent-green"], [class*="text-success"]');
     verdictElements.forEach(el => {
         if (el.textContent.includes('Authentic') || el.textContent.includes('LIKELY') || el.textContent.includes('ANALYZING')) {
@@ -1214,11 +1190,11 @@ function formatFileSize(bytes) {
  */
 function loadTextDetectionResult() {
     const raw = sessionStorage.getItem('visioNova_text_result');
-    
+
     const predEl = document.getElementById('td_prediction');
     const confEl = document.getElementById('td_confidence');
     const decEl = document.getElementById('td_decision');
-    
+
     if (!raw) {
         // No text detection data - show appropriate message
         if (predEl) {
@@ -1235,7 +1211,7 @@ function loadTextDetectionResult() {
         }
         return;
     }
-    
+
     try {
         const res = JSON.parse(raw);
         const prediction = res.prediction || 'N/A';
@@ -1266,7 +1242,7 @@ function loadTextDetectionResult() {
             const margin = res.decision.margin != null ? Number(res.decision.margin).toFixed(3) : 'n/a';
             decisionText = `Uncertain — leaning: ${leaning} (margin ${margin})`;
         } else if (res.decision) {
-            try { decisionText = typeof res.decision === 'string' ? res.decision : JSON.stringify(res.decision); } catch(e) { decisionText = String(res.decision); }
+            try { decisionText = typeof res.decision === 'string' ? res.decision : JSON.stringify(res.decision); } catch (e) { decisionText = String(res.decision); }
         }
 
         if (decEl) {
@@ -1275,5 +1251,549 @@ function loadTextDetectionResult() {
         }
     } catch (e) {
         console.error('Failed to parse visioNova_text_result:', e);
+    }
+}
+
+/**
+ * Initialize tab functionality
+ */
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            switchTab(tabName);
+        });
+    });
+    console.log('[ImageResult] Tabs initialized');
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+    currentTab = tabName;
+    console.log('[ImageResult] Switching to tab:', tabName);
+
+    // Update tab button styles
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.className = 'tab-btn px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-medium shadow-sm';
+        } else {
+            btn.className = 'tab-btn px-3 py-1.5 text-[#8da8ce] hover:text-white text-xs font-medium transition-colors';
+        }
+    });
+
+    // Re-render content for the selected tab
+    if (currentResult) {
+        renderTabContent(currentResult, tabName);
+    }
+}
+
+/**
+ * Render content based on the selected tab
+ */
+function renderTabContent(result, tabName) {
+    const container = document.getElementById('tabContentContainer');
+    if (!container) {
+        console.warn('[ImageResult] tabContentContainer not found');
+        return;
+    }
+
+    switch (tabName) {
+        case 'summary':
+            container.innerHTML = buildSummaryTabHTML(result);
+            break;
+        case 'detection':
+            container.innerHTML = buildDetectionTabHTML(result);
+            break;
+        case 'forensics':
+            container.innerHTML = buildForensicsTabHTML(result);
+            break;
+        case 'ai-vision':
+            container.innerHTML = buildAIVisionTabHTML(result);
+            break;
+        default:
+            container.innerHTML = buildSummaryTabHTML(result);
+    }
+}
+
+/**
+ * Build Summary tab content - Text detection, key findings
+ */
+function buildSummaryTabHTML(result) {
+    const textResult = getTextDetectionData();
+    const aiProb = result.ai_probability || 0;
+    const verdict = result.verdict || 'ANALYZING';
+
+    // Build key findings
+    let keyFindingsHTML = '';
+    const findings = [];
+
+    if (result.metadata?.ai_tool_detected) {
+        findings.push({ icon: 'warning', color: 'red', text: `AI Tool Detected: ${result.metadata.ai_tool_detected}` });
+    }
+    if (result.watermark?.watermark_detected) {
+        findings.push({ icon: 'water_drop', color: 'red', text: `AI Watermark Found: ${result.watermark.watermark_type || 'Unknown type'}` });
+    }
+    if (result.ela?.clone_detected) {
+        findings.push({ icon: 'content_copy', color: 'yellow', text: 'Clone/Copy-paste artifacts detected' });
+    }
+    if (!result.metadata?.has_exif) {
+        findings.push({ icon: 'info', color: 'yellow', text: 'No EXIF metadata (may indicate processing)' });
+    }
+    if (result.content_credentials?.is_ai_generated) {
+        findings.push({ icon: 'verified', color: 'red', text: `C2PA declares AI generation: ${result.content_credentials.ai_generator || 'Unknown'}` });
+    }
+    if (aiProb < 30) {
+        findings.push({ icon: 'check_circle', color: 'green', text: 'Low AI probability - appears authentic' });
+    }
+
+    if (findings.length > 0) {
+        keyFindingsHTML = findings.map(f => `
+            <div class="flex items-start gap-3 p-3 rounded-lg bg-[#0d1a29] border border-[#20324b]">
+                <span class="material-symbols-outlined text-${f.color}-400 text-lg mt-0.5">${f.icon}</span>
+                <p class="text-white text-sm">${f.text}</p>
+            </div>
+        `).join('');
+    } else {
+        keyFindingsHTML = `
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0d1a29] border border-[#20324b]">
+                <span class="material-symbols-outlined text-[#8da8ce] text-lg">info</span>
+                <p class="text-[#8da8ce] text-sm">Analysis complete. See detailed tabs for more information.</p>
+            </div>
+        `;
+    }
+
+    return `
+        <!-- Text Detection Result -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">text_fields</span>
+                Text Detector
+            </h4>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-[#0d1a29] p-3 rounded-lg">
+                    <p class="text-[#8da8ce] text-xs mb-1">Prediction</p>
+                    <p class="text-white font-semibold text-sm">${textResult.prediction}</p>
+                </div>
+                <div class="bg-[#0d1a29] p-3 rounded-lg">
+                    <p class="text-[#8da8ce] text-xs mb-1">Confidence</p>
+                    <p class="text-white font-semibold text-sm">${textResult.confidence}</p>
+                </div>
+                <div class="bg-[#0d1a29] p-3 rounded-lg">
+                    <p class="text-[#8da8ce] text-xs mb-1">Decision</p>
+                    <p class="text-white font-semibold text-sm truncate" title="${textResult.decision}">${textResult.decision}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Key Findings -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">checklist</span>
+                Key Findings
+            </h4>
+            <div class="space-y-2">
+                ${keyFindingsHTML}
+            </div>
+        </div>
+        
+        <!-- Quick Verdict -->
+        <div class="bg-primary/10 p-4 rounded-xl border border-primary/20">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[#8da8ce] text-xs mb-1">Analysis Verdict</p>
+                    <p class="text-white font-bold text-lg">${getVerdictText(verdict)}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[#8da8ce] text-xs mb-1">AI Probability</p>
+                    <p class="text-${aiProb > 50 ? 'red' : 'green'}-400 font-bold text-2xl">${Math.round(aiProb)}%</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Detection tab content - Watermark, C2PA, Metadata
+ */
+function buildDetectionTabHTML(result) {
+    const watermark = result.watermark || {};
+    const c2pa = result.content_credentials || {};
+    const metadata = result.metadata || {};
+
+    // Watermark status
+    const wmDetected = watermark.watermark_detected;
+    const wmStatusClass = wmDetected ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400';
+    const wmStatusText = wmDetected ? 'FOUND' : 'NOT FOUND';
+
+    // C2PA status
+    const c2paFound = c2pa.c2pa_found || c2pa.has_content_credentials;
+    const c2paStatusClass = c2paFound ? 'bg-blue-500/20 text-blue-400' : 'bg-[#20324b] text-[#8da8ce]';
+    const c2paStatusText = c2paFound ? 'VERIFIED' : 'NOT FOUND';
+
+    // Build watermark methods HTML
+    let methodsHTML = '';
+    if (watermark.detection_methods) {
+        const methodNames = {
+            'invisible_watermark': 'DWT-DCT',
+            'spectral_analysis': 'Spectral',
+            'lsb_analysis': 'LSB',
+            'metadata_watermark': 'Metadata',
+            'treering_analysis': 'Tree-Ring',
+            'synthid': 'SynthID'
+        };
+        methodsHTML = '<div class="grid grid-cols-2 gap-1 mt-3 text-[10px]">';
+        for (const [key, value] of Object.entries(watermark.detection_methods)) {
+            const name = methodNames[key] || key;
+            const detected = value.detected || value.found || value.patterns_found;
+            const icon = detected ? '✓' : '✗';
+            const color = detected ? 'text-green-400' : 'text-[#64748b]';
+            methodsHTML += `<div class="${color}">${icon} ${name}</div>`;
+        }
+        methodsHTML += '</div>';
+    }
+
+    return `
+        <!-- Watermark Detection -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-white text-sm font-semibold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-lg">water_drop</span>
+                    Watermark Detection
+                </h4>
+                <span class="text-[10px] px-2 py-0.5 rounded ${wmStatusClass} font-medium">${wmStatusText}</span>
+            </div>
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">Invisible Watermark</span>
+                    <span class="${wmDetected ? 'text-red-400 font-semibold' : 'text-green-400'}">${wmDetected ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">Watermark Type</span>
+                    <span class="text-white">${watermark.watermark_type || 'None detected'}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">Confidence</span>
+                    <span class="${watermark.confidence > 70 ? 'text-red-400 font-semibold' : 'text-white'}">${watermark.confidence ? watermark.confidence + '%' : 'N/A'}</span>
+                </div>
+                ${watermark.ai_generator_signature ? `
+                <div class="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <span class="text-red-400 text-xs font-medium">AI Generator: ${watermark.ai_generator_signature}</span>
+                </div>
+                ` : ''}
+                ${methodsHTML}
+            </div>
+        </div>
+        
+        <!-- Content Credentials (C2PA) -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-white text-sm font-semibold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-lg">verified</span>
+                    Content Credentials (C2PA)
+                </h4>
+                <span class="text-[10px] px-2 py-0.5 rounded ${c2paStatusClass} font-medium">${c2paStatusText}</span>
+            </div>
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">Credentials Found</span>
+                    <span class="${c2paFound ? 'text-blue-400 font-semibold' : 'text-[#8da8ce]'}">${c2paFound ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">AI Generated</span>
+                    <span class="${c2pa.is_ai_generated ? 'text-red-400 font-semibold' : 'text-green-400'}">${c2pa.is_ai_generated ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">Generator</span>
+                    <span class="text-white">${c2pa.ai_generator || c2pa.generator_info?.name || 'N/A'}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce]">Signature Valid</span>
+                    <span class="${c2pa.signature_valid === true ? 'text-green-400 font-semibold' : (c2pa.signature_valid === false ? 'text-red-400' : 'text-[#8da8ce]')}">${c2pa.signature_valid === true ? 'Valid ✓' : (c2pa.signature_valid === false ? 'Invalid ✗' : 'N/A')}</span>
+                </div>
+            </div>
+            ${!c2paFound ? `
+            <div class="mt-3 p-2 bg-[#20324b]/30 rounded-lg text-[#64748b] text-xs">
+                <span class="material-symbols-outlined text-sm align-middle mr-1">info</span>
+                No C2PA Content Credentials found. Most images don't have C2PA yet.
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Metadata Analysis -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">data_object</span>
+                Metadata Analysis
+            </h4>
+            <div class="flex items-center gap-2 mb-3 ${metadata.has_exif ? 'text-green-400' : 'text-yellow-400'} text-sm">
+                <span class="material-symbols-outlined text-sm">${metadata.has_exif ? 'check_circle' : 'warning'}</span>
+                ${metadata.has_exif ? 'EXIF Data Present' : 'No EXIF Data (Suspicious)'}
+            </div>
+            <div class="space-y-2 bg-[#0d1a29] rounded-lg p-3">
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce] uppercase text-xs">Camera</span>
+                    <span class="text-white">${metadata.camera_make || metadata.camera_model ? (metadata.camera_make || '') + ' ' + (metadata.camera_model || '') : 'No camera information'}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-[#8da8ce] uppercase text-xs">Software</span>
+                    <span class="${metadata.ai_software_detected ? 'text-red-400 font-medium' : 'text-white'}">${metadata.software_detected || 'Unknown'}${metadata.ai_software_detected ? ' (AI)' : ''}</span>
+                </div>
+            </div>
+            ${metadata.anomalies && metadata.anomalies.length > 0 ? `
+            <ul class="mt-3 space-y-1">
+                ${metadata.anomalies.map(a => `<li class="text-yellow-400 text-sm">⚠️ ${a}</li>`).join('')}
+            </ul>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Build Forensics tab content - ELA, noise, texture, deep analysis metrics
+ */
+function buildForensicsTabHTML(result) {
+    const ela = result.ela || {};
+    const scores = result.analysis_scores || {};
+
+    // Build score bars
+    const scoreMetrics = [
+        { name: 'Noise Consistency', key: 'noise_consistency', value: scores.noise_consistency },
+        { name: 'Texture Quality', key: 'texture_quality', value: scores.texture_quality },
+        { name: 'Edge Naturalness', key: 'edge_naturalness', value: scores.edge_naturalness },
+        { name: 'Color Uniformity', key: 'color_uniformity', value: scores.color_uniformity },
+        { name: 'Frequency Anomaly', key: 'frequency_anomaly', value: scores.frequency_anomaly }
+    ];
+
+    const scoreBarsHTML = scoreMetrics.map(m => {
+        const val = Math.round(m.value || 0);
+        const barColor = val > 60 ? 'bg-red-500' : (val > 30 ? 'bg-yellow-400' : 'bg-green-400');
+        return `
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-[#8da8ce]">${m.name}</span>
+                    <span class="text-white font-medium">${val}%</span>
+                </div>
+                <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
+                    <div class="${barColor} h-full rounded-full transition-all duration-500" style="width: ${val}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <!-- ELA Analysis -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">layers</span>
+                Error Level Analysis (ELA)
+            </h4>
+            ${ela.ela_image ? `
+            <div class="mb-3 rounded-lg overflow-hidden border border-[#20324b]">
+                <img src="data:image/png;base64,${ela.ela_image}" class="w-full" alt="ELA visualization" />
+            </div>
+            ` : ''}
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-[#0d1a29] p-3 rounded-lg">
+                    <p class="text-[#8da8ce] text-xs mb-1">Manipulation Likelihood</p>
+                    <p class="text-${(ela.manipulation_likelihood || 0) > 50 ? 'red' : 'green'}-400 font-bold text-lg">${Math.round(ela.manipulation_likelihood || 0)}%</p>
+                </div>
+                <div class="bg-[#0d1a29] p-3 rounded-lg">
+                    <p class="text-[#8da8ce] text-xs mb-1">Clone Detection</p>
+                    <p class="text-${ela.clone_detected ? 'red' : 'green'}-400 font-semibold text-sm">${ela.clone_detected ? 'Detected' : 'None Found'}</p>
+                </div>
+            </div>
+            ${ela.suspicious_regions && ela.suspicious_regions.length > 0 ? `
+            <div class="mt-3 p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                <span class="text-yellow-400 text-xs">${ela.suspicious_regions.length} suspicious region(s) detected</span>
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Deep Analysis Metrics -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-white text-sm font-semibold mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">analytics</span>
+                Deep Analysis Metrics
+            </h4>
+            <div class="space-y-3">
+                ${scoreBarsHTML}
+            </div>
+        </div>
+        
+        <!-- Lighting Analysis -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">light_mode</span>
+                Lighting Analysis
+            </h4>
+            <p class="text-[#8da8ce] text-sm">
+                Light source direction analyzed for consistency. Shadows examined for alignment with estimated light positions.
+            </p>
+        </div>
+    `;
+}
+
+/**
+ * Build AI Vision tab content - Groq Vision AI analysis
+ */
+function buildAIVisionTabHTML(result) {
+    const aiAnalysis = result.ai_analysis || {};
+    const visualAnalysis = aiAnalysis.visual_analysis || {};
+    const explanation = aiAnalysis.explanation || {};
+    const combinedVerdict = aiAnalysis.combined_verdict || {};
+
+    if (!aiAnalysis.success && !visualAnalysis.overall_assessment) {
+        return `
+            <div class="bg-card-bg p-6 rounded-xl border border-[#20324b] text-center">
+                <span class="material-symbols-outlined text-4xl text-[#8da8ce] mb-2">psychology</span>
+                <h4 class="text-white font-medium mb-2">AI Vision Analysis</h4>
+                <p class="text-[#8da8ce] text-sm">AI Vision analysis not available for this image.</p>
+            </div>
+        `;
+    }
+
+    const isLikelyAI = visualAnalysis.is_likely_ai_generated === true;
+    const statusColor = isLikelyAI ? 'red' : (visualAnalysis.is_likely_ai_generated === false ? 'green' : 'yellow');
+    const statusText = isLikelyAI ? 'AI DETECTED' : (visualAnalysis.is_likely_ai_generated === false ? 'LIKELY AUTHENTIC' : 'ANALYZING');
+
+    // Build artifacts list
+    let artifactsHTML = '';
+    if (visualAnalysis.visual_artifacts_found && visualAnalysis.visual_artifacts_found.length > 0) {
+        artifactsHTML = visualAnalysis.visual_artifacts_found.map(artifact => {
+            const severityColor = artifact.severity === 'high' ? 'red' : (artifact.severity === 'medium' ? 'yellow' : 'blue');
+            return `
+                <div class="flex items-start gap-2 p-2 bg-${severityColor}-500/10 rounded-lg border border-${severityColor}-500/20">
+                    <span class="material-symbols-outlined text-${severityColor}-400 text-sm mt-0.5">warning</span>
+                    <div>
+                        <span class="text-${severityColor}-400 text-xs font-medium">${artifact.type || 'Unknown'}</span>
+                        <p class="text-[#8da8ce] text-xs mt-0.5">${artifact.description || ''}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        artifactsHTML = `
+            <div class="flex items-center gap-2 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                <span class="material-symbols-outlined text-green-400 text-sm">check_circle</span>
+                <span class="text-green-400 text-xs">No obvious visual artifacts detected</span>
+            </div>
+        `;
+    }
+
+    // Build key findings
+    let findingsHTML = '';
+    if (explanation.key_findings && explanation.key_findings.length > 0) {
+        findingsHTML = explanation.key_findings.map(finding => `
+            <li class="text-[#8da8ce] text-xs flex items-start gap-2">
+                <span class="material-symbols-outlined text-accent-blue text-sm mt-0.5">arrow_right</span>
+                <span>${finding}</span>
+            </li>
+        `).join('');
+    } else {
+        findingsHTML = '<li class="text-[#64748b] text-xs">No specific findings to report</li>';
+    }
+
+    return `
+        <!-- AI Vision Header -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-white text-sm font-semibold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-purple text-lg">psychology</span>
+                    AI Vision Analysis
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-accent-purple/20 text-accent-purple">Llama 4 Scout</span>
+                </h4>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-${statusColor}-500/20 text-${statusColor}-400 font-medium">${statusText}</span>
+            </div>
+            <div class="p-3 bg-[#0d1a29] rounded-lg">
+                <p class="text-white text-sm leading-relaxed">${explanation.summary || visualAnalysis.overall_assessment || 'AI visual analysis completed.'}</p>
+            </div>
+        </div>
+        
+        <!-- Visual Artifacts -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-[#8da8ce] text-xs font-medium mb-3 flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">image_search</span>
+                Visual Artifacts Analysis
+            </h4>
+            <div class="space-y-2">
+                ${artifactsHTML}
+            </div>
+            ${visualAnalysis.areas_of_concern && visualAnalysis.areas_of_concern.length > 0 ? `
+            <div class="mt-3">
+                <p class="text-yellow-400 text-xs font-medium mb-2">Areas of Concern</p>
+                <div class="flex flex-wrap gap-1">
+                    ${visualAnalysis.areas_of_concern.map(area => `
+                        <span class="px-2 py-0.5 bg-yellow-500/10 text-yellow-400 text-xs rounded-full border border-yellow-500/20">${area}</span>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Key Findings -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <h4 class="text-[#8da8ce] text-xs font-medium mb-3 flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">analytics</span>
+                Key Findings
+            </h4>
+            <ul class="space-y-2">
+                ${findingsHTML}
+            </ul>
+        </div>
+        
+        ${combinedVerdict.combined_probability !== undefined ? `
+        <!-- Combined Score -->
+        <div class="bg-card-bg p-4 rounded-xl border border-[#20324b]">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[#8da8ce] text-xs font-medium">Combined AI Probability</span>
+                <span class="text-${combinedVerdict.combined_probability > 50 ? 'red' : 'green'}-400 text-sm font-bold">
+                    ${Math.round(combinedVerdict.combined_probability)}%
+                </span>
+            </div>
+            <div class="bg-[#20324b] h-2 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500 ${combinedVerdict.combined_probability > 50 ? 'bg-red-500' : 'bg-green-500'}" 
+                     style="width: ${combinedVerdict.combined_probability}%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-[#64748b] mt-1">
+                <span>ML: ${Math.round(combinedVerdict.ml_probability || 0)}%</span>
+                <span>Vision: ${Math.round(combinedVerdict.visual_probability || 0)}%</span>
+            </div>
+        </div>
+        ` : ''}
+        
+        <!-- Model Attribution -->
+        <div class="flex items-center justify-end gap-1 text-[10px] text-[#64748b]">
+            <span class="material-symbols-outlined text-xs">smart_toy</span>
+            Powered by Groq Vision API (${aiAnalysis.ai_model_used || 'Llama 4 Scout'})
+        </div>
+    `;
+}
+
+/**
+ * Get text detection data from session storage
+ */
+function getTextDetectionData() {
+    const raw = sessionStorage.getItem('visioNova_text_result');
+    if (!raw) {
+        return { prediction: 'Not analyzed', confidence: 'N/A', decision: 'Run from dashboard' };
+    }
+    try {
+        const res = JSON.parse(raw);
+        const prediction = res.prediction || 'N/A';
+        const confidence = res.confidence != null ? (Number(res.confidence).toFixed(2) + '%') : 'N/A';
+        let decision = 'N/A';
+        if (res.prediction === 'uncertain' && res.decision) {
+            const leaning = res.decision.leaning || res.decision.reason || 'unknown';
+            decision = `Uncertain (${leaning})`;
+        } else if (res.decision) {
+            decision = typeof res.decision === 'string' ? res.decision : 'See details';
+        }
+        return { prediction, confidence, decision };
+    } catch (e) {
+        return { prediction: 'Error', confidence: 'N/A', decision: 'Parse error' };
     }
 }
