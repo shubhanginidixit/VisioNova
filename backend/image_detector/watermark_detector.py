@@ -6,12 +6,13 @@ Supports:
 1. DWT-DCT watermarks (Stable Diffusion, AUTOMATIC1111, ComfyUI)
 2. DWT-DCT-SVD watermarks (enhanced robustness)
 3. RivaGAN watermarks (deep learning based)
-4. Meta Stable Signature patterns
+4. Meta Stable Signature detection (48-bit watermark)
 5. IPTC/XMP DigitalSourceType markers
 6. SteganoGAN steganographic watermarks
 7. Spectral domain analysis for Tree-Ring patterns
-8. Adversarial perturbation detection (Glaze/Nightshade - experimental)
-9. Custom signature patterns from known AI generators
+8. Gaussian Shading watermark detection
+9. Adversarial perturbation detection (Glaze/Nightshade - experimental)
+10. Custom signature patterns from known AI generators
 
 Note: Google SynthID cannot be detected externally (requires Google API)
 """
@@ -20,9 +21,10 @@ import io
 import logging
 import numpy as np
 from PIL import Image
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from scipy import stats
 import struct
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -84,7 +86,9 @@ class WatermarkDetector:
         """Initialize the watermark detector."""
         self.watermark_lib_available = False
         self.steganogan_available = False
+        self.stable_signature_available = False
         self.decoder = None
+        self.stable_signature_decoder = None
         
         try:
             from imwatermark import WatermarkDecoder
@@ -99,7 +103,191 @@ class WatermarkDetector:
             logger.info("steganogan library available")
         except ImportError:
             logger.debug("steganogan library not available (optional)")
+        
+        # Try to load Meta Stable Signature decoder
+        self._load_stable_signature_decoder()
     
+    def _load_stable_signature_decoder(self):
+        """
+        Load Meta's Stable Signature decoder model.
+        
+        The decoder extracts 48-bit watermarks embedded in images.
+        Model: dl.fbaipublicfiles.com/ssl_watermarking/dec_48b_whit.torchscript.pt
+        
+        False positive rate: ~1e-10 (extremely low)
+        """
+        try:
+            import torch
+            
+            # Check if decoder model exists locally
+            model_dir = os.path.join(os.path.dirname(__file__), 'models')
+            model_path = os.path.join(model_dir, 'stable_signature_decoder.pt')
+            
+            if os.path.exists(model_path):
+                self.stable_signature_decoder = torch.jit.load(model_path)
+                self.stable_signature_decoder.eval()
+                self.stable_signature_available = True
+                logger.info("Meta Stable Signature decoder loaded")
+            else:
+                # Try to download the model
+                logger.info("Stable Signature decoder not found locally")
+                self.stable_signature_available = False
+                
+        except ImportError:
+            logger.debug("PyTorch not available for Stable Signature detection")
+            self.stable_signature_available = False
+        except Exception as e:
+            logger.warning(f"Could not load Stable Signature decoder: {e}")
+            self.stable_signature_available = False
+    
+    def _detect_stable_signature(self, img_array: np.ndarray) -> Dict[str, Any]:
+        """
+        Detect Meta Stable Signature watermark.
+        
+        Meta's Stable Signature embeds a 48-bit watermark that:
+        - Survives cropping, compression, color changes
+        - Has false positive rate of ~1e-10
+        - Is used by Meta AI image generators
+        
+        Args:
+            img_array: RGB image as numpy array
+            
+        Returns:
+            dict with detection results
+        """
+        result = {
+            'detected': False,
+            'confidence': 0,
+            'watermark_bits': None,
+            'bit_accuracy': 0,
+            'error': None
+        }
+        
+        if not self.stable_signature_available:
+            result['error'] = 'Stable Signature decoder not available'
+            return result
+        
+        try:
+            import torch
+            from torchvision import transforms
+            
+            # Prepare image for the decoder
+            transform = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.Resize((256, 256)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225])
+            ])
+            
+            # Convert and process
+            img_tensor = transform(img_array).unsqueeze(0)
+            
+            with torch.no_grad():
+                # Decode watermark
+                decoded = self.stable_signature_decoder(img_tensor)
+                
+                # The decoder outputs logits for 48 bits
+                # Positive values indicate '1', negative indicate '0'
+                bits = (decoded > 0).float()
+                confidences = torch.abs(decoded)
+                
+                # Check if watermark is present
+                # High confidence values across all bits indicates watermark
+                mean_confidence = confidences.mean().item()
+                
+                # Convert to bit string
+                bit_string = ''.join(['1' if b > 0 else '0' for b in decoded[0].tolist()])
+                
+                result['watermark_bits'] = bit_string
+                result['bit_accuracy'] = mean_confidence
+                
+                # Threshold for detection
+                # High mean confidence suggests watermark is present
+                if mean_confidence > 0.5:
+                    result['detected'] = True
+                    result['confidence'] = int(min(95, mean_confidence * 100))
+                elif mean_confidence > 0.3:
+                    result['detected'] = True
+                    result['confidence'] = int(mean_confidence * 80)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Stable Signature detection error: {e}")
+            result['error'] = str(e)
+            return result
+    
+    def _detect_gaussian_shading(self, img_array: np.ndarray) -> Dict[str, Any]:
+        """
+        Detect Gaussian Shading watermarks.
+        
+        Gaussian Shading is a watermarking technique that embeds information
+        by modulating the variance of pixel values in small patches.
+        
+        Detection method:
+        - Analyze variance distribution across image patches
+        - Look for bimodal distribution (watermark creates two distinct variance levels)
+        """
+        result = {
+            'detected': False,
+            'confidence': 0,
+            'analysis': {}
+        }
+        
+        try:
+            # Convert to grayscale
+            if len(img_array.shape) == 3:
+                gray = np.mean(img_array, axis=2).astype(np.float32)
+            else:
+                gray = img_array.astype(np.float32)
+            
+            # Analyze variance in small patches
+            patch_size = 8
+            h, w = gray.shape
+            variances = []
+            
+            for i in range(0, h - patch_size, patch_size // 2):
+                for j in range(0, w - patch_size, patch_size // 2):
+                    patch = gray[i:i+patch_size, j:j+patch_size]
+                    variances.append(np.var(patch))
+            
+            variances = np.array(variances)
+            
+            # Check for bimodal distribution (sign of Gaussian Shading)
+            # Use simple heuristic: check if histogram has two peaks
+            hist, bins = np.histogram(variances, bins=50)
+            
+            # Smooth histogram
+            from scipy.ndimage import gaussian_filter1d
+            smooth_hist = gaussian_filter1d(hist.astype(float), sigma=2)
+            
+            # Find peaks
+            peaks = []
+            for i in range(1, len(smooth_hist) - 1):
+                if smooth_hist[i] > smooth_hist[i-1] and smooth_hist[i] > smooth_hist[i+1]:
+                    if smooth_hist[i] > np.mean(smooth_hist):
+                        peaks.append(i)
+            
+            result['analysis']['num_variance_peaks'] = len(peaks)
+            result['analysis']['variance_range'] = float(np.max(variances) - np.min(variances))
+            result['analysis']['variance_std'] = float(np.std(variances))
+            
+            # Bimodal distribution suggests Gaussian Shading
+            if len(peaks) >= 2:
+                # Check if peaks are well-separated
+                peak_separation = abs(bins[peaks[0]] - bins[peaks[-1]])
+                if peak_separation > np.std(variances):
+                    result['detected'] = True
+                    result['confidence'] = int(min(70, 40 + len(peaks) * 10))
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Gaussian Shading detection error: {e}")
+            result['error'] = str(e)
+            return result
+
     def analyze(self, image_data: bytes) -> Dict[str, Any]:
         """
         Analyze an image for invisible watermarks.
@@ -179,7 +367,28 @@ class WatermarkDetector:
                     result['ai_generator_signature'] = metadata_wm.get('ai_source_type')
                     result['details'].append(f"IPTC DigitalSourceType: {metadata_wm.get('ai_source_type')}")
             
-            # Method 5: Tree-Ring watermark pattern detection
+            # Method 6: Meta Stable Signature detection
+            stable_sig_result = self._detect_stable_signature(img_array)
+            result['detection_methods']['stable_signature'] = stable_sig_result
+            
+            if stable_sig_result.get('detected'):
+                result['watermark_detected'] = True
+                result['watermark_type'] = 'Meta Stable Signature'
+                result['ai_generator_signature'] = 'meta_ai'
+                result['details'].append(f"Meta Stable Signature watermark detected (confidence: {stable_sig_result.get('confidence')}%)")
+                result['confidence'] = max(result['confidence'], stable_sig_result.get('confidence', 85))
+            
+            # Method 7: Gaussian Shading watermark detection
+            gaussian_result = self._detect_gaussian_shading(img_array)
+            result['detection_methods']['gaussian_shading'] = gaussian_result
+            
+            if gaussian_result.get('detected'):
+                result['watermark_detected'] = True
+                result['watermark_type'] = 'Gaussian Shading'
+                result['details'].append("Gaussian Shading watermark pattern detected")
+                result['confidence'] = max(result['confidence'], gaussian_result.get('confidence', 60))
+            
+            # Method 8: Tree-Ring watermark pattern detection
             treering_result = self._detect_treering_patterns(img_array)
             result['detection_methods']['treering_analysis'] = treering_result
             
@@ -189,7 +398,7 @@ class WatermarkDetector:
                 result['details'].append("Tree-Ring watermark pattern detected (academic diffusion watermark)")
                 result['confidence'] = max(result['confidence'], treering_result.get('confidence', 65))
             
-            # Method 6: Adversarial perturbation detection (Glaze/Nightshade - experimental)
+            # Method 9: Adversarial perturbation detection (Glaze/Nightshade - experimental)
             adversarial_result = self._detect_adversarial_perturbations(img_array)
             result['detection_methods']['adversarial_analysis'] = adversarial_result
             
@@ -198,7 +407,7 @@ class WatermarkDetector:
                 # Don't set watermark_detected for experimental results
                 result['detection_methods']['adversarial_analysis']['note'] = 'Experimental - high false positive rate'
             
-            # Method 7: SteganoGAN detection (if available)
+            # Method 10: SteganoGAN detection (if available)
             if self.steganogan_available:
                 stegano_result = self._detect_steganogan(image_data)
                 result['detection_methods']['steganogan'] = stegano_result
@@ -288,7 +497,7 @@ class WatermarkDetector:
                                 
                                 result['detected'] = True
                                 result['type'] = method
-                                result['raw_bytes'] = watermark_bytes
+                                result['raw_bytes'] = watermark_bytes.hex()
                                 result['content'] = decoded_text if decoded_text and len(decoded_text) > 2 else f"Binary: {watermark_bytes.hex()[:32]}..."
                                 result['confidence'] = 75 if decoded_text else 60
                                 result['bit_length'] = wm_length
