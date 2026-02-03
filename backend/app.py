@@ -10,7 +10,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from fact_check import FactChecker
 from text_detector import AIContentDetector, TextExplainer, DocumentParser
-from image_detector import ImageDetector, MetadataAnalyzer, ELAAnalyzer, WatermarkDetector, ContentCredentialsDetector, ImageExplainer
+from image_detector import (
+    ImageDetector, MetadataAnalyzer, ELAAnalyzer, 
+    WatermarkDetector, ContentCredentialsDetector, ImageExplainer,
+    EnsembleDetector, ML_DETECTORS_AVAILABLE
+)
 
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
@@ -31,12 +35,22 @@ text_explainer = TextExplainer()
 doc_parser = DocumentParser()
 
 # Initialize image detector and AI explainer
+# Basic detector (always available, fast)
 image_detector = ImageDetector(use_gpu=False)
 metadata_analyzer = MetadataAnalyzer()
 ela_analyzer = ELAAnalyzer()
 watermark_detector = WatermarkDetector()
 content_credentials_detector = ContentCredentialsDetector()
 image_explainer = ImageExplainer()  # Groq Vision API for AI-powered image analysis
+
+# Ensemble detector (advanced, loads ML models on demand)
+# Set load_ml_models=False initially for faster startup, models load on first use
+ensemble_detector = None
+try:
+    ensemble_detector = EnsembleDetector(use_gpu=False, load_ml_models=False)
+    print(f"✓ Ensemble detector initialized (ML models available: {ML_DETECTORS_AVAILABLE})")
+except Exception as e:
+    print(f"⚠ Ensemble detector not available: {e}")
 
 # File upload limits
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -84,15 +98,128 @@ def validate_input(user_input: str) -> dict:
     return {'valid': True, 'error': None}
 
 
+# ===========================================
+# STATIC FILE ROUTES
+# ===========================================
+
 @app.route('/')
 def serve_home():
     """Serve the homepage."""
+    return app.send_static_file('html/homepage.html')
+
+@app.route('/home')
+def serve_home_alt():
+    """Alternative route for homepage."""
     return app.send_static_file('html/homepage.html')
 
 @app.route('/html/<path:filename>')
 def serve_html(filename):
     """Serve HTML pages."""
     return app.send_static_file(f'html/{filename}')
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    """Serve CSS files."""
+    return app.send_static_file(f'css/{filename}')
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    """Serve JavaScript files."""
+    return app.send_static_file(f'js/{filename}')
+
+# Friendly URL routes for each page
+@app.route('/dashboard')
+def serve_dashboard():
+    """Serve the analysis dashboard."""
+    return app.send_static_file('html/AnalysisDashboard.html')
+
+@app.route('/fact-check')
+def serve_fact_check_page():
+    """Serve the fact check page."""
+    return app.send_static_file('html/FactCheckPage.html')
+
+@app.route('/image-result')
+def serve_image_result():
+    """Serve the image result page."""
+    return app.send_static_file('html/ImageResultPage.html')
+
+@app.route('/text-result')
+def serve_text_result():
+    """Serve the text result page."""
+    return app.send_static_file('html/TextResultPage.html')
+
+@app.route('/audio-result')
+def serve_audio_result():
+    """Serve the audio result page."""
+    return app.send_static_file('html/AudioResultPage.html')
+
+@app.route('/video-result')
+def serve_video_result():
+    """Serve the video result page."""
+    return app.send_static_file('html/VideoResultPage.html')
+
+@app.route('/report')
+def serve_report():
+    """Serve the report page."""
+    return app.send_static_file('html/ReportPage.html')
+
+@app.route('/api-test')
+def serve_api_test():
+    """Serve the API test page."""
+    return app.send_static_file('html/APITest.html')
+
+@app.route('/backend-test')
+def serve_backend_test():
+    """Serve the backend test page."""
+    return app.send_static_file('html/BackendTest.html')
+
+
+# Routes for direct HTML file access (without /html/ prefix)
+# These are needed because the homepage uses relative URLs like "AnalysisDashboard.html"
+@app.route('/AnalysisDashboard.html')
+def serve_analysis_dashboard_direct():
+    """Serve AnalysisDashboard via direct file access."""
+    return app.send_static_file('html/AnalysisDashboard.html')
+
+@app.route('/ImageResultPage.html')
+def serve_image_result_direct():
+    """Serve ImageResultPage via direct file access."""
+    return app.send_static_file('html/ImageResultPage.html')
+
+@app.route('/TextResultPage.html')
+def serve_text_result_direct():
+    """Serve TextResultPage via direct file access."""
+    return app.send_static_file('html/TextResultPage.html')
+
+@app.route('/AudioResultPage.html')
+def serve_audio_result_direct():
+    """Serve AudioResultPage via direct file access."""
+    return app.send_static_file('html/AudioResultPage.html')
+
+@app.route('/VideoResultPage.html')
+def serve_video_result_direct():
+    """Serve VideoResultPage via direct file access."""
+    return app.send_static_file('html/VideoResultPage.html')
+
+@app.route('/FactCheckPage.html')
+def serve_factcheck_direct():
+    """Serve FactCheckPage via direct file access."""
+    return app.send_static_file('html/FactCheckPage.html')
+
+@app.route('/ReportPage.html')
+def serve_report_direct():
+    """Serve ReportPage via direct file access."""
+    return app.send_static_file('html/ReportPage.html')
+
+@app.route('/homepage.html')
+def serve_homepage_direct():
+    """Serve homepage via direct file access."""
+    return app.send_static_file('html/homepage.html')
+
+
+# ===========================================
+# API ENDPOINTS
+# ===========================================
 
 @app.route('/api/health')
 def health_check():
@@ -101,17 +228,21 @@ def health_check():
     return jsonify({
         'status': 'ok',
         'service': 'VisioNova API',
-        'version': '1.1.0',
+        'version': '2.0.0',
         'cache': cache_info,
         'features': {
             'watermark_detection': watermark_detector.watermark_lib_available,
             'c2pa_detection': content_credentials_detector.c2pa_available,
+            'ensemble_detection': ensemble_detector is not None,
+            'ml_models_available': ML_DETECTORS_AVAILABLE,
+            'stable_signature_detection': watermark_detector.stable_signature_available if hasattr(watermark_detector, 'stable_signature_available') else False,
         },
         'endpoints': {
             'fact_check': '/api/fact-check (POST)',
             'deep_check': '/api/fact-check/deep (POST)',
             'detect_text': '/api/detect-ai (POST)',
             'detect_image': '/api/detect-image (POST)',
+            'detect_image_ensemble': '/api/detect-image/ensemble (POST)',
             'feedback': '/api/fact-check/feedback (POST)'
         }
     })
@@ -577,6 +708,120 @@ def detect_ai_image():
                     detection_result['verdict_description'] = combined['verdict_description']
         
         return jsonify(detection_result)
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/detect-image/ensemble', methods=['POST'])
+@limiter.limit("5 per minute")
+def detect_ai_image_ensemble():
+    """
+    Advanced AI image detection using multi-model ensemble.
+    
+    Uses multiple detection methods with weighted score fusion:
+    - Statistical analysis (frequency, noise, texture)
+    - NYUAD ViT Detector (Vision Transformer - 97.36% accuracy)
+    - UniversalFakeDetect (CLIP-based - generalizes across generators)
+    - Frequency domain analysis (GAN fingerprints)
+    - Watermark detection (10+ methods including Meta Stable Signature)
+    - C2PA Content Credentials
+    - Deepfake detection (for images with faces)
+    
+    Request body:
+        {
+            "image": "base64_encoded_image_data",
+            "filename": "optional_filename.jpg",
+            "load_ml_models": true  // optional, loads heavy ML models
+        }
+    
+    Response:
+        {
+            "success": true,
+            "ensemble_verdict": "AI_GENERATED|LIKELY_AI|POSSIBLY_AI|UNCERTAIN|POSSIBLY_REAL|LIKELY_REAL|REAL",
+            "ai_probability": 75.5,
+            "confidence": 85,
+            "verdict_description": "...",
+            "individual_results": {
+                "statistical": {...},
+                "nyuad": {...},
+                "clip": {...},
+                "frequency": {...},
+                "watermark": {...},
+                "c2pa": {...}
+            },
+            "score_breakdown": {...},
+            "detection_agreement": {...},
+            "overrides_applied": [...],
+            "recommendations": [...]
+        }
+    """
+    try:
+        global ensemble_detector
+        
+        data = request.get_json()
+        
+        if not data or 'image' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing "image" field in request body',
+                'error_code': 'MISSING_IMAGE'
+            }), 400
+        
+        image_data = data['image']
+        filename = data.get('filename', 'uploaded_image')
+        load_ml_models = data.get('load_ml_models', True)
+        
+        # Remove data URL prefix if present
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid base64 image data: {str(e)}',
+                'error_code': 'INVALID_IMAGE'
+            }), 400
+        
+        # Check file size
+        max_image_size = 50 * 1024 * 1024
+        if len(image_bytes) > max_image_size:
+            return jsonify({
+                'success': False,
+                'error': f'Image too large (max {max_image_size // 1024 // 1024}MB)',
+                'error_code': 'IMAGE_TOO_LARGE'
+            }), 400
+        
+        # Initialize ensemble detector with ML models if requested
+        if ensemble_detector is None or (load_ml_models and not hasattr(ensemble_detector, '_ml_loaded')):
+            try:
+                from image_detector import EnsembleDetector
+                ensemble_detector = EnsembleDetector(use_gpu=False, load_ml_models=load_ml_models)
+                if load_ml_models:
+                    ensemble_detector._ml_loaded = True
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': f'Could not initialize ensemble detector: {str(e)}',
+                    'error_code': 'DETECTOR_INIT_ERROR'
+                }), 500
+        
+        # Run ensemble detection
+        result = ensemble_detector.detect(image_bytes, filename)
+        
+        # Add AI-powered visual analysis for explanation
+        if image_explainer.client:
+            ai_analysis = image_explainer.analyze_image(image_bytes, result)
+            result['ai_visual_analysis'] = ai_analysis
+        
+        return jsonify(result)
     
     except Exception as e:
         return jsonify({

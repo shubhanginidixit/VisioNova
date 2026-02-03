@@ -7,6 +7,8 @@ Uses a combination of:
 2. Statistical analysis (frequency domain, noise patterns)
 3. Metadata forensics
 4. Error Level Analysis (ELA)
+
+For advanced detection with multiple models, use EnsembleDetector.
 """
 
 import base64
