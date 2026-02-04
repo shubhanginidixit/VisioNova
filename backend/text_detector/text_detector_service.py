@@ -4,18 +4,32 @@ AI-generated text detection with sentence-level analysis, pattern detection, and
 
 Architecture:
 - ML Model (DeBERTa-v3): Transformer-based detection (Microsoft/DeBERTa-v3-base)
+- Binoculars: Zero-shot detection with dual Falcon-7B (GPU-only, no training)
 - Linguistic Analysis: Perplexity, burstiness, patterns
 - Caching: LRU cache for repeated texts
+
+Detection Modes:
+- 'offline': Statistical + pattern analysis only (CPU-friendly, default)
+- 'ml': DeBERTa-v3 + statistical hybrid (requires model)
+- 'binoculars': Dual Falcon-7B zero-shot (requires GPU, best accuracy)
 """
 import os
 import re
 import math
 import hashlib
+import logging
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 # import torch
 # from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+logger = logging.getLogger(__name__)
+
+
+# Detection mode constants
+DETECTION_MODE_OFFLINE = 'offline'
+DETECTION_MODE_ML = 'ml'
+DETECTION_MODE_BINOCULARS = 'binoculars'
 
 # Common AI-generated text patterns (expanded for better offline detection)
 AI_PATTERNS = {
@@ -131,25 +145,70 @@ class AIContentDetector:
     LINGUISTIC_WEIGHT = 0.25
     UNCERTAINTY_THRESHOLD = 0.08
     
-    def __init__(self, model_path: Optional[str] = None, use_ml_model: bool = False):
+    def __init__(self, model_path: Optional[str] = None, use_ml_model: bool = False, detection_mode: str = DETECTION_MODE_OFFLINE):
         """Initialize the detector with model path.
         
         Args:
             model_path: Path to ML model directory (optional)
             use_ml_model: If True, load Transformer model (requires downloads).
                          If False, use lightweight statistical detection only.
+            detection_mode: Detection method - 'offline', 'ml', or 'binoculars'
+                           Overrides use_ml_model if specified
         """
-        self.use_ml_model = use_ml_model
+        # Determine mode (new parameter takes precedence)
+        if detection_mode == DETECTION_MODE_BINOCULARS:
+            self.detection_mode = DETECTION_MODE_BINOCULARS
+            self.use_ml_model = False  # Don't load DeBERTa
+        elif detection_mode == DETECTION_MODE_ML or use_ml_model:
+            self.detection_mode = DETECTION_MODE_ML
+            self.use_ml_model = True
+        else:
+            self.detection_mode = DETECTION_MODE_OFFLINE
+            self.use_ml_model = False
+        
         self.tokenizer = None
         self.model = None
         self.device = "cpu"
+        self.binoculars = None
         
-        if use_ml_model:
+        if self.use_ml_model:
             self.model_path = model_path if model_path else os.path.join(os.path.dirname(os.path.abspath(__file__)), self.MODEL_DIR)
             self._load_model()
         else:
-            print("Initialized in OFFLINE mode (no ML model, statistical detection only)")
+            logger.info(f"Initialized in {self.detection_mode.upper()} mode")
             self.model_path = None
+        
+        # Initialize Binoculars if requested
+        if self.detection_mode == DETECTION_MODE_BINOCULARS:
+            self._load_binoculars()
+    
+    def _load_binoculars(self):
+        """Load Binoculars zero-shot detector (GPU required)."""
+        try:
+            from .binoculars_detector import get_binoculars_detector
+            
+            logger.info("Loading Binoculars zero-shot detector...")
+            self.binoculars = get_binoculars_detector()
+            
+            if self.binoculars.is_available():
+                logger.info("Binoculars initialized successfully")
+                info = self.binoculars.get_info()
+                logger.info(f"GPU: {info.get('gpu', 'N/A')} ({info.get('vram_gb', 0):.1f}GB)")
+            else:
+                logger.warning("Binoculars not available (GPU required)")
+                logger.warning("Falling back to offline mode")
+                self.detection_mode = DETECTION_MODE_OFFLINE
+                self.binoculars = None
+        except ImportError:
+            logger.error("binoculars_detector module not found")
+            logger.warning("Falling back to offline mode")
+            self.detection_mode = DETECTION_MODE_OFFLINE
+            self.binoculars = None
+        except Exception as e:
+            logger.error(f"Failed to load Binoculars: {str(e)}")
+            logger.warning("Falling back to offline mode")
+            self.detection_mode = DETECTION_MODE_OFFLINE
+            self.binoculars = None
     
     def _load_model(self):
         """Load the tokenizer and model."""
@@ -690,8 +749,30 @@ class AIContentDetector:
         # Detect patterns in full text (needed for both ML and offline modes)
         all_patterns = self._detect_patterns_in_text(text)
         
-        # Main prediction - use ML model or offline scoring
-        if self.use_ml_model and self.model is not None:
+        # ===== DETECTION ROUTING: Choose method based on mode =====
+        
+        if self.detection_mode == DETECTION_MODE_BINOCULARS and self.binoculars is not None:
+            # ===== BINOCULARS ZERO-SHOT DETECTION =====
+            binoculars_result = self.binoculars.detect(text)
+            
+            if binoculars_result is None:
+                logger.warning("Binoculars detection failed, falling back to offline mode")
+                human_prob, ai_prob = self._calculate_offline_score(text, all_patterns)
+                detection_method = "offline_fallback"
+            else:
+                # Extract probabilities from Binoculars result
+                if binoculars_result["prediction"] == "AI":
+                    ai_prob = binoculars_result["confidence"]
+                    human_prob = 1.0 - ai_prob
+                else:
+                    human_prob = binoculars_result["confidence"]
+                    ai_prob = 1.0 - human_prob
+                
+                detection_method = "binoculars_zero_shot"
+                logger.info(f"Binoculars: {binoculars_result['prediction']} (score={binoculars_result['score']:.4f})")
+        
+        elif self.use_ml_model and self.model is not None:
+            # ===== ML-BASED HYBRID DETECTION (DeBERTa-v3) =====
             # ML-based prediction (cached)
             text_hash = self._get_text_hash(text)
             ml_human, ml_ai = self._cached_inference(text_hash, text)
@@ -710,10 +791,13 @@ class AIContentDetector:
             
             ai_prob = (ml_ai * weight_ml) + (off_ai * weight_off)
             human_prob = 1.0 - ai_prob
-            
+            detection_method = "ml_hybrid"
+        
         else:
+            # ===== OFFLINE STATISTICAL DETECTION =====
             # Offline statistical prediction
             human_prob, ai_prob = self._calculate_offline_score(text, all_patterns)
+            detection_method = "offline_statistical"
         
         # Determine prediction with uncertainty handling
         margin = abs(ai_prob - human_prob)
@@ -757,7 +841,9 @@ class AIContentDetector:
             "detected_patterns": {
                 "total_count": len(all_patterns),
                 "categories": pattern_summary
-            }
+            },
+            "detection_method": detection_method,  # Track which method was used
+            "detection_mode": self.detection_mode
         }
 
         # Add decision reasoning and uncertainty metadata to help frontend and debugging

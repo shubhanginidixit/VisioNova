@@ -36,12 +36,50 @@ document.addEventListener('DOMContentLoaded', async function () {
         const uploadedImage = document.getElementById('uploadedImage');
         const placeholder = document.getElementById('noImagePlaceholder');
 
-        if (uploadedImage) {
+        console.log('[ImageResult] Image element:', uploadedImage);
+        console.log('[ImageResult] Placeholder element:', placeholder);
+        console.log('[ImageResult] Image data type:', imageData.mimeType);
+        console.log('[ImageResult] Image data preview:', imageData.data?.substring(0, 50));
+
+        if (uploadedImage && imageData.data) {
+            // Set the image source
             uploadedImage.src = imageData.data;
             uploadedImage.classList.remove('hidden');
+            uploadedImage.style.display = ''; // Ensure no inline style is hiding it
+            console.log('[ImageResult] Image src set successfully');
+            console.log('[ImageResult] Image classes:', uploadedImage.className);
+            console.log('[ImageResult] Image style.display:', uploadedImage.style.display);
+            
+            // Add error handler for image loading
+            uploadedImage.onerror = function() {
+                console.error('[ImageResult] Failed to load image!');
+                console.error('[ImageResult] Image data was:', imageData.data?.substring(0, 100));
+                displayError('Failed to display image. The image data may be corrupted.');
+            };
+            
+            uploadedImage.onload = function() {
+                console.log('[ImageResult] Image loaded successfully!');
+                console.log('[ImageResult] Image dimensions:', uploadedImage.naturalWidth, 'x', uploadedImage.naturalHeight);
+                console.log('[ImageResult] Image is visible:', uploadedImage.offsetWidth > 0 && uploadedImage.offsetHeight > 0);
+                console.log('[ImageResult] Image offsetWidth:', uploadedImage.offsetWidth, 'offsetHeight:', uploadedImage.offsetHeight);
+                
+                // Update image info
+                updateElement('imgResolution', `${uploadedImage.naturalWidth} x ${uploadedImage.naturalHeight}`);
+                updateElement('imgType', imageData.mimeType || 'Unknown');
+                
+                // Calculate file size (approximate from base64)
+                const sizeInBytes = Math.round((imageData.data.length * 3) / 4);
+                const sizeInKB = (sizeInBytes / 1024).toFixed(1);
+                const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+                updateElement('imgSize', sizeInBytes > 1024 * 1024 ? `${sizeInMB} MB` : `${sizeInKB} KB`);
+            };
+        } else {
+            console.error('[ImageResult] Missing uploadedImage element or imageData.data');
         }
+        
         if (placeholder) {
             placeholder.classList.add('hidden');
+            console.log('[ImageResult] Placeholder hidden');
         }
 
         // Show loading state
@@ -76,28 +114,62 @@ document.addEventListener('DOMContentLoaded', async function () {
  * Call the backend API to analyze the image
  */
 async function analyzeImage(imageData) {
-    console.log('[ImageResult] Sending request to:', `${API_BASE_URL}/api/detect-image`);
+    const apiUrl = `${API_BASE_URL}/api/detect-image`;
+    console.log('[ImageResult] ========== API CALL DEBUG ==========');
+    console.log('[ImageResult] API URL:', apiUrl);
+    console.log('[ImageResult] Image filename:', imageData.fileName);
+    console.log('[ImageResult] Image data length:', imageData.data?.length);
+    console.log('[ImageResult] Image mime type:', imageData.mimeType);
     
-    const response = await fetch(`${API_BASE_URL}/api/detect-image`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            image: imageData.data,
-            filename: imageData.fileName,
-            include_ela: true,
-            include_metadata: true,
-            include_watermark: true,
-            include_c2pa: true,
-            include_ai_analysis: true  // Groq Vision AI analysis
-        })
-    });
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image: imageData.data,
+                filename: imageData.fileName,
+                include_ela: true,
+                include_metadata: true,
+                include_watermark: true,
+                include_c2pa: true,
+                include_ai_analysis: true  // Groq Vision AI analysis
+            })
+        });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API error: ${response.status}`);
+        console.log('[ImageResult] Response status:', response.status);
+        console.log('[ImageResult] Response ok:', response.ok);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[ImageResult] Error response body:', errorText);
+            
+            try {
+                const errorData = JSON.parse(errorText);
+                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+            } catch (parseError) {
+                throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+            }
+        }
+
+        const result = await response.json();
+        console.log('[ImageResult] Success! Got response with keys:', Object.keys(result));
+        return result;
+        
+    } catch (error) {
+        console.error('[ImageResult] ========== API CALL FAILED ==========');
+        console.error('[ImageResult] Error type:', error.constructor.name);
+        console.error('[ImageResult] Error message:', error.message);
+        console.error('[ImageResult] Full error:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            throw new Error('Network error: Cannot reach backend server at ' + API_BASE_URL + '. Make sure Flask is running.');
+        }
+        
+        throw error;
     }
+}
 
     return await response.json();
 }
@@ -244,10 +316,15 @@ function displayAnalysisResults(result, fileData) {
         if (isLikelyAI) {
             scoreCircle.classList.remove('text-accent-green');
             scoreCircle.classList.add('text-red-500');
-            scoreCircle.className = scoreCircle.className.replace('drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]', 'drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]');
+            // Remove green shadow and add red shadow
+            scoreCircle.classList.remove('drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]');
+            scoreCircle.classList.add('drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]');
         } else {
             scoreCircle.classList.remove('text-red-500');
             scoreCircle.classList.add('text-accent-green');
+            // Remove red shadow and add green shadow
+            scoreCircle.classList.remove('drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]');
+            scoreCircle.classList.add('drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]');
         }
     }
 

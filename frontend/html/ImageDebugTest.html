@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Display Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            cursor: pointer;
+            background: #3A8DFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #2878dd;
+        }
+        #testImage {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 VisioNova Image Storage Debug</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Upload Test Image</h2>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="uploadTestImage()">Upload & Store</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Check Storage</h2>
+        <button onclick="checkStorage()">Check SessionStorage</button>
+        <pre id="storageOutput">Click "Check SessionStorage" to see stored data...</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Retrieve & Display</h2>
+        <button onclick="retrieveAndDisplay()">Retrieve Image</button>
+        <div id="imageContainer">
+            <div id="placeholder">No image loaded yet</div>
+            <img id="testImage" class="hidden" alt="Test image">
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 4: Navigate to Result Page</h2>
+        <button onclick="goToResultPage()">Go to ImageResultPage.html</button>
+        <p style="color: #666; font-size: 14px;">
+            This will navigate to the actual result page with the stored image
+        </p>
+    </div>
+
+    <script src="../js/storage-utils.js"></script>
+    <script>
+        async function uploadTestImage() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                alert('Please select an image first!');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            console.log('File selected:', file.name, file.type, file.size);
+
+            try {
+                const dataURL = await VisioNovaStorage.readFileAsDataURL(file);
+                console.log('Data URL generated, length:', dataURL.length);
+                console.log('Data URL preview:', dataURL.substring(0, 100));
+
+                const success = VisioNovaStorage.saveFile('image', dataURL, file.name, file.type);
+                
+                if (success) {
+                    alert('✅ Image stored successfully!\n\nFile: ' + file.name + '\nSize: ' + (file.size / 1024).toFixed(1) + ' KB');
+                } else {
+                    alert('❌ Failed to store image!');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function checkStorage() {
+            const imageData = VisioNovaStorage.getFile('image');
+            const output = document.getElementById('storageOutput');
+            
+            if (imageData) {
+                output.textContent = JSON.stringify({
+                    fileName: imageData.fileName,
+                    mimeType: imageData.mimeType,
+                    timestamp: imageData.timestamp,
+                    dataLength: imageData.data?.length || 0,
+                    dataPreview: imageData.data?.substring(0, 100) + '...'
+                }, null, 2);
+            } else {
+                output.textContent = '❌ No image data found in sessionStorage';
+            }
+        }
+
+        function retrieveAndDisplay() {
+            const imageData = VisioNovaStorage.getFile('image');
+            const testImage = document.getElementById('testImage');
+            const placeholder = document.getElementById('placeholder');
+            
+            if (!imageData) {
+                alert('No image in storage! Upload one first.');
+                return;
+            }
+
+            console.log('Retrieved image data:', imageData);
+            
+            if (imageData.data) {
+                testImage.src = imageData.data;
+                testImage.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                
+                testImage.onload = function() {
+                    alert('✅ Image displayed successfully!\n\nDimensions: ' + 
+                          testImage.naturalWidth + 'x' + testImage.naturalHeight);
+                };
+                
+                testImage.onerror = function() {
+                    alert('❌ Failed to display image!\nThe data URL may be invalid.');
+                };
+            } else {
+                alert('Image data is missing!');
+            }
+        }
+
+        function goToResultPage() {
+            const imageData = VisioNovaStorage.getFile('image');
+            if (!imageData) {
+                alert('No image stored! Upload one first.');
+                return;
+            }
+            
+            // Navigate to result page
+            window.location.href = 'ImageResultPage.html';
+        }
+    </script>
+</body>
+</html>

@@ -14,6 +14,7 @@ transformers>=4.30.0
 torch>=2.0.0
 torchvision>=0.15.0
 timm>=0.9.0  # For advanced vision models
+binoculars>=0.1.0  # Zero-shot AI text detection (dual Falcon-7B, GPU-only)
 
 # Document Processing
 PyMuPDF>=1.23.0

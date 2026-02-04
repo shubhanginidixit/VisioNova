@@ -262,14 +262,14 @@
                                 style="background-image: linear-gradient(#3A8DFF 1px, transparent 1px), linear-gradient(90deg, #3A8DFF 1px, transparent 1px); background-size: 40px 40px;">
                             </div>
                             <!-- Dynamic Image Container -->
-                            <div id="imageContainer" class="w-full h-full flex items-center justify-center">
-                                <div id="noImagePlaceholder" class="flex flex-col items-center gap-4 text-[#8da8ce]">
+                            <div id="imageContainer" class="relative w-full h-full flex items-center justify-center">
+                                <div id="noImagePlaceholder" class="flex flex-col items-center gap-4 text-[#8da8ce] z-10">
                                     <span class="material-symbols-outlined text-6xl opacity-50">image</span>
                                     <p class="text-sm">No image uploaded</p>
                                     <a href="homepage.html" class="text-primary hover:underline text-sm">Upload an image
                                         to analyze</a>
                                 </div>
-                                <img id="uploadedImage" class="hidden w-full h-full object-contain"
+                                <img id="uploadedImage" class="hidden absolute inset-0 w-full h-full object-contain z-20"
                                     alt="Uploaded image for analysis" />
                             </div>
                             <!-- Analysis Markers (Dynamic - hidden until anomaly detected) -->
