@@ -1,13 +1,22 @@
 """
 Content Extractor
-Extracts main text content from URLs (articles, web pages).
+Extracts main text content from URLs (articles, web pages, PDFs).
 """
 import requests
 import time
+import io
 from bs4 import BeautifulSoup
 from functools import wraps
 from .config import REQUEST_TIMEOUT
 import random
+
+# PDF parsing support (optional dependency)
+try:
+    import PyPDF2
+    PDF_SUPPORT = True
+except ImportError:
+    PDF_SUPPORT = False
+    print("Warning: PyPDF2 not installed. PDF extraction disabled. Install with: pip install PyPDF2")
 
 # List of common User-Agents to rotate
 USER_AGENTS = [
@@ -80,14 +89,18 @@ class ContentExtractor:
     @retry_with_backoff(max_retries=3, initial_delay=1)
     def extract_from_url(self, url: str) -> dict:
         """
-        Extract main content from a URL.
+        Extract main content from a URL (HTML or PDF).
         
         Args:
-            url: Web page URL to extract content from
+            url: Web page URL or PDF URL to extract content from
             
         Returns:
             dict with 'success', 'title', 'content', 'error'
         """
+        # Check if URL is PDF
+        if url.lower().endswith('.pdf'):
+            return self._extract_from_pdf(url)
+        
         try:
             # Create a session for better cookie handling
             session = requests.Session()
@@ -106,6 +119,11 @@ class ContentExtractor:
                 allow_redirects=True
             )
             response.raise_for_status()
+            
+            # Check if response is actually a PDF despite URL
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'application/pdf' in content_type:
+                return self._extract_from_pdf_content(response.content, url)
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
@@ -154,6 +172,97 @@ class ContentExtractor:
                 'content': None,
                 'claims': [],
                 'error': str(e)
+            }
+    
+    def _extract_from_pdf(self, url: str) -> dict:
+        """Extract text from a PDF URL."""
+        if not PDF_SUPPORT:
+            return {
+                'success': False,
+                'url': url,
+                'title': None,
+                'content': None,
+                'claims': [],
+                'error': 'PDF extraction not supported (PyPDF2 not installed)'
+            }
+        
+        try:
+            # Download PDF
+            session = requests.Session()
+            headers = self._get_random_headers()
+            response = session.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            
+            return self._extract_from_pdf_content(response.content, url)
+            
+        except requests.RequestException as e:
+            return {
+                'success': False,
+                'url': url,
+                'title': None,
+                'content': None,
+                'claims': [],
+                'error': f'Failed to download PDF: {str(e)}'
+            }
+    
+    def _extract_from_pdf_content(self, pdf_bytes: bytes, url: str) -> dict:
+        """Extract text from PDF byte content."""
+        if not PDF_SUPPORT:
+            return {
+                'success': False,
+                'url': url,
+                'title': None,
+                'content': None,
+                'claims': [],
+                'error': 'PDF extraction not supported'
+            }
+        
+        try:
+            # Read PDF from bytes
+            pdf_file = io.BytesIO(pdf_bytes)
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            
+            # Extract metadata
+            metadata = pdf_reader.metadata
+            title = metadata.title if metadata and metadata.title else "PDF Document"
+            
+            # Extract text from all pages
+            text_content = []
+            num_pages = len(pdf_reader.pages)
+            
+            # Limit to first 20 pages to avoid excessive processing
+            pages_to_extract = min(num_pages, 20)
+            
+            for page_num in range(pages_to_extract):
+                page = pdf_reader.pages[page_num]
+                page_text = page.extract_text()
+                if page_text:
+                    text_content.append(page_text)
+            
+            full_text = ' '.join(text_content)
+            cleaned_text = self._clean_text(full_text)
+            
+            # Extract claims
+            claims = self._extract_key_claims(cleaned_text)
+            
+            return {
+                'success': True,
+                'url': url,
+                'title': title,
+                'content': cleaned_text[:2500],  # Limit content
+                'claims': claims,
+                'error': None,
+                'pages': num_pages
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'url': url,
+                'title': None,
+                'content': None,
+                'claims': [],
+                'error': f'Failed to parse PDF: {str(e)}'
             }
     
     def _extract_title(self, soup: BeautifulSoup) -> str:

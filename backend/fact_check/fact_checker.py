@@ -268,20 +268,40 @@ class FactChecker:
         )
         
         # Step 3: DEEP SEARCH - Multiple query variations with temporal context
+        # PARALLELIZED for better performance
         all_sources = []
         search_queries = self._generate_search_queries(claim, temporal_context)
         
-        for query in search_queries:
+        print(f"Executing {len(search_queries)} search queries in parallel...")
+        
+        # Parallel search execution
+        def execute_search(query):
+            """Execute a single search query."""
             try:
                 search_results = self.searcher.search(query)
                 sources = search_results.get('sources', [])
                 # Add query origin to each source
                 for source in sources:
                     source['search_query'] = query
-                all_sources.extend(sources)
+                return sources
             except Exception as e:
                 print(f"Search failed for query '{query}': {e}")
-                continue
+                return []
+        
+        # Execute searches concurrently (max 3 at a time to avoid rate limiting)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_query = {executor.submit(execute_search, query): query for query in search_queries}
+            
+            for future in concurrent.futures.as_completed(future_to_query):
+                query = future_to_query[future]
+                try:
+                    sources = future.result()
+                    all_sources.extend(sources)
+                    print(f"✓ Query '{query[:50]}...' returned {len(sources)} sources")
+                except Exception as e:
+                    print(f"✗ Query '{query}' failed with exception: {e}")
+        
+        print(f"Total sources collected: {len(all_sources)}")
         
         # Deduplicate sources by URL
         seen_urls = set()
@@ -291,6 +311,8 @@ class FactChecker:
             if url and url not in seen_urls:
                 seen_urls.add(url)
                 unique_sources.append(source)
+        
+        print(f"Unique sources after deduplication: {len(unique_sources)}")
         
         if not unique_sources:
             return self._build_response(
@@ -314,25 +336,44 @@ class FactChecker:
             print(f"Gap analysis failed: {e}")
 
         if search_queries_round_2:
-            print(f"Identified gaps. Starting Round 2 search with queries: {search_queries_round_2}")
+            print(f"Identified gaps. Starting Round 2 search with {len(search_queries_round_2)} queries...")
             round_2_sources = []
             
+            # Prepare queries with temporal context
+            prepared_queries = []
             for query in search_queries_round_2:
+                # Enforce temporal context in follow-up queries if needed
+                if temporal_context.get('search_year_from') and str(temporal_context['search_year_from']) not in query:
+                    if temporal_context.get('is_historical'):
+                        query = f"{query} {temporal_context['search_year_from']}"
+                prepared_queries.append(query)
+            
+            # Parallel Round 2 search execution
+            def execute_round2_search(query):
+                """Execute a Round 2 search query."""
                 try:
-                    # Enforce temporal context in follow-up queries if needed
-                    # If the query doesn't have a year but we know one, append it
-                    if temporal_context.get('search_year_from') and str(temporal_context['search_year_from']) not in query:
-                         if temporal_context.get('is_historical'):
-                             query = f"{query} {temporal_context['search_year_from']}"
-                    
                     search_results = self.searcher.search(query)
                     r2_sources = search_results.get('sources', [])
                     for source in r2_sources:
                         source['search_query'] = query
                         source['round'] = 2
-                    round_2_sources.extend(r2_sources)
+                    return r2_sources
                 except Exception as e:
                     print(f"Round 2 search failed for '{query}': {e}")
+                    return []
+            
+            # Execute Round 2 searches concurrently
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                future_to_query = {executor.submit(execute_round2_search, q): q for q in prepared_queries}
+                
+                for future in concurrent.futures.as_completed(future_to_query):
+                    query = future_to_query[future]
+                    try:
+                        sources = future.result()
+                        round_2_sources.extend(sources)
+                        print(f"✓ Round 2 query '{query[:50]}...' returned {len(sources)} sources")
+                    except Exception as e:
+                        print(f"✗ Round 2 query '{query}' failed: {e}")
 
             # Process Round 2 sources
             new_unique_sources = []

@@ -19,6 +19,7 @@ binoculars>=0.1.0  # Zero-shot AI text detection (dual Falcon-7B, GPU-only)
 # Document Processing
 PyMuPDF>=1.23.0
 python-docx>=1.0.0
+PyPDF2>=3.0.0  # PDF text extraction for fact-checking
 pandas>=2.0.0
 scikit-learn>=1.3.0
 datasets>=2.14.0
@@ -30,6 +31,7 @@ pillow>=10.0.0
 numpy>=1.24.0
 scipy>=1.11.0
 opencv-python>=4.8.0
+tqdm>=4.65.0  # For model download progress
 
 # Watermark & Content Credentials Detection
 invisible-watermark>=0.2.0  # For Stable Diffusion DWT-DCT/DWT-DCT-SVD watermark detection

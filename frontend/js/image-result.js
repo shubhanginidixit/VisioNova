@@ -1,125 +1,206 @@
 /**
- * VisioNova Result Page - Image Analysis
- * Handles image analysis using the backend API and displays real results
+ * VisioNova Image Analysis - Dynamic Tab-Based Implementation
+ * Follows the fact-check.js pattern for modular content rendering
  */
 
-// API Configuration - Use Flask backend port
+// ============================================================================
+// Configuration & Constants
+// ============================================================================
+
 const API_BASE_URL = 'http://localhost:5000';
+
+// ============================================================================
+// State Management
+// ============================================================================
+
+let currentResult = null;           // Store current analysis result
+let currentTab = 'overview';        // Current active tab
+let currentVisualization = 'original';  // Current visualization view
+let imageData = null;               // Store original image data
+
+// ============================================================================
+// Initialization
+// ============================================================================
 
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('[ImageResult] Page loaded, checking for image data...');
-    console.log('[ImageResult] Current URL:', window.location.href);
-    console.log('[ImageResult] Protocol:', window.location.protocol);
     
-    // Check if accessed via file:// protocol (won't work due to CORS)
+    // Check if accessed via file:// protocol
     if (window.location.protocol === 'file:') {
         console.error('[ImageResult] ERROR: Page opened from file system. CORS will block API calls.');
         displayError('Please access this page through the Flask server (http://localhost:5000) instead of opening the HTML file directly.');
         return;
     }
     
-    const imageData = VisioNovaStorage.getFile('image');
+    // Initialize tab system
+    initTabs();
+    
+    // Initialize button handlers
+    initButtonHandlers();
+    
+    // Load image data from storage
+    imageData = VisioNovaStorage.getFile('image');
     console.log('[ImageResult] Image data found:', imageData ? 'Yes' : 'No');
 
     if (imageData) {
-        console.log('[ImageResult] File name:', imageData.fileName);
-        console.log('[ImageResult] Data length:', imageData.data?.length || 0);
-        
-        // Update page title with filename
-        updateElement('pageTitle', 'Analyzing: ' + imageData.fileName);
-
-        // Update timestamp
-        const date = new Date(imageData.timestamp);
-        updateElement('analysisTime', date.toLocaleDateString() + ' at ' + date.toLocaleTimeString());
-
-        // Display the uploaded image
-        const uploadedImage = document.getElementById('uploadedImage');
-        const placeholder = document.getElementById('noImagePlaceholder');
-
-        console.log('[ImageResult] Image element:', uploadedImage);
-        console.log('[ImageResult] Placeholder element:', placeholder);
-        console.log('[ImageResult] Image data type:', imageData.mimeType);
-        console.log('[ImageResult] Image data preview:', imageData.data?.substring(0, 50));
-
-        if (uploadedImage && imageData.data) {
-            // Set the image source
-            uploadedImage.src = imageData.data;
-            uploadedImage.classList.remove('hidden');
-            uploadedImage.style.display = ''; // Ensure no inline style is hiding it
-            console.log('[ImageResult] Image src set successfully');
-            console.log('[ImageResult] Image classes:', uploadedImage.className);
-            console.log('[ImageResult] Image style.display:', uploadedImage.style.display);
-            
-            // Add error handler for image loading
-            uploadedImage.onerror = function() {
-                console.error('[ImageResult] Failed to load image!');
-                console.error('[ImageResult] Image data was:', imageData.data?.substring(0, 100));
-                displayError('Failed to display image. The image data may be corrupted.');
-            };
-            
-            uploadedImage.onload = function() {
-                console.log('[ImageResult] Image loaded successfully!');
-                console.log('[ImageResult] Image dimensions:', uploadedImage.naturalWidth, 'x', uploadedImage.naturalHeight);
-                console.log('[ImageResult] Image is visible:', uploadedImage.offsetWidth > 0 && uploadedImage.offsetHeight > 0);
-                console.log('[ImageResult] Image offsetWidth:', uploadedImage.offsetWidth, 'offsetHeight:', uploadedImage.offsetHeight);
-                
-                // Update image info
-                updateElement('imgResolution', `${uploadedImage.naturalWidth} x ${uploadedImage.naturalHeight}`);
-                updateElement('imgType', imageData.mimeType || 'Unknown');
-                
-                // Calculate file size (approximate from base64)
-                const sizeInBytes = Math.round((imageData.data.length * 3) / 4);
-                const sizeInKB = (sizeInBytes / 1024).toFixed(1);
-                const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
-                updateElement('imgSize', sizeInBytes > 1024 * 1024 ? `${sizeInMB} MB` : `${sizeInKB} KB`);
-            };
-        } else {
-            console.error('[ImageResult] Missing uploadedImage element or imageData.data');
-        }
-        
-        if (placeholder) {
-            placeholder.classList.add('hidden');
-            console.log('[ImageResult] Placeholder hidden');
-        }
-
-        // Show loading state
-        showLoadingState();
-
-        // Call the backend API for analysis
-        try {
-            console.log('[ImageResult] Calling backend API...');
-            const analysisResult = await analyzeImage(imageData);
-            console.log('[ImageResult] API Response:', analysisResult);
-            displayAnalysisResults(analysisResult, imageData);
-        } catch (error) {
-            console.error('[ImageResult] Analysis failed:', error);
-            // Show real error message to user - do NOT fall back to mock data
-            displayError('API Error: ' + (error.message || 'Could not connect to backend. Ensure Flask server is running on port 5000.'));
-            // Display failed state in UI
-            displayFailedState();
-        }
-
-        // Load text detection result (if AnalysisDashboard stored it)
-        loadTextDetectionResult();
+        await processImageAnalysis(imageData);
     } else {
         console.log('[ImageResult] No image data found in storage');
-        updateElement('analysisTime', 'No analysis performed');
-        updateElement('pageTitle', 'Image Analysis');
-        // Show message to user
         displayError('No image found. Please upload an image from the homepage.');
     }
 });
+
+/**
+ * Initialize tab system
+ */
+function initTabs() {
+    // Tabs are initialized via onclick handlers in HTML
+    // Just ensure we highlight the default tab
+    switchTab('overview');
+}
+
+/**
+ * Initialize button handlers
+ */
+function initButtonHandlers() {
+    // Export PDF button
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', exportToPDF);
+    }
+    
+    // Re-analyze button
+    const reanalyzeBtn = document.getElementById('reanalyzeBtn');
+    if (reanalyzeBtn) {
+        reanalyzeBtn.addEventListener('click', handleReanalyze);
+    }
+}
+
+/**
+ * Process image analysis workflow
+ */
+async function processImageAnalysis(imageData) {
+    try {
+        // Update page metadata
+        updatePageMetadata(imageData);
+        
+        // Display the uploaded image
+        displayUploadedImage(imageData);
+        
+        // Check for pre-fetched results from AnalysisDashboard
+        const prefetchedResult = sessionStorage.getItem('visioNova_image_result');
+        
+        if (prefetchedResult) {
+            console.log('[ImageResult] Using pre-fetched analysis result from AnalysisDashboard');
+            try {
+                const analysisResult = JSON.parse(prefetchedResult);
+                
+                // Clear the pre-fetched result
+                sessionStorage.removeItem('visioNova_image_result');
+                
+                // Store result for tab switching
+                currentResult = analysisResult;
+                
+                // Update status to completed
+                updateStatusBadge('COMPLETED', 'success');
+                
+                // Render overview tab directly
+                renderTabContent(analysisResult, currentTab);
+                
+                console.log('[ImageResult] Pre-fetched result displayed successfully');
+                return;
+            } catch (parseError) {
+                console.error('[ImageResult] Failed to parse pre-fetched result:', parseError);
+                // Fall through to API call
+            }
+        }
+        
+        // No pre-fetched result - call API directly
+        console.log('[ImageResult] No pre-fetched result found, calling API...');
+        
+        // Show loading state
+        showLoadingState();
+        
+        // Call backend API for analysis
+        console.log('[ImageResult] Calling backend API...');
+        const analysisResult = await analyzeImage(imageData);
+        console.log('[ImageResult] API Response:', analysisResult);
+        
+        // Update status to completed
+        updateStatusBadge('COMPLETED', 'success');
+        
+        // Store result for tab switching
+        currentResult = analysisResult;
+        
+        // Render overview tab by default
+        renderTabContent(analysisResult, currentTab);
+        
+        // Hide loading, show success
+        hideLoadingState();
+        
+    } catch (error) {
+        console.error('[ImageResult] Analysis failed:', error);
+        updateStatusBadge('FAILED', 'error');
+        displayError('API Error: ' + (error.message || 'Could not connect to backend. Ensure Flask server is running on port 5000.'));
+        displayFailedState();
+    }
+}
+
+/**
+ * Update page metadata (title, timestamp, etc.)
+ */
+function updatePageMetadata(imageData) {
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) {
+        pageTitle.textContent = 'Analyzing: ' + imageData.fileName;
+    }
+    
+    const analysisTime = document.getElementById('analysisTime');
+    if (analysisTime) {
+        const date = new Date(imageData.timestamp);
+        analysisTime.textContent = date.toLocaleDateString() + ' at ' + date.toLocaleTimeString();
+    }
+    
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusBadge) {
+        statusBadge.textContent = 'ANALYZING...';
+        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20';
+    }
+}
+
+/**
+ * Display the uploaded image
+ */
+function displayUploadedImage(imageData) {
+    const uploadedImage = document.getElementById('uploadedImage');
+    const placeholder = document.getElementById('noImagePlaceholder');
+
+    if (uploadedImage && imageData.data) {
+        uploadedImage.src = imageData.data;
+        uploadedImage.classList.remove('hidden');
+        
+        uploadedImage.onerror = function() {
+            console.error('[ImageResult] Failed to load image!');
+            displayError('Failed to display image. The image data may be corrupted.');
+        };
+        
+        uploadedImage.onload = function() {
+            console.log('[ImageResult] Image loaded successfully!');
+            console.log('[ImageResult] Dimensions:', uploadedImage.naturalWidth, 'x', uploadedImage.naturalHeight);
+        };
+    }
+    
+    if (placeholder) {
+        placeholder.classList.add('hidden');
+    }
+}
 
 /**
  * Call the backend API to analyze the image
  */
 async function analyzeImage(imageData) {
     const apiUrl = `${API_BASE_URL}/api/detect-image`;
-    console.log('[ImageResult] ========== API CALL DEBUG ==========');
     console.log('[ImageResult] API URL:', apiUrl);
-    console.log('[ImageResult] Image filename:', imageData.fileName);
-    console.log('[ImageResult] Image data length:', imageData.data?.length);
-    console.log('[ImageResult] Image mime type:', imageData.mimeType);
     
     try {
         const response = await fetch(apiUrl, {
@@ -134,16 +215,13 @@ async function analyzeImage(imageData) {
                 include_metadata: true,
                 include_watermark: true,
                 include_c2pa: true,
-                include_ai_analysis: true  // Groq Vision AI analysis
+                include_ai_analysis: true
             })
         });
 
-        console.log('[ImageResult] Response status:', response.status);
-        console.log('[ImageResult] Response ok:', response.ok);
-        
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('[ImageResult] Error response body:', errorText);
+            console.error('[ImageResult] Error response:', errorText);
             
             try {
                 const errorData = JSON.parse(errorText);
@@ -154,1203 +232,1535 @@ async function analyzeImage(imageData) {
         }
 
         const result = await response.json();
-        console.log('[ImageResult] Success! Got response with keys:', Object.keys(result));
+        console.log('[ImageResult] Success! Response keys:', Object.keys(result));
         return result;
         
     } catch (error) {
-        console.error('[ImageResult] ========== API CALL FAILED ==========');
-        console.error('[ImageResult] Error type:', error.constructor.name);
-        console.error('[ImageResult] Error message:', error.message);
-        console.error('[ImageResult] Full error:', error);
+        console.error('[ImageResult] API call failed:', error);
         
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            throw new Error('Network error: Cannot reach backend server at ' + API_BASE_URL + '. Make sure Flask is running.');
+            throw new Error('Network error: Cannot reach backend server at ' + API_BASE_URL);
         }
         
         throw error;
     }
 }
 
-    return await response.json();
-}
+// ============================================================================
+// Tab Switching System
+// ============================================================================
 
 /**
- * Show loading state while analyzing
+ * Switch between tabs
  */
-function showLoadingState() {
-    const scoreElement = document.querySelector('.text-5xl.font-black, .text-4xl.font-black');
-    if (scoreElement) {
-        scoreElement.textContent = '...';
-    }
-    
-    // Add loading spinner or pulse animation
-    const verdictElements = document.querySelectorAll('[class*="text-accent-green"], [class*="text-success"]');
-    verdictElements.forEach(el => {
-        if (el.textContent.includes('Authentic') || el.textContent.includes('LIKELY')) {
-            el.textContent = 'ANALYZING...';
-            el.className = el.className.replace(/text-(accent-green|success|accent-red|danger)/g, 'text-gray-400');
+function switchTab(tabName) {
+    currentTab = tabName;
+
+    // Update tab button styles
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(btn => {
+        const btnTabName = btn.id.replace('tab-', '');
+        if (btnTabName === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
         }
     });
-}
 
-/**
- * Display failed state when API call fails
- */
-function displayFailedState() {
-    // Update score to show failure
-    updateElement('scoreValue', '?');
-    
-    // Update score circle to gray
-    const scoreCircle = document.getElementById('scoreCircle');
-    if (scoreCircle) {
-        scoreCircle.setAttribute('stroke-dasharray', '0, 100');
-        scoreCircle.classList.remove('text-accent-green', 'text-red-500');
-        scoreCircle.classList.add('text-gray-500');
-    }
-    
-    // Update glow to gray
-    const scoreGlow = document.getElementById('scoreGlow');
-    if (scoreGlow) {
-        scoreGlow.className = 'absolute top-0 right-0 w-32 h-32 bg-gray-500/10 rounded-full blur-3xl -mr-10 -mt-10';
-    }
-    
-    // Update verdict badge
-    const verdictBadge = document.getElementById('verdictBadge');
-    if (verdictBadge) {
-        verdictBadge.textContent = 'CONNECTION FAILED';
-        verdictBadge.className = 'inline-block px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-bold border border-yellow-500/30';
-    }
-    
-    // Update verdict description
-    updateElement('verdictDescription', 'Could not connect to the analysis backend. Please ensure the Flask server is running on http://localhost:5000');
-    
-    // Update status badge
-    const statusBadge = document.getElementById('statusBadge');
-    if (statusBadge) {
-        statusBadge.textContent = 'FAILED';
-        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20';
-    }
-    
-    // Update cards to show error state
-    updateElement('aiProbValue', '--');
-    updateElement('manipValue', '--');
-    updateElement('manipDetail', 'Backend unavailable');
-    updateElement('metaValue', '--');
-    updateElement('metaDetail', 'Backend unavailable');
-    updateElement('forensicsValue', '--');
-    updateElement('forensicsDetail', 'Backend unavailable');
-    
-    // Update watermark status
-    const watermarkStatus = document.getElementById('watermarkStatus');
-    if (watermarkStatus) {
-        watermarkStatus.textContent = 'Error';
-        watermarkStatus.className = 'text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400';
-    }
-    
-    // Update C2PA status
-    const c2paStatus = document.getElementById('c2paStatus');
-    if (c2paStatus) {
-        c2paStatus.textContent = 'Error';
-        c2paStatus.className = 'text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400';
+    // Re-render content for the selected tab
+    if (currentResult) {
+        renderTabContent(currentResult, tabName);
     }
 }
 
 /**
- * Display real analysis results from the API
+ * Render content based on the selected tab
  */
-function displayAnalysisResults(result, fileData) {
-    // Debug: Log full result to console
-    console.log('[ImageResult] Full API result:', result);
-    console.log('[ImageResult] AI Probability:', result.ai_probability);
-    console.log('[ImageResult] Verdict:', result.verdict);
-    console.log('[ImageResult] Analysis Scores:', result.analysis_scores);
-    
-    if (!result.success) {
-        console.error('[ImageResult] Result not successful:', result.error);
-        displayError(result.error || 'Analysis failed');
-        return;
-    }
+function renderTabContent(result, tabName) {
+    const tabContent = document.getElementById('tab-content');
+    if (!tabContent) return;
 
+    switch (tabName) {
+        case 'overview':
+            tabContent.innerHTML = buildOverviewHTML(result);
+            break;
+        case 'technical':
+            tabContent.innerHTML = buildTechnicalHTML(result);
+            break;
+        case 'metadata':
+            tabContent.innerHTML = buildMetadataHTML(result);
+            break;
+        case 'ai-analysis':
+            tabContent.innerHTML = buildAIAnalysisHTML(result);
+            break;
+        default:
+            tabContent.innerHTML = buildOverviewHTML(result);
+    }
+    
+    // Re-attach event listeners after rendering
+    attachEventListeners();
+}
+
+// ============================================================================
+// Tab Content Builders
+// ============================================================================
+
+/**
+ * Build Overview Tab Content
+ */
+function buildOverviewHTML(result) {
     const aiProbability = result.ai_probability || 50;
-    const authenticityScore = Math.round(100 - aiProbability);
-    const isLikelyAI = aiProbability > 50;
-    const verdict = result.verdict || (isLikelyAI ? 'LIKELY_AI' : 'LIKELY_REAL');
-
-    console.log('[ImageResult] Computed values - aiProb:', aiProbability, 'authScore:', authenticityScore, 'isLikelyAI:', isLikelyAI);
-
-    // Update status badge to COMPLETED
-    const statusBadge = document.getElementById('statusBadge');
-    console.log('[ImageResult] statusBadge element found:', !!statusBadge);
-    if (statusBadge) {
-        statusBadge.textContent = 'COMPLETED';
-        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-accent-green/10 text-accent-green border border-accent-green/20';
+    let verdict = result.verdict || (aiProbability > 50 ? 'LIKELY_AI' : 'LIKELY_REAL');
+    
+    // If watermark detected or C2PA confirms AI, authenticity = 0 and verdict = AI_GENERATED
+    let authenticityScore = Math.round(100 - aiProbability);
+    if (result.watermark?.watermark_detected || result.content_credentials?.is_ai_generated) {
+        authenticityScore = 0;
+        verdict = 'AI_GENERATED';
     }
     
-    // Generate and show analysis ID
-    const analysisId = document.getElementById('analysisId');
-    if (analysisId) {
-        const id = Math.random().toString(36).substring(2, 10).toUpperCase();
-        analysisId.textContent = `ID: #${id}`;
-    }
-
-    // Show anomaly marker if AI detected or manipulation found
-    const anomalyMarker = document.getElementById('anomalyMarker');
-    if (anomalyMarker && isLikelyAI) {
-        anomalyMarker.classList.remove('hidden');
-    }
-
-    // Update page title
-    updateElement('pageTitle', 'Analysis: ' + fileData.fileName);
-
-    // Update overall score value
-    const scoreValue = document.getElementById('scoreValue');
-    if (scoreValue) {
-        scoreValue.textContent = authenticityScore;
-    }
-
-    // Update score circle (SVG path)
-    const scoreCircle = document.getElementById('scoreCircle');
-    if (scoreCircle) {
-        scoreCircle.setAttribute('stroke-dasharray', `${authenticityScore}, 100`);
-        // Change color based on score
-        if (isLikelyAI) {
-            scoreCircle.classList.remove('text-accent-green');
-            scoreCircle.classList.add('text-red-500');
-            // Remove green shadow and add red shadow
-            scoreCircle.classList.remove('drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]');
-            scoreCircle.classList.add('drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]');
-        } else {
-            scoreCircle.classList.remove('text-red-500');
-            scoreCircle.classList.add('text-accent-green');
-            // Remove red shadow and add green shadow
-            scoreCircle.classList.remove('drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]');
-            scoreCircle.classList.add('drop-shadow-[0_0_8px_rgba(0,217,145,0.5)]');
-        }
-    }
-
-    // Update glow color
-    const scoreGlow = document.getElementById('scoreGlow');
-    if (scoreGlow) {
-        scoreGlow.className = isLikelyAI ? 
-            'absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -mr-10 -mt-10' :
-            'absolute top-0 right-0 w-32 h-32 bg-accent-green/10 rounded-full blur-3xl -mr-10 -mt-10';
-    }
-
-    // Update verdict badge
-    const verdictBadge = document.getElementById('verdictBadge');
-    if (verdictBadge) {
-        const verdictText = getVerdictText(verdict);
-        verdictBadge.textContent = verdictText;
-        if (isLikelyAI) {
-            verdictBadge.className = 'inline-block px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30';
-        } else {
-            verdictBadge.className = 'inline-block px-3 py-1 rounded-full bg-accent-green/20 text-accent-green text-xs font-bold border border-accent-green/30';
-        }
-    }
-
-    // Update verdict description
-    const verdictDesc = document.getElementById('verdictDescription');
-    if (verdictDesc) {
-        verdictDesc.textContent = result.verdict_description || getVerdictDescription(result, authenticityScore);
-    }
-
-    // Update AI Probability card
-    updateElement('aiProbValue', `${Math.round(aiProbability)}%`);
-    const aiProbBar = document.getElementById('aiProbBar');
-    if (aiProbBar) {
-        aiProbBar.style.width = `${aiProbability}%`;
-        aiProbBar.className = aiProbability > 50 ? 
-            'bg-red-500 h-full rounded-full transition-all duration-500' :
-            'bg-accent-blue h-full rounded-full transition-all duration-500';
-    }
-    const aiProbIcon = document.getElementById('aiProbIcon');
-    if (aiProbIcon) {
-        aiProbIcon.className = aiProbability > 50 ?
-            'material-symbols-outlined text-red-500 text-lg group-hover:scale-110 transition-transform' :
-            'material-symbols-outlined text-accent-blue text-lg group-hover:scale-110 transition-transform';
-    }
-
-    // Update Manipulation card
-    updateManipulationCard(result);
-
-    // Update Metadata card
-    updateMetadataCard(result);
-
-    // Update Forensics card
-    updateForensicsCard(result);
-
-    // Update file info bar
-    updateFileInfoBar(result, fileData);
-
-    // Update analysis scores from API
-    if (result.analysis_scores) {
-        updateAnalysisScores(result.analysis_scores);
-    }
-
-    // Update metadata analysis
-    if (result.metadata) {
-        updateMetadataDisplay(result.metadata);
-    }
-
-    // Update ELA display
-    if (result.ela) {
-        updateELADisplay(result.ela);
-    }
-
-    // Update watermark detection display
-    if (result.watermark) {
-        updateWatermarkDisplay(result.watermark);
-    } else {
-        // Set default "not checked" state
-        updateWatermarkDisplay({ watermark_detected: false, status: 'NOT_CHECKED' });
-    }
-
-    // Update Content Credentials (C2PA) display
-    if (result.content_credentials) {
-        updateC2PADisplay(result.content_credentials);
-    } else {
-        // Set default "not checked" state
-        updateC2PADisplay({ c2pa_found: false, status: 'NOT_CHECKED' });
-    }
-
-    // Update AI Analysis display (Groq Vision - Llama 4 Scout)
-    if (result.ai_analysis) {
-        updateAIAnalysisDisplay(result.ai_analysis);
-    }
-
-    // Animate progress bars based on actual scores
-    animateProgressBarsWithScores(result.analysis_scores || {});
-
-    // Store result for potential export
-    sessionStorage.setItem('visioNova_image_result', JSON.stringify(result));
-}
-
-/**
- * Get human-readable verdict text
- */
-function getVerdictText(verdict) {
-    const verdictMap = {
-        'AI_GENERATED': 'AI GENERATED',
-        'LIKELY_AI': 'LIKELY AI GENERATED',
-        'UNCERTAIN': 'UNCERTAIN',
-        'LIKELY_REAL': 'LIKELY AUTHENTIC',
-        'REAL': 'AUTHENTIC',
-        'ERROR': 'ANALYSIS ERROR'
-    };
-    return verdictMap[verdict] || verdict;
-}
-
-/**
- * Generate verdict description based on analysis results
- */
-function getVerdictDescription(result, score) {
-    const aiProb = result.ai_probability || 50;
+    const verdictConfig = getVerdictConfig(verdict);
     
-    if (aiProb > 80) {
-        return 'This image shows strong indicators of AI generation including synthetic patterns and potential watermarks.';
-    } else if (aiProb > 50) {
-        return 'This image shows some characteristics consistent with AI generation. Further manual review recommended.';
-    } else if (aiProb > 30) {
-        return 'This image shows minor inconsistencies but maintains reasonable integrity in metadata and pixel structure.';
-    } else {
-        return 'This image appears authentic with consistent metadata, natural noise patterns, and no AI generation signatures detected.';
-    }
-}
-
-/**
- * Update the Manipulation card with real data
- */
-function updateManipulationCard(result) {
-    const manipValue = document.getElementById('manipValue');
-    const manipDetail = document.getElementById('manipDetail');
-    const manipIcon = document.getElementById('manipIcon');
-    
-    // Check for manipulation from ELA or metadata
-    const ela = result.ela || {};
-    const manipLevel = ela.manipulation_likelihood || 0;
-    const cloneDetected = ela.clone_detected || false;
-    
-    if (cloneDetected || manipLevel > 60) {
-        if (manipValue) manipValue.textContent = 'Detected';
-        if (manipDetail) {
-            manipDetail.textContent = cloneDetected ? 'Cloning artifacts found' : `${Math.round(manipLevel)}% likelihood`;
-            manipDetail.className = 'text-[10px] text-red-400 mt-1';
-        }
-        if (manipIcon) {
-            manipIcon.textContent = 'warning';
-            manipIcon.className = 'material-symbols-outlined text-red-500 text-lg group-hover:scale-110 transition-transform';
-        }
-    } else if (manipLevel > 30) {
-        if (manipValue) manipValue.textContent = 'Possible';
-        if (manipDetail) {
-            manipDetail.textContent = `${Math.round(manipLevel)}% likelihood`;
-            manipDetail.className = 'text-[10px] text-yellow-400 mt-1';
-        }
-        if (manipIcon) {
-            manipIcon.textContent = 'help';
-            manipIcon.className = 'material-symbols-outlined text-yellow-400 text-lg group-hover:scale-110 transition-transform';
-        }
-    } else {
-        if (manipValue) manipValue.textContent = 'None';
-        if (manipDetail) {
-            manipDetail.textContent = 'No cloning detected';
-            manipDetail.className = 'text-[10px] text-[#8da8ce] mt-1';
-        }
-        if (manipIcon) {
-            manipIcon.textContent = 'check_circle';
-            manipIcon.className = 'material-symbols-outlined text-accent-green text-lg group-hover:scale-110 transition-transform';
-        }
-    }
-}
-
-/**
- * Update the Metadata card with real data
- */
-function updateMetadataCard(result) {
-    const metaValue = document.getElementById('metaValue');
-    const metaDetail = document.getElementById('metaDetail');
-    const metaIcon = document.getElementById('metaIcon');
-    
-    const metadata = result.metadata || {};
-    const hasExif = metadata.has_exif || false;
-    const isComplete = metadata.is_complete || false;
-    const stripped = metadata.exif_stripped || false;
-    const aiTool = metadata.ai_tool_detected;
-    
-    if (aiTool) {
-        if (metaValue) metaValue.textContent = 'AI Tool';
-        if (metaDetail) {
-            metaDetail.textContent = `${aiTool} detected`;
-            metaDetail.className = 'text-[10px] text-red-400 mt-1';
-        }
-        if (metaIcon) {
-            metaIcon.textContent = 'warning';
-            metaIcon.className = 'material-symbols-outlined text-red-500 text-lg group-hover:scale-110 transition-transform';
-        }
-    } else if (!hasExif || stripped) {
-        if (metaValue) metaValue.textContent = 'Partial';
-        if (metaDetail) {
-            metaDetail.textContent = 'EXIF data stripped';
-            metaDetail.className = 'text-[10px] text-yellow-400 mt-1';
-        }
-        if (metaIcon) {
-            metaIcon.textContent = 'warning';
-            metaIcon.className = 'material-symbols-outlined text-yellow-400 text-lg group-hover:scale-110 transition-transform';
-        }
-    } else if (isComplete) {
-        if (metaValue) metaValue.textContent = 'Complete';
-        if (metaDetail) {
-            metaDetail.textContent = 'All metadata intact';
-            metaDetail.className = 'text-[10px] text-[#8da8ce] mt-1';
-        }
-        if (metaIcon) {
-            metaIcon.textContent = 'check_circle';
-            metaIcon.className = 'material-symbols-outlined text-accent-green text-lg group-hover:scale-110 transition-transform';
-        }
-    } else {
-        if (metaValue) metaValue.textContent = 'Present';
-        if (metaDetail) {
-            metaDetail.textContent = 'Basic metadata found';
-            metaDetail.className = 'text-[10px] text-[#8da8ce] mt-1';
-        }
-        if (metaIcon) {
-            metaIcon.textContent = 'info';
-            metaIcon.className = 'material-symbols-outlined text-accent-blue text-lg group-hover:scale-110 transition-transform';
-        }
-    }
-}
-
-/**
- * Update the Forensics card with real data
- */
-function updateForensicsCard(result) {
-    const forensicsValue = document.getElementById('forensicsValue');
-    const forensicsDetail = document.getElementById('forensicsDetail');
-    const forensicsIcon = document.getElementById('forensicsIcon');
-    
-    const scores = result.analysis_scores || {};
-    const noiseConsistency = scores.noise_consistency || 50;
-    const ela = result.ela || {};
-    const elaScore = ela.ela_score || 50;
-    
-    // Average forensics score
-    const forensicsScore = (noiseConsistency + (100 - elaScore)) / 2;
-    
-    if (forensicsScore > 70) {
-        if (forensicsValue) forensicsValue.textContent = 'Pass';
-        if (forensicsDetail) {
-            forensicsDetail.textContent = 'Noise consistency OK';
-            forensicsDetail.className = 'text-[10px] text-[#8da8ce] mt-1';
-        }
-        if (forensicsIcon) {
-            forensicsIcon.textContent = 'security';
-            forensicsIcon.className = 'material-symbols-outlined text-accent-green text-lg group-hover:scale-110 transition-transform';
-        }
-    } else if (forensicsScore > 40) {
-        if (forensicsValue) forensicsValue.textContent = 'Warning';
-        if (forensicsDetail) {
-            forensicsDetail.textContent = 'Minor anomalies found';
-            forensicsDetail.className = 'text-[10px] text-yellow-400 mt-1';
-        }
-        if (forensicsIcon) {
-            forensicsIcon.textContent = 'shield';
-            forensicsIcon.className = 'material-symbols-outlined text-yellow-400 text-lg group-hover:scale-110 transition-transform';
-        }
-    } else {
-        if (forensicsValue) forensicsValue.textContent = 'Fail';
-        if (forensicsDetail) {
-            forensicsDetail.textContent = 'Significant anomalies';
-            forensicsDetail.className = 'text-[10px] text-red-400 mt-1';
-        }
-        if (forensicsIcon) {
-            forensicsIcon.textContent = 'gpp_bad';
-            forensicsIcon.className = 'material-symbols-outlined text-red-500 text-lg group-hover:scale-110 transition-transform';
-        }
-    }
-}
-
-/**
- * Update the file info bar at bottom of image
- */
-function updateFileInfoBar(result, fileData) {
-    const metadata = result.metadata || {};
-    const dimensions = result.dimensions || {};
-    
-    // Update resolution (from dimensions or metadata)
-    const resolution = document.getElementById('imgResolution');
-    if (resolution) {
-        const width = dimensions.width || metadata.width;
-        const height = dimensions.height || metadata.height;
-        if (width && height) {
-            resolution.textContent = `${width} x ${height}`;
-        } else {
-            resolution.textContent = 'Unknown';
-        }
-    }
-    
-    // Update file size
-    const sizeEl = document.getElementById('imgSize');
-    if (sizeEl) {
-        const bytes = result.file_size_bytes || (fileData.data.length * 0.75);
-        sizeEl.textContent = formatFileSize(bytes);
-    }
-    
-    // Update file type
-    const typeEl = document.getElementById('imgType');
-    if (typeEl) {
-        const ext = fileData.fileName.split('.').pop()?.toUpperCase() || 'IMG';
-        typeEl.textContent = result.format?.toUpperCase() || metadata.format?.toUpperCase() || ext;
-    }
-}
-
-/**
- * Update analysis score displays
- */
-function updateAnalysisScores(scores) {
-    console.log('[ImageResult] updateAnalysisScores called with:', scores);
-    
-    // Map score names to display elements
-    const scoreMapping = {
-        'noise_consistency': 'noiseScore',
-        'frequency_anomaly': 'frequencyScore',
-        'color_uniformity': 'colorScore',
-        'edge_naturalness': 'edgeScore',
-        'texture_quality': 'textureScore'
-    };
-
-    for (const [apiKey, elementId] of Object.entries(scoreMapping)) {
-        if (scores[apiKey] !== undefined) {
-            const value = Math.round(scores[apiKey]);
-            console.log(`[ImageResult] Updating ${elementId} with value: ${value}%`);
-            updateElement(elementId, `${value}%`);
-            
-            // Update progress bar if exists
-            const bar = document.getElementById(`${elementId}Bar`);
-            console.log(`[ImageResult] Bar element ${elementId}Bar found:`, !!bar);
-            if (bar) {
-                bar.style.width = `${value}%`;
-                bar.style.backgroundColor = value > 60 ? '#FF4A4A' : value > 30 ? '#FFC107' : '#00D991';
-            }
-        } else {
-            console.log(`[ImageResult] No value for ${apiKey} in scores`);
-        }
-    }
-}
-
-/**
- * Update metadata display section
- */
-function updateMetadataDisplay(metadata) {
-    // Update EXIF status
-    const exifStatus = document.getElementById('exifStatus');
-    if (exifStatus) {
-        if (metadata.has_exif) {
-            exifStatus.innerHTML = '<span class="material-symbols-outlined text-sm text-green-400">check_circle</span> EXIF Data Present';
-        } else {
-            exifStatus.innerHTML = '<span class="material-symbols-outlined text-sm text-yellow-400">warning</span> No EXIF Data (Suspicious)';
-        }
-    }
-
-    // Update camera info
-    if (metadata.camera_make || metadata.camera_model) {
-        updateElement('cameraInfo', `${metadata.camera_make || ''} ${metadata.camera_model || ''}`.trim());
-    } else {
-        updateElement('cameraInfo', 'No camera information');
-    }
-
-    // Update software detection
-    if (metadata.ai_software_detected) {
-        updateElement('softwareInfo', `${metadata.software_detected} (AI)`);
-        const softwareEl = document.getElementById('softwareInfo');
-        if (softwareEl) softwareEl.className = 'text-red-400 font-medium';
-    } else if (metadata.software_detected) {
-        updateElement('softwareInfo', metadata.software_detected);
-    } else {
-        updateElement('softwareInfo', 'Unknown');
-    }
-
-    // Display anomalies
-    if (metadata.anomalies && metadata.anomalies.length > 0) {
-        const anomaliesList = document.getElementById('anomaliesList');
-        if (anomaliesList) {
-            anomaliesList.innerHTML = metadata.anomalies
-                .map(a => `<li class="text-yellow-400 text-sm">⚠️ ${a}</li>`)
-                .join('');
-        }
-    }
-}
-
-/**
- * Update ELA display section
- */
-function updateELADisplay(ela) {
-    if (!ela.success) return;
-
-    // Update ELA image if element exists
-    const elaImage = document.getElementById('elaImage');
-    if (elaImage && ela.ela_image) {
-        elaImage.src = `data:image/png;base64,${ela.ela_image}`;
-        elaImage.classList.remove('hidden');
-    }
-
-    // Update manipulation likelihood
-    updateElement('manipulationScore', `${Math.round(ela.manipulation_likelihood || 0)}%`);
-
-    // Update suspicious regions count
-    if (ela.suspicious_regions) {
-        updateElement('suspiciousRegions', `${ela.suspicious_regions.length} region(s) detected`);
-    }
-}
-
-/**
- * Update Watermark detection display
- */
-function updateWatermarkDisplay(watermark) {
-    const statusEl = document.getElementById('watermarkStatus');
-    const detectedEl = document.getElementById('wm_detected');
-    const typeEl = document.getElementById('wm_type');
-    const confidenceEl = document.getElementById('wm_confidence');
-    const detailsList = document.getElementById('wm_details_list');
-
-    // Clear previous details
-    if (detailsList) detailsList.innerHTML = '';
-
-    if (watermark.watermark_detected) {
-        if (statusEl) {
-            statusEl.textContent = 'FOUND';
-            statusEl.className = 'text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-medium';
-        }
-        if (detectedEl) {
-            detectedEl.textContent = 'Yes';
-            detectedEl.className = 'text-red-400 font-semibold';
-        }
-        if (typeEl) {
-            typeEl.textContent = watermark.watermark_type || 'Unknown';
-            typeEl.className = 'text-white';
-        }
-        if (confidenceEl) {
-            confidenceEl.textContent = `${watermark.confidence || 0}%`;
-            confidenceEl.className = watermark.confidence > 70 ? 'text-red-400 font-semibold' : 'text-yellow-400';
-        }
-        
-        // Add AI generator signature if found
-        if (watermark.ai_generator_signature && detailsList) {
-            detailsList.innerHTML += `<div class="flex items-center gap-2 text-red-400 mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
-                <span class="material-symbols-outlined text-sm">warning</span>
-                <span>AI Generator: <strong>${watermark.ai_generator_signature}</strong></span>
-            </div>`;
-        }
-    } else {
-        if (statusEl) {
-            statusEl.textContent = 'NOT FOUND';
-            statusEl.className = 'text-[10px] px-2 py-0.5 rounded bg-green-500/20 text-green-400 font-medium';
-        }
-        if (detectedEl) {
-            detectedEl.textContent = 'No';
-            detectedEl.className = 'text-green-400';
-        }
-        if (typeEl) {
-            typeEl.textContent = 'None detected';
-            typeEl.className = 'text-[#8da8ce]';
-        }
-        if (confidenceEl) {
-            confidenceEl.textContent = 'N/A';
-            confidenceEl.className = 'text-[#8da8ce]';
-        }
-    }
-
-    // Add detection method details
-    if (detailsList && watermark.details && watermark.details.length > 0) {
-        const detailsHtml = watermark.details.map(d => {
-            const isWarning = d.includes('⚠️') || d.includes('Experimental');
-            const isMatch = d.includes('Matched') || d.includes('detected');
-            const colorClass = isWarning ? 'text-yellow-400' : (isMatch ? 'text-red-400' : 'text-[#8da8ce]');
-            return `<div class="${colorClass} text-xs">• ${d}</div>`;
-        }).join('');
-        detailsList.innerHTML += `<div class="mt-2 space-y-1">${detailsHtml}</div>`;
-    }
-
-    // Show detection methods summary
-    if (detailsList && watermark.detection_methods) {
-        const methods = watermark.detection_methods;
-        let methodsSummary = '<div class="mt-3 pt-2 border-t border-[#20324b]">';
-        methodsSummary += '<p class="text-[#64748b] text-[10px] uppercase tracking-wider mb-2">Detection Methods:</p>';
-        methodsSummary += '<div class="grid grid-cols-2 gap-1 text-[10px]">';
-        
-        const methodNames = {
-            'invisible_watermark': 'DWT-DCT',
-            'spectral_analysis': 'Spectral',
-            'lsb_analysis': 'LSB',
-            'metadata_watermark': 'Metadata',
-            'treering_analysis': 'Tree-Ring',
-            'adversarial_analysis': 'Adversarial',
-            'steganogan': 'SteganoGAN',
-            'synthid': 'SynthID'
-        };
-        
-        for (const [key, value] of Object.entries(methods)) {
-            const name = methodNames[key] || key;
-            const detected = value.detected || value.found || value.patterns_found || value.anomaly_detected;
-            const icon = detected ? '✓' : '✗';
-            const color = detected ? 'text-green-400' : 'text-[#64748b]';
-            const note = value.note ? ` <span class="text-yellow-500">(${value.note.substring(0, 20)}...)</span>` : '';
-            methodsSummary += `<div class="${color}">${icon} ${name}${note}</div>`;
-        }
-        
-        methodsSummary += '</div></div>';
-        detailsList.innerHTML += methodsSummary;
-    }
-}
-
-/**
- * Update Content Credentials (C2PA) display
- */
-function updateC2PADisplay(c2pa) {
-    const statusEl = document.getElementById('c2paStatus');
-    const foundEl = document.getElementById('c2pa_found');
-    const aiGenEl = document.getElementById('c2pa_ai_generated');
-    const generatorEl = document.getElementById('c2pa_generator');
-    const signatureEl = document.getElementById('c2pa_signature');
-    const provenanceEl = document.getElementById('c2pa_provenance');
-
-    // Clear previous content
-    if (provenanceEl) provenanceEl.innerHTML = '';
-
-    if (c2pa.c2pa_found || c2pa.has_content_credentials) {
-        if (statusEl) {
-            statusEl.textContent = 'VERIFIED';
-            statusEl.className = 'text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium';
-        }
-        if (foundEl) {
-            foundEl.textContent = 'Yes';
-            foundEl.className = 'text-blue-400 font-semibold';
-        }
-        
-        if (c2pa.is_ai_generated) {
-            if (aiGenEl) {
-                aiGenEl.textContent = 'Yes';
-                aiGenEl.className = 'text-red-400 font-semibold';
-            }
-            if (generatorEl) {
-                generatorEl.textContent = c2pa.ai_generator || 'Unknown AI Tool';
-                generatorEl.className = 'text-red-400 font-semibold';
-            }
-        } else {
-            if (aiGenEl) {
-                aiGenEl.textContent = 'No';
-                aiGenEl.className = 'text-green-400';
-            }
-            if (generatorEl) {
-                generatorEl.textContent = c2pa.generator_info?.name || 'Camera/Editor';
-                generatorEl.className = 'text-[#8da8ce]';
-            }
-        }
-        
-        if (signatureEl) {
-            if (c2pa.signature_valid === true) {
-                signatureEl.textContent = 'Valid ✓';
-                signatureEl.className = 'text-green-400 font-semibold';
-            } else if (c2pa.signature_valid === false) {
-                signatureEl.textContent = 'Invalid ✗';
-                signatureEl.className = 'text-red-400 font-semibold';
-            } else {
-                signatureEl.textContent = 'Unknown';
-                signatureEl.className = 'text-yellow-400';
-            }
-        }
-        
-        // Show provenance chain
-        if (provenanceEl && c2pa.provenance_chain && c2pa.provenance_chain.length > 0) {
-            provenanceEl.innerHTML = `
-                <div class="mt-3 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                    <p class="text-blue-400 text-xs font-medium mb-2 flex items-center gap-1">
-                        <span class="material-symbols-outlined text-sm">account_tree</span>
-                        Provenance Chain
-                    </p>
-                    ${c2pa.provenance_chain.map((p, i) => `<div class="text-white text-xs pl-2 border-l-2 border-blue-500/30 mb-1">${i + 1}. ${p}</div>`).join('')}
-                </div>
-            `;
-        }
-        
-        // Show trust indicators
-        if (c2pa.trust_indicators && provenanceEl) {
-            const trustScore = c2pa.trust_indicators.trust_score || 0;
-            const trustColor = trustScore > 70 ? 'green' : (trustScore > 40 ? 'yellow' : 'red');
-            provenanceEl.innerHTML += `
-                <div class="mt-2 p-2 bg-[#20324b]/50 rounded-lg">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-[#8da8ce] text-xs">Trust Score</span>
-                        <span class="text-${trustColor}-400 text-xs font-semibold">${trustScore}/100</span>
-                    </div>
-                    <div class="bg-[#20324b] h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-${trustColor}-400 h-full rounded-full transition-all duration-500" style="width: ${trustScore}%"></div>
-                    </div>
-                </div>
-            `;
-        }
-    } else {
-        if (statusEl) {
-            statusEl.textContent = 'NOT FOUND';
-            statusEl.className = 'text-[10px] px-2 py-0.5 rounded bg-[#20324b] text-[#8da8ce]';
-        }
-        if (foundEl) {
-            foundEl.textContent = 'No';
-            foundEl.className = 'text-[#8da8ce]';
-        }
-        if (aiGenEl) {
-            aiGenEl.textContent = 'Unknown';
-            aiGenEl.className = 'text-[#8da8ce]';
-        }
-        if (generatorEl) {
-            generatorEl.textContent = 'N/A';
-            generatorEl.className = 'text-[#8da8ce]';
-        }
-        if (signatureEl) {
-            signatureEl.textContent = 'N/A';
-            signatureEl.className = 'text-[#8da8ce]';
-        }
-        
-        if (provenanceEl) {
-            provenanceEl.innerHTML = `
-                <div class="mt-2 p-2 bg-[#20324b]/30 rounded-lg text-[#64748b] text-xs">
-                    <span class="material-symbols-outlined text-sm align-middle mr-1">info</span>
-                    No C2PA Content Credentials found. This doesn't mean the image is fake - most images don't have C2PA yet.
-                </div>
-            `;
-        }
-    }
-
-    // Show details
-    if (provenanceEl && c2pa.details && c2pa.details.length > 0) {
-        const detailsHtml = c2pa.details.map(d => `<div class="text-[#8da8ce] text-xs">• ${d}</div>`).join('');
-        provenanceEl.innerHTML += `<div class="mt-2 space-y-1">${detailsHtml}</div>`;
-    }
-}
-
-/**
- * Update AI Analysis display (Groq Vision - Llama 4 Scout)
- */
-function updateAIAnalysisDisplay(aiAnalysis) {
-    // Find or create the AI Analysis container
-    let aiAnalysisContainer = document.getElementById('aiAnalysisContainer');
-    
-    if (!aiAnalysisContainer) {
-        // Create the container if it doesn't exist
-        const detailsSection = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.gap-6') || 
-                               document.querySelector('.space-y-6');
-        if (detailsSection) {
-            aiAnalysisContainer = document.createElement('div');
-            aiAnalysisContainer.id = 'aiAnalysisContainer';
-            aiAnalysisContainer.className = 'bg-[#132337] rounded-xl p-5 border border-[#2a3f5a] shadow-lg md:col-span-2';
-            detailsSection.appendChild(aiAnalysisContainer);
-        }
-    }
-    
-    if (!aiAnalysisContainer) return;
-    
-    const visualAnalysis = aiAnalysis.visual_analysis || {};
-    const explanation = aiAnalysis.explanation || {};
-    const combinedVerdict = aiAnalysis.combined_verdict || {};
-    const success = aiAnalysis.success !== false;
-    
-    // Determine status color
-    const isLikelyAI = visualAnalysis.is_likely_ai_generated === true;
-    const statusColor = isLikelyAI ? 'red' : (visualAnalysis.is_likely_ai_generated === false ? 'green' : 'yellow');
-    const statusText = isLikelyAI ? 'AI DETECTED' : (visualAnalysis.is_likely_ai_generated === false ? 'LIKELY AUTHENTIC' : 'ANALYZING...');
-    
-    // Build artifacts list
-    let artifactsHtml = '';
-    if (visualAnalysis.visual_artifacts_found && visualAnalysis.visual_artifacts_found.length > 0) {
-        artifactsHtml = visualAnalysis.visual_artifacts_found.map(artifact => {
-            const severityColor = artifact.severity === 'high' ? 'red' : (artifact.severity === 'medium' ? 'yellow' : 'blue');
-            return `
-                <div class="flex items-start gap-2 p-2 bg-${severityColor}-500/10 rounded-lg border border-${severityColor}-500/20">
-                    <span class="material-symbols-outlined text-${severityColor}-400 text-sm mt-0.5">warning</span>
-                    <div>
-                        <span class="text-${severityColor}-400 text-xs font-medium">${artifact.type || 'Unknown'}</span>
-                        <p class="text-[#8da8ce] text-xs mt-0.5">${artifact.description || ''}</p>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    } else if (success) {
-        artifactsHtml = `
-            <div class="flex items-center gap-2 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
-                <span class="material-symbols-outlined text-green-400 text-sm">check_circle</span>
-                <span class="text-green-400 text-xs">No obvious visual artifacts detected</span>
-            </div>
-        `;
-    }
-    
-    // Build findings list
-    let findingsHtml = '';
-    if (explanation.key_findings && explanation.key_findings.length > 0) {
-        findingsHtml = explanation.key_findings.map(finding => `
-            <li class="text-[#8da8ce] text-xs flex items-start gap-2">
-                <span class="material-symbols-outlined text-accent-blue text-sm mt-0.5">arrow_right</span>
-                <span>${finding}</span>
-            </li>
-        `).join('');
-    }
-    
-    // Build areas of concern
-    let concernsHtml = '';
-    if (visualAnalysis.areas_of_concern && visualAnalysis.areas_of_concern.length > 0) {
-        concernsHtml = `
-            <div class="mt-3">
-                <p class="text-yellow-400 text-xs font-medium mb-2 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">visibility</span>
-                    Areas of Concern
-                </p>
-                <div class="flex flex-wrap gap-1">
-                    ${visualAnalysis.areas_of_concern.map(area => `
-                        <span class="px-2 py-0.5 bg-yellow-500/10 text-yellow-400 text-xs rounded-full border border-yellow-500/20">${area}</span>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Build authentic indicators
-    let authenticHtml = '';
-    if (visualAnalysis.authentic_indicators && visualAnalysis.authentic_indicators.length > 0) {
-        authenticHtml = `
-            <div class="mt-3">
-                <p class="text-green-400 text-xs font-medium mb-2 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">verified</span>
-                    Authentic Indicators
-                </p>
-                <div class="flex flex-wrap gap-1">
-                    ${visualAnalysis.authentic_indicators.map(indicator => `
-                        <span class="px-2 py-0.5 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">${indicator}</span>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Build recommendations
-    let recommendationsHtml = '';
-    if (explanation.recommendations && explanation.recommendations.length > 0) {
-        recommendationsHtml = `
-            <div class="mt-4 p-3 bg-accent-blue/10 rounded-lg border border-accent-blue/20">
-                <p class="text-accent-blue text-xs font-medium mb-2 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">tips_and_updates</span>
-                    Recommendations
-                </p>
-                <ul class="space-y-1">
-                    ${explanation.recommendations.map(rec => `
-                        <li class="text-[#8da8ce] text-xs flex items-start gap-2">
-                            <span class="text-accent-blue">•</span>
-                            <span>${rec}</span>
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    aiAnalysisContainer.innerHTML = `
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-white font-semibold flex items-center gap-2">
-                <span class="material-symbols-outlined text-accent-purple">psychology</span>
-                AI Vision Analysis
-                <span class="text-[10px] px-2 py-0.5 rounded bg-accent-purple/20 text-accent-purple ml-2">Llama 4 Scout</span>
-            </h3>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-${statusColor}-500/20 text-${statusColor}-400 font-medium">
-                ${statusText}
-            </span>
-        </div>
-        
-        <!-- Summary -->
-        <div class="p-3 bg-[#0d1a29] rounded-lg mb-4">
-            <p class="text-white text-sm leading-relaxed">${explanation.summary || visualAnalysis.overall_assessment || 'AI visual analysis completed.'}</p>
-        </div>
-        
-        <!-- Visual Analysis Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Visual Artifacts -->
-            <div>
-                <p class="text-[#8da8ce] text-xs font-medium mb-2 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">image_search</span>
-                    Visual Artifacts Analysis
-                </p>
-                <div class="space-y-2">
-                    ${artifactsHtml}
-                </div>
-                ${concernsHtml}
-                ${authenticHtml}
+    return `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Image Viewer & Visualizations -->
+            <div class="lg:col-span-2 space-y-6">
+                ${buildImageViewerCard(result)}
+                ${buildQuickMetricsGrid(result)}
             </div>
             
-            <!-- Key Findings -->
-            <div>
-                <p class="text-[#8da8ce] text-xs font-medium mb-2 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm">analytics</span>
-                    Key Findings
-                </p>
-                <ul class="space-y-2">
-                    ${findingsHtml || '<li class="text-[#64748b] text-xs">No specific findings to report</li>'}
-                </ul>
-                
-                <!-- Confidence -->
-                ${explanation.confidence_explanation ? `
-                <div class="mt-4 p-3 bg-[#20324b]/50 rounded-lg">
-                    <p class="text-[#8da8ce] text-xs font-medium mb-1">Confidence Note</p>
-                    <p class="text-[#64748b] text-xs">${explanation.confidence_explanation}</p>
-                </div>
-                ` : ''}
+            <!-- Right Column: Score & Summary -->
+            <div class="space-y-6">
+                ${buildScoreCard(result, authenticityScore, verdictConfig)}
+                ${buildVerificationSummaryCard(result)}
+                ${buildQuickActionsCard()}
             </div>
         </div>
         
-        ${recommendationsHtml}
-        
-        <!-- Combined Analysis Score -->
-        ${combinedVerdict.combined_probability !== undefined ? `
-        <div class="mt-4 p-3 bg-[#20324b]/30 rounded-lg border border-[#2a3f5a]">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[#8da8ce] text-xs font-medium">Combined AI Probability</span>
-                <span class="text-${combinedVerdict.combined_probability > 50 ? 'red' : 'green'}-400 text-sm font-bold">
-                    ${Math.round(combinedVerdict.combined_probability)}%
-                </span>
-            </div>
-            <div class="bg-[#20324b] h-2 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-500 ${combinedVerdict.combined_probability > 50 ? 'bg-red-500' : 'bg-green-500'}" 
-                     style="width: ${combinedVerdict.combined_probability}%"></div>
-            </div>
-            <div class="flex justify-between text-[10px] text-[#64748b] mt-1">
-                <span>ML: ${Math.round(combinedVerdict.ml_probability || 0)}%</span>
-                <span>Vision: ${Math.round(combinedVerdict.visual_probability || 0)}%</span>
-                <span class="text-${combinedVerdict.analysis_agreement === 'STRONG_AGREEMENT' ? 'green' : 'yellow'}-400">
-                    ${combinedVerdict.analysis_agreement === 'STRONG_AGREEMENT' ? '✓ Analyses Agree' : 
-                      combinedVerdict.analysis_agreement === 'DISAGREEMENT' ? '⚠ Analyses Disagree' : 'One Analysis Only'}
-                </span>
-            </div>
-        </div>
-        ` : ''}
-        
-        <!-- Model attribution -->
-        <div class="mt-3 flex items-center justify-end gap-1 text-[10px] text-[#64748b]">
-            <span class="material-symbols-outlined text-xs">smart_toy</span>
-            Powered by Groq Vision API (${aiAnalysis.ai_model_used || 'Llama 4 Scout'})
+        <!-- Full Width: Key Findings -->
+        <div class="mt-6">
+            ${buildKeyFindingsCard(result)}
         </div>
     `;
 }
 
 /**
- * Animate progress bars with actual API scores
+ * Build Technical Analysis Tab Content
  */
-function animateProgressBarsWithScores(scores) {
-    const bars = document.querySelectorAll('.bg-accent-blue, .bg-primary, [data-score-bar]');
+function buildTechnicalHTML(result) {
+    return `
+        <div class="space-y-6">
+            ${buildDetectionMethodsCard(result)}
+            ${buildForensicAnalysisCard(result)}
+            ${buildELAAnalysisCard(result)}
+            ${buildNoiseAnalysisCard(result)}
+            ${buildWatermarkDetectionCard(result)}
+        </div>
+    `;
+}
+
+/**
+ * Build Metadata Deep-Dive Tab Content
+ */
+function buildMetadataHTML(result) {
+    return `
+        <div class="space-y-6">
+            ${buildMetadataOverviewCard(result)}
+            ${buildEXIFDataCard(result)}
+            ${buildC2PACredentialsCard(result)}
+            ${buildFilePropertiesCard(result)}
+        </div>
+    `;
+}
+
+/**
+ * Build AI Explanation Tab Content
+ */
+function buildAIAnalysisHTML(result) {
+    return `
+        <div class="space-y-6">
+            ${buildAIExplanationCard(result)}
+            ${buildVisualAnalysisCard(result)}
+            ${buildConfidenceBreakdownCard(result)}
+        </div>
+    `;
+}
+
+// ============================================================================
+// Component Builders - Overview Tab
+// ============================================================================
+
+/**
+ * Build Image Viewer Card with visualization controls
+ */
+function buildImageViewerCard(result) {
+    const visualizations = [
+        { id: 'original', label: 'Original', icon: 'image' },
+        { id: 'ela', label: 'ELA Analysis', icon: 'gradient' },
+        { id: 'heatmap', label: 'AI Heatmap', icon: 'blur_on' },
+        { id: 'noise', label: 'Noise Pattern', icon: 'grain' }
+    ];
     
-    const scoreValues = Object.values(scores);
-    bars.forEach((bar, index) => {
-        const width = scoreValues[index % scoreValues.length] || 50;
-        bar.style.transition = 'width 1s ease-out';
-        bar.style.width = width + '%';
-        
-        // Color based on score (higher = more AI-like = red)
-        if (width > 60) {
-            bar.style.backgroundColor = '#FF4A4A';
-        } else if (width > 30) {
-            bar.style.backgroundColor = '#FFC107';
+    const visualizationButtons = visualizations.map(viz => `
+        <button 
+            onclick="switchVisualization('${viz.id}')" 
+            id="viz-${viz.id}"
+            class="visualization-btn flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${viz.id === 'original' ? 'bg-primary text-white' : 'bg-card-dark text-slate-400 hover:text-white hover:bg-card-dark/80'}">
+            <span class="material-symbols-outlined text-[16px]">${viz.icon}</span>
+            <span class="hidden sm:inline">${viz.label}</span>
+        </button>
+    `).join('');
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-white font-semibold text-lg flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">image</span>
+                    Image Viewer
+                </h3>
+                <button onclick="openFullscreenViewer()" class="text-slate-400 hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">fullscreen</span>
+                </button>
+            </div>
+            
+            <!-- Visualization Controls -->
+            <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                ${visualizationButtons}
+            </div>
+            
+            <!-- Image Display -->
+            <div class="relative bg-black/20 rounded-lg overflow-hidden">
+                <img id="viewerImage" src="${imageData ? imageData.data : ''}" alt="Analysis Image" class="w-full h-auto" />
+                ${result.ela && result.ela.ela_image ? `<img id="elaImage" src="data:image/png;base64,${result.ela.ela_image}" class="w-full h-auto hidden" />` : ''}
+                ${result.ml_heatmap ? `<img id="heatmapImage" src="data:image/png;base64,${result.ml_heatmap}" class="w-full h-auto hidden" />` : ''}
+                ${result.noise_map ? `<img id="noiseImage" src="data:image/png;base64,${result.noise_map}" class="w-full h-auto hidden" />` : ''}
+            </div>
+            
+            <p class="text-slate-400 text-xs mt-3 text-center">
+                Click fullscreen icon to view in detail
+            </p>
+        </div>
+    `;
+}
+
+/**
+ * Build Quick Metrics Grid
+ */
+function buildQuickMetricsGrid(result) {
+    const scores = result.analysis_scores || {};
+    const aiProb = result.ai_probability || 0;
+    const elaScore = result.ela?.ela_score || 0;
+    
+    const metrics = [
+        {
+            label: 'AI Detection',
+            value: `${Math.round(aiProb)}%`,
+            detail: 'Overall AI probability',
+            icon: 'psychology',
+            color: aiProb > 70 ? 'text-red-500' : aiProb > 40 ? 'text-yellow-400' : 'text-accent-green'
+        },
+        {
+            label: 'ELA Score',
+            value: elaScore > 0 ? `${Math.round(elaScore)}%` : 'N/A',
+            detail: 'Error level analysis',
+            icon: 'gradient',
+            color: elaScore > 60 ? 'text-red-500' : elaScore > 40 ? 'text-yellow-400' : 'text-accent-green'
+        },
+        {
+            label: 'Metadata Check',
+            value: result.metadata?.has_exif ? 'Present' : 'Stripped',
+            detail: result.metadata?.ai_tool_detected || 'No AI signatures',
+            icon: 'info',
+            color: result.metadata?.ai_tool_detected ? 'text-red-500' : 'text-accent-green'
+        },
+        {
+            label: 'Noise Pattern',
+            value: `${Math.round(scores.noise_consistency || 0)}%`,
+            detail: 'Consistency check',
+            icon: 'grain',
+            color: (scores.noise_consistency || 0) > 70 ? 'text-red-500' : (scores.noise_consistency || 0) > 50 ? 'text-yellow-400' : 'text-accent-green'
+        }
+    ];
+    
+    return `
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            ${metrics.map(metric => `
+                <div class="bg-card-dark border border-[#20324b] rounded-xl p-4 hover:border-primary/30 transition-colors group">
+                    <div class="flex items-start justify-between mb-2">
+                        <span class="material-symbols-outlined ${metric.color} text-lg group-hover:scale-110 transition-transform">${metric.icon}</span>
+                    </div>
+                    <div class="text-2xl font-bold text-white mb-1">${metric.value}</div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">${metric.label}</div>
+                    <div class="text-[10px] text-slate-500">${metric.detail}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Build Score Card
+ */
+function buildScoreCard(result, authenticityScore, verdictConfig) {
+    const circumference = 251.2;
+    const offset = circumference - (authenticityScore / 100) * circumference;
+    
+    // Custom description for screenshot/watermark/C2PA detection
+    let description = result.verdict_description || verdictConfig.description;
+    if (result.metadata?.is_screenshot) {
+        description = `This is a screen capture, not a camera photo or AI-generated image. Screenshots are considered authentic captures of digital content.`;
+    } else if (result.watermark?.watermark_detected) {
+        const watermarkType = result.watermark.watermark_type || 'AI watermark';
+        description = `AI watermark detected (${watermarkType}). This confirms the image was generated by an AI tool.`;
+    } else if (result.content_credentials?.is_ai_generated) {
+        const generator = result.content_credentials.ai_generator || 'AI tool';
+        description = `Confirmed AI-generated by ${generator} (verified via Content Credentials).`;
+    }
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 ${verdictConfig.glowClass} rounded-full blur-3xl -mr-10 -mt-10"></div>
+            
+            <h3 class="text-white font-semibold text-lg mb-6 flex items-center gap-2 relative z-10">
+                <span class="material-symbols-outlined text-primary">shield</span>
+                Authenticity Score
+            </h3>
+            
+            <div class="flex flex-col items-center relative z-10">
+                <!-- Score Circle -->
+                <div class="relative size-40">
+                    <svg class="size-40 -rotate-90">
+                        <circle cx="80" cy="80" r="70" stroke="#1E2338" stroke-width="12" fill="none" />
+                        <circle 
+                            cx="80" 
+                            cy="80" 
+                            r="70" 
+                            stroke="${verdictConfig.circleColor}" 
+                            stroke-width="12" 
+                            fill="none" 
+                            stroke-dasharray="251.2"
+                            stroke-dashoffset="${offset}"
+                            stroke-linecap="round"
+                            class="transition-all duration-1000 ease-out drop-shadow-[0_0_8px_${verdictConfig.circleColor}]" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-4xl font-black text-white">${authenticityScore}</span>
+                        <span class="text-lg font-bold text-slate-400">/100</span>
+                    </div>
+                </div>
+                
+                <!-- Verdict Badge -->
+                <div class="mt-6 px-4 py-2 rounded-full ${verdictConfig.badgeClass} text-sm font-bold border ${verdictConfig.borderClass}">
+                    ${verdictConfig.text}
+                </div>
+                
+                <!-- Description -->
+                <p class="text-slate-400 text-sm text-center mt-4 leading-relaxed">
+                    ${description}
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Verification Summary Card
+ */
+function buildVerificationSummaryCard(result) {
+    const aiProb = result.ai_probability || 0;
+    const elaScore = result.ela?.ela_score || 0;
+    
+    const checks = [
+        {
+            label: 'AI Detection',
+            status: aiProb < 50,
+            detail: `${Math.round(aiProb)}% AI likelihood`
+        },
+        {
+            label: 'Watermark Scan',
+            status: !result.watermark?.watermark_detected,
+            detail: result.watermark?.watermark_detected ? 'AI watermark found' : 'No watermarks detected'
+        },
+        {
+            label: 'Metadata Check',
+            status: !result.metadata?.ai_tool_detected,
+            detail: result.metadata?.ai_tool_detected || 'No AI tool signatures'
+        },
+        {
+            label: 'ELA Analysis',
+            status: elaScore < 60 && !result.ela?.clone_detected,
+            detail: result.ela?.clone_detected ? 'Cloning detected' : elaScore > 0 ? `${Math.round(elaScore)}% manipulation` : 'No manipulation found'
+        }
+    ];
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">checklist</span>
+                Verification Checks
+            </h3>
+            
+            <div class="space-y-3">
+                ${checks.map(check => `
+                    <div class="flex items-center justify-between p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="size-5 rounded-full ${check.status ? 'bg-accent-green/20' : 'bg-red-500/20'} flex items-center justify-center">
+                                <span class="material-symbols-outlined text-xs ${check.status ? 'text-accent-green' : 'text-red-500'}">
+                                    ${check.status ? 'check' : 'close'}
+                                </span>
+                            </div>
+                            <div>
+                                <div class="text-white text-sm font-medium">${check.label}</div>
+                                <div class="text-slate-400 text-xs">${check.detail}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Quick Actions Card
+ */
+function buildQuickActionsCard() {
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">bolt</span>
+                Quick Actions
+            </h3>
+            
+            <div class="space-y-3">
+                <button onclick="openFeedbackModal()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-background-dark/50 border border-white/5 text-white hover:border-primary/30 transition-colors text-left">
+                    <span class="material-symbols-outlined text-primary">feedback</span>
+                    <div>
+                        <div class="text-sm font-medium">Report Issue</div>
+                        <div class="text-xs text-slate-400">Flag incorrect analysis</div>
+                    </div>
+                </button>
+                
+                <button onclick="exportToPDF()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-background-dark/50 border border-white/5 text-white hover:border-primary/30 transition-colors text-left">
+                    <span class="material-symbols-outlined text-primary">download</span>
+                    <div>
+                        <div class="text-sm font-medium">Export Report</div>
+                        <div class="text-xs text-slate-400">Download as PDF</div>
+                    </div>
+                </button>
+                
+                <button onclick="handleReanalyze()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-background-dark/50 border border-white/5 text-white hover:border-primary/30 transition-colors text-left">
+                    <span class="material-symbols-outlined text-primary">refresh</span>
+                    <div>
+                        <div class="text-sm font-medium">Re-analyze</div>
+                        <div class="text-xs text-slate-400">Run analysis again</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Key Findings Card
+ */
+function buildKeyFindingsCard(result) {
+    const findings = [];
+    
+    // Screenshot detection - show first as it's important context
+    if (result.metadata?.is_screenshot) {
+        findings.push({
+            type: 'info',
+            icon: 'screenshot',
+            title: 'Screenshot Detected',
+            description: 'This is a screen capture, not a camera photo or AI-generated image. Screenshot classification applied.',
+            color: 'blue'  // Use blue for screenshot indicators
+        });
+    }
+    
+    // Analyze results and generate findings
+    if (result.watermark?.watermark_detected) {
+        findings.push({
+            type: 'critical',
+            icon: 'warning',
+            title: 'AI Watermark Detected',
+            description: `Found ${result.watermark.watermarks_found.join(', ')} watermark(s) commonly used by AI image generators.`
+        });
+    }
+    
+    if (result.metadata?.ai_tool_detected) {
+        findings.push({
+            type: 'critical',
+            icon: 'warning',
+            title: 'AI Tool Signature Found',
+            description: `Metadata contains signatures from ${result.metadata.ai_tool_detected}, indicating AI generation.`
+        });
+    }
+    
+    if (result.ela?.clone_detected) {
+        findings.push({
+            type: 'warning',
+            icon: 'content_copy',
+            title: 'Clone Manipulation Detected',
+            description: 'Error Level Analysis found evidence of clone stamping or copy-paste manipulation.'
+        });
+    }
+    
+    if ((result.ai_probability || 0) > 80) {
+        findings.push({
+            type: 'critical',
+            icon: 'psychology',
+            title: 'High AI Detection Score',
+            description: `Analysis shows ${Math.round(result.ai_probability)}% confidence of AI generation.`
+        });
+    }
+    
+    if (result.metadata?.exif_stripped) {
+        findings.push({
+            type: 'info',
+            icon: 'info',
+            title: 'EXIF Data Stripped',
+            description: 'Camera metadata has been removed, which may indicate post-processing or manipulation.'
+        });
+    }
+    
+    if ((result.analysis_scores?.noise_consistency || 100) < 40) {
+        findings.push({
+            type: 'warning',
+            icon: 'grain',
+            title: 'Inconsistent Noise Pattern',
+            description: 'Digital noise analysis shows patterns inconsistent with natural camera sensors.'
+        });
+    }
+    
+    // If no significant findings, add a positive note
+    if (findings.length === 0) {
+        findings.push({
+            type: 'success',
+            icon: 'check_circle',
+            title: 'No Major Issues Detected',
+            description: 'Image passed all verification checks with consistent metadata and natural patterns.'
+        });
+    }
+    
+    const typeConfig = {
+        critical: { bgClass: 'bg-red-500/10', borderClass: 'border-red-500/20', iconClass: 'text-red-500' },
+        warning: { bgClass: 'bg-yellow-400/10', borderClass: 'border-yellow-400/20', iconClass: 'text-yellow-400' },
+        info: { bgClass: 'bg-blue-500/10', borderClass: 'border-blue-500/20', iconClass: 'text-blue-500' },
+        success: { bgClass: 'bg-accent-green/10', borderClass: 'border-accent-green/20', iconClass: 'text-accent-green' }
+    };
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">lightbulb</span>
+                Key Findings
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${findings.map(finding => {
+                    const config = typeConfig[finding.type];
+                    return `
+                        <div class="p-4 rounded-lg ${config.bgClass} border ${config.borderClass}">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined ${config.iconClass} text-xl shrink-0">${finding.icon}</span>
+                                <div>
+                                    <h4 class="text-white font-medium text-sm mb-1">${finding.title}</h4>
+                                    <p class="text-slate-300 text-xs leading-relaxed">${finding.description}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================================
+// Component Builders - Technical Tab
+// ============================================================================
+
+/**
+ * Build Detection Methods Card
+ */
+function buildDetectionMethodsCard(result) {
+    const aiProb = result.ai_probability || 0;
+    const elaScore = result.ela?.ela_score || 0;
+    const noiseScore = result.analysis_scores?.noise_consistency || 0;
+    
+    const methods = [
+        {
+            name: 'AI Detection',
+            score: aiProb,
+            weight: 40,
+            description: 'Statistical and ML-based analysis'
+        },
+        {
+            name: 'Error Level Analysis',
+            score: elaScore,
+            weight: 25,
+            description: 'JPEG compression artifact analysis'
+        },
+        {
+            name: 'Metadata Analysis',
+            score: result.metadata?.ai_tool_detected ? 100 : 0,
+            weight: 20,
+            description: 'EXIF data and embedded signatures'
+        },
+        {
+            name: 'Noise Analysis',
+            score: noiseScore > 0 ? (100 - noiseScore) : 0,
+            weight: 15,
+            description: 'Digital noise pattern consistency'
+        }
+    ];
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">science</span>
+                Detection Methods
+            </h3>
+            
+            <div class="space-y-4">
+                ${methods.map(method => {
+                    const percentage = (method.score / 100) * method.weight;
+                    return `
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-white font-medium">${method.name}</span>
+                                <span class="text-slate-400">${Math.round(method.score)}% (${method.weight}% weight)</span>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-accent-green to-primary rounded-full transition-all duration-1000" style="width: ${method.score}%"></div>
+                            </div>
+                            <p class="text-slate-400 text-xs">${method.description}</p>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-white/5">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 text-sm">Weighted Combined Score</span>
+                    <span class="text-2xl font-bold text-primary">${Math.round(result.ai_probability || 50)}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Forensic Analysis Card
+ */
+function buildForensicAnalysisCard(result) {
+    const forensics = result.forensics || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">fingerprint</span>
+                Forensic Analysis
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-symbols-outlined text-primary">texture</span>
+                        <span class="text-white font-medium text-sm">JPEG Quality</span>
+                    </div>
+                    <div class="text-2xl font-bold text-white mb-1">${result.metadata?.jpeg_quality || 'N/A'}</div>
+                    <p class="text-slate-400 text-xs">Compression quality level</p>
+                </div>
+                
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-symbols-outlined text-primary">grid_on</span>
+                        <span class="text-white font-medium text-sm">Grid Analysis</span>
+                    </div>
+                    <div class="text-2xl font-bold text-white mb-1">${result.ela?.grid_consistency || 'N/A'}%</div>
+                    <p class="text-slate-400 text-xs">8x8 DCT block consistency</p>
+                </div>
+                
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-symbols-outlined text-primary">grain</span>
+                        <span class="text-white font-medium text-sm">Noise Level</span>
+                    </div>
+                    <div class="text-2xl font-bold text-white mb-1">${Math.round(result.analysis_scores?.noise_consistency || 0)}%</div>
+                    <p class="text-slate-400 text-xs">Digital noise consistency</p>
+                </div>
+                
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-symbols-outlined text-primary">contrast</span>
+                        <span class="text-white font-medium text-sm">Color Analysis</span>
+                    </div>
+                    <div class="text-2xl font-bold text-white mb-1">${result.color_anomaly_score || 'N/A'}%</div>
+                    <p class="text-slate-400 text-xs">Color space consistency</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build ELA Analysis Card
+ */
+function buildELAAnalysisCard(result) {
+    const ela = result.ela || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">gradient</span>
+                Error Level Analysis (ELA)
+            </h3>
+            
+            <p class="text-slate-300 text-sm mb-4">
+                ELA reveals areas of an image that are at different compression levels. 
+                Bright areas may indicate recent manipulation.
+            </p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">ELA Score</div>
+                    <div class="text-xl font-bold text-white">${Math.round(ela.ela_score || 0)}%</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">Clone Detection</div>
+                    <div class="text-xl font-bold ${ela.clone_detected ? 'text-red-500' : 'text-accent-green'}">
+                        ${ela.clone_detected ? 'Detected' : 'None'}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-primary text-sm mt-0.5">info</span>
+                    <p class="text-slate-400 text-xs">
+                        <strong class="text-white">Manipulation Likelihood:</strong> ${Math.round(ela.manipulation_likelihood || 0)}%
+                    </p>
+                </div>
+                
+                ${ela.high_ela_regions ? `
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-yellow-400 text-sm mt-0.5">warning</span>
+                        <p class="text-slate-400 text-xs">
+                            <strong class="text-white">High ELA Regions:</strong> ${ela.high_ela_regions} areas with suspicious compression levels
+                        </p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Noise Analysis Card
+ */
+function buildNoiseAnalysisCard(result) {
+    const noiseConsistency = result.analysis_scores?.noise_consistency || 0;
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">grain</span>
+                Noise Pattern Analysis
+            </h3>
+            
+            <p class="text-slate-300 text-sm mb-4">
+                Natural camera sensors produce consistent noise patterns. 
+                AI-generated images often lack realistic noise or show uniform patterns.
+            </p>
+            
+            <div class="mb-4">
+                <div class="flex items-center justify-between text-sm mb-2">
+                    <span class="text-white font-medium">Noise Consistency</span>
+                    <span class="text-slate-400">${Math.round(noiseConsistency)}%</span>
+                </div>
+                <div class="h-3 bg-slate-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-red-500 via-yellow-400 to-accent-green rounded-full transition-all" style="width: ${noiseConsistency}%"></div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3">
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5 text-center">
+                    <div class="text-slate-400 text-xs mb-1">Low Freq</div>
+                    <div class="text-lg font-bold text-white">${result.noise_analysis?.low_freq || 'N/A'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5 text-center">
+                    <div class="text-slate-400 text-xs mb-1">Mid Freq</div>
+                    <div class="text-lg font-bold text-white">${result.noise_analysis?.mid_freq || 'N/A'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5 text-center">
+                    <div class="text-slate-400 text-xs mb-1">High Freq</div>
+                    <div class="text-lg font-bold text-white">${result.noise_analysis?.high_freq || 'N/A'}</div>
+                </div>
+            </div>
+            
+            <div class="mt-4 p-3 rounded-lg ${noiseConsistency > 70 ? 'bg-accent-green/10 border-accent-green/20' : 'bg-yellow-400/10 border-yellow-400/20'} border">
+                <p class="text-xs ${noiseConsistency > 70 ? 'text-accent-green' : 'text-yellow-400'}">
+                    ${noiseConsistency > 70 
+                        ? '✓ Noise pattern is consistent with natural camera sensors' 
+                        : '⚠ Noise pattern shows irregularities that may indicate AI generation or heavy processing'}
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Watermark Detection Card
+ */
+function buildWatermarkDetectionCard(result) {
+    const watermark = result.watermark || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">verified</span>
+                AI Watermark Detection
+            </h3>
+            
+            <p class="text-slate-300 text-sm mb-4">
+                Many AI image generators embed invisible watermarks to identify their output.
+            </p>
+            
+            <div class="p-4 rounded-lg ${watermark.watermark_detected ? 'bg-red-500/10 border-red-500/20' : 'bg-accent-green/10 border-accent-green/20'} border mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined ${watermark.watermark_detected ? 'text-red-500' : 'text-accent-green'} text-2xl">
+                        ${watermark.watermark_detected ? 'warning' : 'check_circle'}
+                    </span>
+                    <div>
+                        <div class="text-white font-medium">
+                            ${watermark.watermark_detected ? 'Watermark Detected' : 'No Watermark Found'}
+                        </div>
+                        <div class="text-slate-300 text-xs mt-1">
+                            ${watermark.watermark_detected 
+                                ? `Found: ${watermark.watermarks_found?.join(', ') || 'Unknown'}` 
+                                : 'Image passed watermark screening'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${watermark.watermark_detected && watermark.watermarks_found ? `
+                <div class="space-y-2">
+                    <div class="text-slate-400 text-xs uppercase tracking-wider mb-2">Detected Watermarks:</div>
+                    ${watermark.watermarks_found.map(wm => `
+                        <div class="flex items-center gap-2 p-2 rounded bg-background-dark/50 border border-white/5">
+                            <span class="material-symbols-outlined text-red-500 text-sm">verified</span>
+                            <span class="text-white text-sm">${wm}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <p class="text-slate-400 text-xs">
+                    Scanned for watermarks from: Stable Diffusion, DALL-E, Midjourney, and other popular generators.
+                </p>
+            `}
+        </div>
+    `;
+}
+
+// ============================================================================
+// Component Builders - Metadata Tab
+// ============================================================================
+
+/**
+ * Build Metadata Overview Card
+ */
+function buildMetadataOverviewCard(result) {
+    const metadata = result.metadata || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">summarize</span>
+                Metadata Overview
+            </h3>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-2">EXIF Present</div>
+                    <div class="text-xl font-bold ${metadata.has_exif ? 'text-accent-green' : 'text-red-500'}">
+                        ${metadata.has_exif ? 'Yes' : 'No'}
+                    </div>
+                </div>
+                
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-2">Image Type</div>
+                    <div class="text-xl font-bold ${metadata.is_screenshot ? 'text-blue-400' : 'text-white'}">
+                        ${metadata.is_screenshot ? 'Screenshot' : 'Photo'}
+                    </div>
+                </div>
+                
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-2">AI Tool</div>
+                    <div class="text-xl font-bold ${metadata.ai_tool_detected ? 'text-red-500' : 'text-accent-green'}">
+                        ${metadata.ai_tool_detected || 'None'}
+                    </div>
+                </div>
+                
+                <div class="p-4 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-2">Modified</div>
+                    <div class="text-xl font-bold ${metadata.exif_stripped ? 'text-yellow-400' : 'text-white'}">
+                        ${metadata.exif_stripped ? 'Yes' : 'No'}
+                    </div>
+                </div>
+            </div>
+            
+            ${metadata.is_screenshot ? `
+                <div class="mt-4 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-blue-400">screenshot</span>
+                        <div class="flex-1">
+                            <div class="text-white font-medium mb-1">Screenshot Detected</div>
+                            <p class="text-slate-300 text-sm mb-2">
+                                This appears to be a screen capture, not a camera photo or AI-generated image.
+                            </p>
+                            ${metadata.screenshot_indicators && metadata.screenshot_indicators.length > 0 ? `
+                                <div class="text-xs text-slate-400">
+                                    <strong>Indicators:</strong>
+                                    <ul class="list-disc list-inside mt-1">
+                                        ${metadata.screenshot_indicators.map(ind => `<li>${escapeHTML(ind)}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+            
+            ${metadata.ai_tool_detected ? `
+                <div class="mt-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-red-500">warning</span>
+                        <div>
+                            <div class="text-white font-medium mb-1">AI Generation Tool Detected</div>
+                            <p class="text-slate-300 text-sm">
+                                Metadata contains signatures from <strong>${metadata.ai_tool_detected}</strong>, 
+                                strongly indicating this is an AI-generated image.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Build EXIF Data Card
+ */
+function buildEXIFDataCard(result) {
+    const exif = result.metadata?.exif_data || {};
+    const hasData = Object.keys(exif).length > 0;
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">data_object</span>
+                EXIF Data
+            </h3>
+            
+            ${hasData ? `
+                <div class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                    ${Object.entries(exif).map(([key, value]) => `
+                        <div class="flex items-start justify-between p-3 rounded-lg bg-background-dark/50 border border-white/5 hover:border-primary/30 transition-colors">
+                            <span class="text-slate-400 text-sm">${escapeHTML(key)}</span>
+                            <span class="text-white text-sm font-mono text-right ml-4">${escapeHTML(String(value))}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div class="text-center py-8">
+                    <span class="material-symbols-outlined text-slate-500 text-5xl mb-3 block">hide_source</span>
+                    <p class="text-slate-400">No EXIF data found</p>
+                    <p class="text-slate-500 text-sm mt-2">
+                        EXIF data may have been stripped during processing or the image was generated without camera metadata.
+                    </p>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+/**
+ * Build C2PA Credentials Card
+ */
+function buildC2PACredentialsCard(result) {
+    const c2pa = result.content_credentials || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">verified_user</span>
+                Content Credentials (C2PA)
+            </h3>
+            
+            <p class="text-slate-300 text-sm mb-4">
+                C2PA is a standard for content authenticity and provenance. Presence of C2PA data indicates 
+                the image has a verified chain of custody.
+            </p>
+            
+            <div class="p-4 rounded-lg ${c2pa.c2pa_found ? 'bg-accent-green/10 border-accent-green/20' : 'bg-slate-500/10 border-slate-500/20'} border">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="material-symbols-outlined ${c2pa.c2pa_found ? 'text-accent-green' : 'text-slate-400'} text-2xl">
+                        ${c2pa.c2pa_found ? 'verified_user' : 'shield'}
+                    </span>
+                    <div>
+                        <div class="text-white font-medium">
+                            ${c2pa.c2pa_found ? 'C2PA Manifest Found' : 'No C2PA Data'}
+                        </div>
+                        <div class="text-slate-300 text-xs mt-1">
+                            ${c2pa.c2pa_found 
+                                ? 'Image contains verified content credentials' 
+                                : 'No content provenance information available'}
+                        </div>
+                    </div>
+                </div>
+                
+                ${c2pa.c2pa_found && c2pa.manifest ? `
+                    <div class="mt-4 space-y-2">
+                        ${c2pa.manifest.creator ? `
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="text-slate-400">Creator:</span>
+                                <span class="text-white">${escapeHTML(c2pa.manifest.creator)}</span>
+                            </div>
+                        ` : ''}
+                        ${c2pa.manifest.claim_generator ? `
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="text-slate-400">Tool:</span>
+                                <span class="text-white">${escapeHTML(c2pa.manifest.claim_generator)}</span>
+                            </div>
+                        ` : ''}
+                        ${c2pa.manifest.timestamp ? `
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="text-slate-400">Timestamp:</span>
+                                <span class="text-white">${escapeHTML(c2pa.manifest.timestamp)}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build File Properties Card
+ */
+function buildFilePropertiesCard(result) {
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">description</span>
+                File Properties
+            </h3>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">File Name</div>
+                    <div class="text-white text-sm font-mono truncate">${imageData?.fileName || 'Unknown'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">File Type</div>
+                    <div class="text-white text-sm">${imageData?.mimeType || 'Unknown'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">Dimensions</div>
+                    <div class="text-white text-sm">${result.width || '?'} x ${result.height || '?'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">File Size</div>
+                    <div class="text-white text-sm">${result.file_size || 'Unknown'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">Color Space</div>
+                    <div class="text-white text-sm">${result.metadata?.color_space || 'RGB'}</div>
+                </div>
+                
+                <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
+                    <div class="text-slate-400 text-xs mb-1">Bit Depth</div>
+                    <div class="text-white text-sm">${result.metadata?.bit_depth || '8-bit'}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================================
+// Component Builders - AI Analysis Tab
+// ============================================================================
+
+/**
+ * Build AI Explanation Card
+ */
+function buildAIExplanationCard(result) {
+    const aiAnalysis = result.ai_analysis || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">psychology</span>
+                AI Visual Analysis
+            </h3>
+            
+            ${aiAnalysis.explanation ? `
+                <div class="prose prose-invert max-w-none">
+                    <p class="text-slate-300 text-sm leading-relaxed whitespace-pre-line">${escapeHTML(aiAnalysis.explanation)}</p>
+                </div>
+            ` : `
+                <p class="text-slate-400 text-sm">AI analysis not available for this image.</p>
+            `}
+            
+            ${aiAnalysis.artifacts_detected && aiAnalysis.artifacts_detected.length > 0 ? `
+                <div class="mt-6">
+                    <h4 class="text-white font-medium text-sm mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-yellow-400">warning</span>
+                        Detected Artifacts
+                    </h4>
+                    <div class="space-y-2">
+                        ${aiAnalysis.artifacts_detected.map(artifact => `
+                            <div class="p-3 rounded-lg bg-yellow-400/10 border border-yellow-400/20">
+                                <div class="text-yellow-400 text-sm font-medium mb-1">${escapeHTML(artifact.type || 'Unknown')}</div>
+                                <div class="text-slate-300 text-xs">${escapeHTML(artifact.description || '')}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Build Visual Analysis Card
+ */
+function buildVisualAnalysisCard(result) {
+    const aiAnalysis = result.ai_analysis || {};
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">visibility</span>
+                Visual Inspection Results
+            </h3>
+            
+            <div class="space-y-4">
+                ${aiAnalysis.composition_analysis ? `
+                    <div>
+                        <h4 class="text-white font-medium text-sm mb-2">Composition</h4>
+                        <p class="text-slate-300 text-sm">${escapeHTML(aiAnalysis.composition_analysis)}</p>
+                    </div>
+                ` : ''}
+                
+                ${aiAnalysis.lighting_analysis ? `
+                    <div>
+                        <h4 class="text-white font-medium text-sm mb-2">Lighting & Shadows</h4>
+                        <p class="text-slate-300 text-sm">${escapeHTML(aiAnalysis.lighting_analysis)}</p>
+                    </div>
+                ` : ''}
+                
+                ${aiAnalysis.texture_analysis ? `
+                    <div>
+                        <h4 class="text-white font-medium text-sm mb-2">Texture & Details</h4>
+                        <p class="text-slate-300 text-sm">${escapeHTML(aiAnalysis.texture_analysis)}</p>
+                    </div>
+                ` : ''}
+                
+                ${!aiAnalysis.composition_analysis && !aiAnalysis.lighting_analysis && !aiAnalysis.texture_analysis ? `
+                    <p class="text-slate-400 text-sm text-center py-4">
+                        Detailed visual analysis not available. Enable AI analysis in settings.
+                    </p>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Confidence Breakdown Card
+ */
+function buildConfidenceBreakdownCard(result) {
+    const scores = result.analysis_scores || {};
+    const aiProb = result.ai_probability || 0;
+    const elaScore = result.ela?.ela_score || 0;
+    const noiseScore = scores.noise_consistency || 0;
+    
+    const breakdown = [
+        { label: 'AI Detection', value: aiProb, max: 100, weight: 40 },
+        { label: 'ELA Analysis', value: elaScore, max: 100, weight: 25 },
+        { label: 'Metadata Check', value: result.metadata?.ai_tool_detected ? 100 : 0, max: 100, weight: 20 },
+        { label: 'Noise Analysis', value: noiseScore > 0 ? (100 - noiseScore) : 0, max: 100, weight: 15 }
+    ];
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">analytics</span>
+                Confidence Breakdown
+            </h3>
+            
+            <p class="text-slate-300 text-sm mb-6">
+                Our detection system combines multiple analysis methods with different weights 
+                to produce the final AI probability score.
+            </p>
+            
+            <div class="space-y-4">
+                ${breakdown.map(item => {
+                    const contribution = (item.value / item.max) * item.weight;
+                    return `
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-white">${item.label}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-slate-400">${Math.round(item.value)}%</span>
+                                    <span class="text-slate-500">×</span>
+                                    <span class="text-primary">${item.weight}%</span>
+                                    <span class="text-slate-500">=</span>
+                                    <span class="text-white font-medium">${contribution.toFixed(1)}</span>
+                                </div>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full transition-all" style="width: ${item.value}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-white/5">
+                <div class="flex items-center justify-between">
+                    <span class="text-white font-medium">Final AI Probability</span>
+                    <span class="text-3xl font-black text-primary">${Math.round(result.ai_probability || 50)}%</span>
+                </div>
+                <p class="text-slate-400 text-xs mt-2">
+                    Based on weighted combination of all detection methods
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================================
+// Visualization Switching
+// ============================================================================
+
+/**
+ * Switch between different image visualizations
+ */
+function switchVisualization(vizType) {
+    currentVisualization = vizType;
+    
+    // Update button states
+    document.querySelectorAll('.visualization-btn').forEach(btn => {
+        const btnType = btn.id.replace('viz-', '');
+        if (btnType === vizType) {
+            btn.className = 'visualization-btn flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all bg-primary text-white';
         } else {
-            bar.style.backgroundColor = '#00D991';
+            btn.className = 'visualization-btn flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all bg-card-dark text-slate-400 hover:text-white hover:bg-card-dark/80';
         }
     });
+    
+    // Show/hide images
+    const images = {
+        'original': document.getElementById('viewerImage'),
+        'ela': document.getElementById('elaImage'),
+        'heatmap': document.getElementById('heatmapImage'),
+        'noise': document.getElementById('noiseImage')
+    };
+    
+    Object.entries(images).forEach(([type, img]) => {
+        if (img) {
+            if (type === vizType) {
+                img.classList.remove('hidden');
+            } else {
+                img.classList.add('hidden');
+            }
+        }
+    });
+}
+
+// ============================================================================
+// Modal Functions
+// ============================================================================
+
+/**
+ * Open fullscreen image viewer
+ */
+function openFullscreenViewer() {
+    const modal = document.getElementById('fullscreenModal');
+    const fullscreenImage = document.getElementById('fullscreenImage');
+    
+    if (modal && fullscreenImage && imageData) {
+        // Set the appropriate image based on current visualization
+        let imgSrc = imageData.data;
+        
+        if (currentVisualization === 'ela' && currentResult?.ela?.ela_image) {
+            imgSrc = 'data:image/png;base64,' + currentResult.ela.ela_image;
+        } else if (currentVisualization === 'heatmap' && currentResult?.ml_heatmap) {
+            imgSrc = 'data:image/png;base64,' + currentResult.ml_heatmap;
+        } else if (currentVisualization === 'noise' && currentResult?.noise_map) {
+            imgSrc = 'data:image/png;base64,' + currentResult.noise_map;
+        }
+        
+        fullscreenImage.src = imgSrc;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+/**
+ * Close fullscreen viewer
+ */
+function closeFullscreenViewer() {
+    const modal = document.getElementById('fullscreenModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+/**
+ * Open feedback modal
+ */
+function openFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+/**
+ * Close feedback modal
+ */
+function closeFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+/**
+ * Submit feedback
+ */
+function submitFeedback() {
+    const feedbackType = document.getElementById('feedbackType')?.value;
+    const feedbackDescription = document.getElementById('feedbackDescription')?.value;
+    
+    if (!feedbackDescription || feedbackDescription.trim() === '') {
+        alert('Please provide a description of the issue.');
+        return;
+    }
+    
+    // Here you would send feedback to backend
+    console.log('[Feedback]', { type: feedbackType, description: feedbackDescription, result: currentResult });
+    
+    // Show success message
+    alert('Thank you for your feedback! It will help us improve our detection accuracy.');
+    
+    // Close modal and reset form
+    closeFeedbackModal();
+    if (document.getElementById('feedbackDescription')) {
+        document.getElementById('feedbackDescription').value = '';
+    }
+}
+
+// ============================================================================
+// Event Listeners & Re-attachment
+// ============================================================================
+
+/**
+ * Attach event listeners to dynamically created elements
+ */
+function attachEventListeners() {
+    // Visualization buttons are handled via onclick in HTML
+    // Other dynamic elements can be attached here
+}
+
+// ============================================================================
+// Export & Actions
+// ============================================================================
+
+/**
+ * Export analysis report to PDF
+ */
+function exportToPDF() {
+    if (!currentResult) {
+        alert('No analysis result to export');
+        return;
+    }
+    
+    // Simple PDF export - could be enhanced with a library like jsPDF
+    alert('PDF export functionality would generate a comprehensive report with all analysis details, scores, and visualizations.');
+    
+    // Placeholder for actual PDF generation
+    console.log('[Export] Would generate PDF with:', currentResult);
+}
+
+/**
+ * Handle re-analyze button click
+ */
+async function handleReanalyze() {
+    if (!imageData) {
+        alert('No image data available to re-analyze');
+        return;
+    }
+    
+    const confirmReanalyze = confirm('Re-run the analysis on this image?');
+    if (confirmReanalyze) {
+        await processImageAnalysis(imageData);
+    }
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Get verdict configuration for styling
+ */
+function getVerdictConfig(verdict) {
+    const configs = {
+        'AI_GENERATED': {
+            text: 'AI GENERATED',
+            circleColor: 'rgba(239, 68, 68, 1)',
+            glowClass: 'bg-red-500/10',
+            badgeClass: 'bg-red-500/20 text-red-400',
+            borderClass: 'border-red-500/30',
+            description: 'This image shows strong indicators of AI generation including synthetic patterns and potential watermarks.'
+        },
+        'LIKELY_AI': {
+            text: 'LIKELY AI GENERATED',
+            circleColor: 'rgba(251, 146, 60, 1)',
+            glowClass: 'bg-orange-500/10',
+            badgeClass: 'bg-orange-500/20 text-orange-400',
+            borderClass: 'border-orange-500/30',
+            description: 'This image shows characteristics consistent with AI generation. Further manual review recommended.'
+        },
+        'UNCERTAIN': {
+            text: 'UNCERTAIN',
+            circleColor: 'rgba(251, 191, 36, 1)',
+            glowClass: 'bg-yellow-400/10',
+            badgeClass: 'bg-yellow-400/20 text-yellow-400',
+            borderClass: 'border-yellow-400/30',
+            description: 'Analysis results are inconclusive. Manual expert review is recommended.'
+        },
+        'LIKELY_REAL': {
+            text: 'LIKELY AUTHENTIC',
+            circleColor: 'rgba(34, 197, 94, 1)',
+            glowClass: 'bg-accent-green/10',
+            badgeClass: 'bg-accent-green/20 text-accent-green',
+            borderClass: 'border-accent-green/30',
+            description: 'This image shows minor inconsistencies but maintains reasonable integrity in metadata and pixel structure.'
+        },
+        'REAL': {
+            text: 'AUTHENTIC',
+            circleColor: 'rgba(0, 217, 145, 1)',
+            glowClass: 'bg-accent-green/10',
+            badgeClass: 'bg-accent-green/20 text-accent-green',
+            borderClass: 'border-accent-green/30',
+            description: 'This image appears authentic with consistent metadata, natural noise patterns, and no AI generation signatures detected.'
+        }
+    };
+    
+    return configs[verdict] || configs['UNCERTAIN'];
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+/**
+ * Update status badge
+ */
+function updateStatusBadge(text, type = 'analyzing') {
+    const statusBadge = document.getElementById('statusBadge');
+    if (!statusBadge) return;
+    
+    const classes = {
+        analyzing: 'px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 animate-pulse',
+        success: 'px-2 py-0.5 rounded text-[10px] font-bold bg-accent-success/10 text-accent-success border border-accent-success/20',
+        error: 'px-2 py-0.5 rounded text-[10px] font-bold bg-accent-danger/10 text-accent-danger border border-accent-danger/20',
+        complete: 'px-2 py-0.5 rounded text-[10px] font-bold bg-accent-green/10 text-accent-green border border-accent-green/20'
+    };
+    
+    statusBadge.textContent = text;
+    statusBadge.className = classes[type] || classes.analyzing;
+}
+
+/**
+ * Show loading state
+ */
+function showLoadingState() {
+    updateStatusBadge('ANALYZING...', 'analyzing');
+}
+
+/**
+ * Hide loading state
+ */
+function hideLoadingState() {
+    updateStatusBadge('COMPLETED', 'complete');
 }
 
 /**
  * Display error message
  */
 function displayError(message) {
-    console.error('Analysis error:', message);
-    
-    const verdictElements = document.querySelectorAll('[class*="text-accent-green"], [class*="text-success"]');
-    verdictElements.forEach(el => {
-        if (el.textContent.includes('Authentic') || el.textContent.includes('LIKELY') || el.textContent.includes('ANALYZING')) {
-            el.textContent = 'ANALYSIS FAILED';
-            el.className = el.className.replace(/text-(accent-green|success|gray-400)/g, 'text-yellow-500');
-        }
-    });
-}
-
-/**
- * Fall back to mock results if API fails
- */
-function displayMockResults(fileData) {
-    const hash = hashString(fileData.fileName);
-    const authenticityScore = 40 + (hash % 55);
-    const fakeScore = 100 - authenticityScore;
-    const isFake = fakeScore > 50;
-
-    const scoreElement = document.querySelector('.text-5xl.font-black, .text-4xl.font-black');
-    if (scoreElement) {
-        scoreElement.textContent = authenticityScore;
-    }
-
-    const scoreCircle = document.querySelector('circle[stroke="#00D991"], circle[stroke="#FF4A4A"]');
-    if (scoreCircle) {
-        const circumference = 251.2;
-        const offset = circumference - (authenticityScore / 100) * circumference;
-        scoreCircle.setAttribute('stroke-dashoffset', offset);
-        scoreCircle.setAttribute('stroke', isFake ? '#FF4A4A' : '#00D991');
-    }
-
-    animateProgressBars(hash);
-}
-
-/**
- * Animate progress bars with random values (fallback)
- */
-function animateProgressBars(hash) {
-    const bars = document.querySelectorAll('.bg-accent-blue, .bg-primary');
-    bars.forEach((bar, index) => {
-        const width = 30 + ((hash + index * 17) % 60);
-        bar.style.transition = 'width 1s ease-out';
-        bar.style.width = width + '%';
-    });
-}
-
-/**
- * Helper to update element text content
- */
-function updateElement(id, text) {
-    const el = document.getElementById(id);
-    if (el) {
-        console.log(`[ImageResult] updateElement: ${id} = "${text}"`);
-        el.textContent = text;
-    } else {
-        console.warn(`[ImageResult] updateElement: Element #${id} not found!`);
+    const tabContent = document.getElementById('tab-content');
+    if (tabContent) {
+        tabContent.innerHTML = `
+            <div class="flex items-center justify-center min-h-[400px]">
+                <div class="text-center max-w-md">
+                    <span class="material-symbols-outlined text-red-500 text-6xl mb-4 block">error</span>
+                    <h3 class="text-white text-xl font-semibold mb-2">Analysis Error</h3>
+                    <p class="text-slate-400 text-sm">${escapeHTML(message)}</p>
+                </div>
+            </div>
+        `;
     }
 }
 
 /**
- * Simple string hash function
+ * Display failed state
  */
-function hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash);
-}
-
-/**
- * Format file size
- */
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1048576).toFixed(1) + ' MB';
-}
-
-/**
- * Load text detection result stored by AnalysisDashboard and display it
- */
-function loadTextDetectionResult() {
-    const raw = sessionStorage.getItem('visioNova_text_result');
-    
-    const predEl = document.getElementById('td_prediction');
-    const confEl = document.getElementById('td_confidence');
-    const decEl = document.getElementById('td_decision');
-    
-    if (!raw) {
-        // No text detection data - show appropriate message
-        if (predEl) {
-            const span = predEl.querySelector('span');
-            if (span) span.textContent = 'Not analyzed';
-        }
-        if (confEl) {
-            const span = confEl.querySelector('span');
-            if (span) span.textContent = 'N/A';
-        }
-        if (decEl) {
-            const span = decEl.querySelector('span');
-            if (span) span.textContent = 'Run text detection from dashboard';
-        }
-        return;
-    }
-    
-    try {
-        const res = JSON.parse(raw);
-        const prediction = res.prediction || 'N/A';
-        const confidence = res.confidence != null ? (Number(res.confidence).toFixed(2) + '%') : 'N/A';
-
-        if (predEl) {
-            const span = predEl.querySelector('span');
-            if (span) {
-                span.textContent = prediction;
-                // Color based on prediction
-                if (prediction.toLowerCase().includes('ai') || prediction.toLowerCase().includes('fake')) {
-                    span.className = 'text-red-400 font-semibold';
-                } else if (prediction.toLowerCase().includes('human') || prediction.toLowerCase().includes('real')) {
-                    span.className = 'text-green-400 font-semibold';
-                } else {
-                    span.className = 'text-yellow-400';
-                }
-            }
-        }
-        if (confEl) {
-            const span = confEl.querySelector('span');
-            if (span) span.textContent = confidence;
-        }
-
-        let decisionText = 'N/A';
-        if (res.prediction === 'uncertain' && res.decision) {
-            const leaning = res.decision.leaning || res.decision.reason || 'unknown';
-            const margin = res.decision.margin != null ? Number(res.decision.margin).toFixed(3) : 'n/a';
-            decisionText = `Uncertain — leaning: ${leaning} (margin ${margin})`;
-        } else if (res.decision) {
-            try { decisionText = typeof res.decision === 'string' ? res.decision : JSON.stringify(res.decision); } catch(e) { decisionText = String(res.decision); }
-        }
-
-        if (decEl) {
-            const span = decEl.querySelector('span');
-            if (span) span.textContent = decisionText;
-        }
-    } catch (e) {
-        console.error('Failed to parse visioNova_text_result:', e);
+function displayFailedState() {
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusBadge) {
+        statusBadge.textContent = 'FAILED';
+        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20';
     }
 }
+
+// ============================================================================
+// Global Function Exposure for HTML onclick handlers
+// ============================================================================
+
+window.switchTab = switchTab;
+window.switchVisualization = switchVisualization;
+window.openFullscreenViewer = openFullscreenViewer;
+window.closeFullscreenViewer = closeFullscreenViewer;
+window.openFeedbackModal = openFeedbackModal;
+window.closeFeedbackModal = closeFeedbackModal;
+window.submitFeedback = submitFeedback;
+window.exportToPDF = exportToPDF;
+window.handleReanalyze = handleReanalyze;

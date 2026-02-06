@@ -626,3 +626,42 @@ body.light {
 .light .text-accent-danger {
     color: #FF4A4A !important;
 }
+
+/* ============================================
+   VISUALIZATION TOGGLE BUTTONS
+   ============================================ */
+
+/* Dark Mode */
+.viz-btn {
+    color: #8da8ce;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.viz-btn:hover {
+    color: white;
+    background: rgba(58, 141, 255, 0.1);
+}
+
+.viz-btn.active {
+    color: white;
+    background: #3A8DFF;
+    box-shadow: 0 2px 10px rgba(58, 141, 255, 0.3);
+}
+
+/* Light Mode */
+.light .viz-btn {
+    color: #64748b;
+    background: transparent;
+}
+
+.light .viz-btn:hover {
+    color: #1a202c;
+    background: rgba(58, 141, 255, 0.1);
+}
+
+.light .viz-btn.active {
+    color: white;
+    background: #3A8DFF;
+    box-shadow: 0 2px 10px rgba(58, 141, 255, 0.3);
+}

@@ -42,6 +42,24 @@ class MetadataAnalyzer:
         'vsco', 'canva', 'figma', 'illustrator'
     ]
     
+    # Screenshot software signatures
+    SCREENSHOT_SOFTWARE = [
+        'snipping tool', 'snagit', 'lightshot', 'sharex',
+        'greenshot', 'flameshot', 'spectacle', 'screenshot',
+        'grab', 'firefox screenshot', 'chrome', 'edge',
+        'windows.graphics.capture', 'screencapture'
+    ]
+    
+    # Common screenshot resolutions (width x height)
+    SCREENSHOT_RESOLUTIONS = [
+        (1920, 1080), (2560, 1440), (3840, 2160),  # 16:9
+        (1366, 768), (1600, 900), (1280, 720),     # 16:9
+        (1440, 900), (1680, 1050), (1920, 1200),   # 16:10
+        (2560, 1600), (3840, 2400),                # 16:10
+        (1280, 800), (1024, 768), (1280, 1024),    # 4:3 / 5:4
+        (3440, 1440), (2560, 1080),                # Ultrawide
+    ]
+    
     def __init__(self):
         """Initialize the metadata analyzer."""
         pass
@@ -68,6 +86,8 @@ class MetadataAnalyzer:
                 'software_detected': None,
                 'ai_software_detected': False,
                 'editing_software_detected': False,
+                'is_screenshot': False,
+                'screenshot_indicators': [],
                 'anomalies': [],
                 'metadata': {},
                 'ai_probability_modifier': 0  # -30 to +30 adjustment
@@ -77,6 +97,17 @@ class MetadataAnalyzer:
             result['format'] = image.format
             result['mode'] = image.mode
             result['size'] = {'width': image.width, 'height': image.height}
+            
+            # Check if this is a screenshot
+            screenshot_check = self._detect_screenshot(image)
+            result['is_screenshot'] = screenshot_check['is_screenshot']
+            result['screenshot_indicators'] = screenshot_check['indicators']
+            
+            # Extract JPEG quality if available
+            if hasattr(image, 'quantization'):
+                result['jpeg_quality'] = self._estimate_jpeg_quality(image)
+            else:
+                result['jpeg_quality'] = None
             
             # Extract EXIF data
             exif_data = self._extract_exif(image)
@@ -302,6 +333,11 @@ class MetadataAnalyzer:
         """
         modifier = 0
         
+        # Screenshot detection - screenshots are NOT AI-generated
+        if result.get('is_screenshot'):
+            modifier -= 20  # Strong indicator of real (screen capture)
+            return max(-30, min(30, modifier))  # Early return
+        
         # Strong indicators of real photo
         if result.get('has_camera_info'):
             modifier -= 15
@@ -321,3 +357,123 @@ class MetadataAnalyzer:
         
         # Clamp to range
         return max(-30, min(30, modifier))
+    
+    def _estimate_jpeg_quality(self, image: Image.Image) -> Optional[int]:
+        """
+        Estimate JPEG quality from quantization tables.
+        
+        Returns:
+            Estimated quality (0-100) or None if not a JPEG
+        """
+        try:
+            if not hasattr(image, 'quantization') or image.format != 'JPEG':
+                return None
+            
+            # Get quantization tables
+            qtables = image.quantization
+            if not qtables:
+                return None
+            
+            # Use first luminance table
+            if 0 in qtables:
+                qtable = qtables[0]
+            else:
+                qtable = list(qtables.values())[0]
+            
+            # Estimate quality from table values
+            # Quality estimation based on quantization table sum
+            # Reference: IJG (Independent JPEG Group) quality mapping
+            q_sum = sum(qtable)
+            
+            if q_sum < 100:
+                quality = 99
+            elif q_sum < 200:
+                quality = 95
+            elif q_sum < 400:
+                quality = 90
+            elif q_sum < 800:
+                quality = 85
+            elif q_sum < 1600:
+                quality = 75
+            elif q_sum < 3200:
+                quality = 60
+            elif q_sum < 6400:
+                quality = 40
+            else:
+                quality = 20
+            
+            return quality
+                
+        except Exception as e:
+            logger.warning(f"Failed to estimate JPEG quality: {e}")
+            return None
+    
+    def _detect_screenshot(self, image: Image.Image) -> dict:
+        """
+        Detect if an image is a screenshot.
+        
+        Screenshots typically have:
+        - No camera EXIF data
+        - Common monitor resolutions
+        - Screenshot software signatures
+        - PNG format (common for screenshots)
+        - Perfectly aligned pixels
+        
+        Returns:
+            dict with 'is_screenshot' (bool) and 'indicators' (list)
+        """
+        indicators = []
+        
+        # Check resolution against common screenshot sizes
+        width, height = image.width, image.height
+        
+        # Exact match
+        if (width, height) in self.SCREENSHOT_RESOLUTIONS:
+            indicators.append(f'Common screenshot resolution: {width}x{height}')
+        
+        # Also check reversed (portrait mode)
+        if (height, width) in self.SCREENSHOT_RESOLUTIONS:
+            indicators.append(f'Common screenshot resolution (portrait): {width}x{height}')
+        
+        # Check for common aspect ratios at any resolution
+        aspect_ratio = width / height if height > 0 else 0
+        common_ratios = {
+            16/9: '16:9',
+            16/10: '16:10',
+            4/3: '4:3',
+            21/9: '21:9',
+            32/9: '32:9'
+        }
+        
+        for ratio, name in common_ratios.items():
+            if abs(aspect_ratio - ratio) < 0.01:  # Allow small tolerance
+                indicators.append(f'Monitor aspect ratio: {name}')
+                break
+        
+        # Check format (PNG is more common for screenshots)
+        if image.format == 'PNG':
+            indicators.append('PNG format (common for screenshots)')
+        
+        # Check EXIF for screenshot software
+        exif_data = self._extract_exif(image)
+        if exif_data:
+            software = str(exif_data.get('Software', '')).lower()
+            for screenshot_sig in self.SCREENSHOT_SOFTWARE:
+                if screenshot_sig in software:
+                    indicators.append(f'Screenshot software detected: {screenshot_sig}')
+                    break
+        
+        # Check if resolution is exactly divisible by common UI scaling factors
+        if width % 16 == 0 and height % 9 == 0:  # 16:9 ratio with clean division
+            scale_factor_w = width // 16
+            scale_factor_h = height // 9
+            if scale_factor_w == scale_factor_h and scale_factor_w >= 60:
+                indicators.append('Clean 16:9 grid alignment (typical for screenshots)')
+        
+        # Determine if it's a screenshot based on indicators
+        is_screenshot = len(indicators) >= 2  # Need at least 2 indicators
+        
+        return {
+            'is_screenshot': is_screenshot,
+            'indicators': indicators
+        }

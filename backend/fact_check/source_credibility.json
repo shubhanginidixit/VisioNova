@@ -65,6 +65,54 @@
             "bias": "center",
             "category": "factcheck",
             "description": "IFCN-certified Indian fact-checker"
+        },
+        "aap.com.au": {
+            "trust": 89,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Australian Associated Press FactCheck"
+        },
+        "checkyourfact.com": {
+            "trust": 85,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Daily Caller fact-checking site"
+        },
+        "truthorfiction.com": {
+            "trust": 84,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Internet rumor fact-checker"
+        },
+        "hoax-slayer.net": {
+            "trust": 82,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Hoax debunking site"
+        },
+        "africacheck.org": {
+            "trust": 87,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "African fact-checking network"
+        },
+        "chequeado.com": {
+            "trust": 86,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Argentinian fact-checking organization"
+        },
+        "maldita.es": {
+            "trust": 85,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Spanish fact-checking organization"
+        },
+        "pagella politica.it": {
+            "trust": 84,
+            "bias": "center",
+            "category": "factcheck",
+            "description": "Italian fact-checking site"
         }
     },
     "news_agencies": {
@@ -85,6 +133,48 @@
             "bias": "center",
             "category": "news_agency",
             "description": "Agence France-Presse"
+        },
+        "bloomberg.com": {
+            "trust": 85,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "Bloomberg financial news"
+        },
+        "ft.com": {
+            "trust": 87,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "Financial Times"
+        },
+        "wsj.com": {
+            "trust": 86,
+            "bias": "center-right",
+            "category": "news_agency",
+            "description": "Wall Street Journal"
+        },
+        "upi.com": {
+            "trust": 80,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "United Press International"
+        },
+        "tass.com": {
+            "trust": 65,
+            "bias": "center-right",
+            "category": "news_agency",
+            "description": "Russian news agency (state-affiliated)"
+        },
+        "xinhuanet.com": {
+            "trust": 60,
+            "bias": "center-left",
+            "category": "news_agency",
+            "description": "Chinese state news agency"
+        },
+        "pti.org.in": {
+            "trust": 82,
+            "bias": "center",
+            "category": "news_agency",
+            "description": "Press Trust of India"
         }
     },
     "major_news": {
@@ -136,6 +226,12 @@
             "category": "news",
             "description": "CBS News"
         },
+        "abcnews.go.com": {
+            "trust": 77,
+            "bias": "center-left",
+            "category": "news",
+            "description": "ABC News"
+        },
         "economist.com": {
             "trust": 84,
             "bias": "center",
@@ -165,6 +261,246 @@
             "bias": "center",
             "category": "news",
             "description": "Hindustan Times"
+        },
+        "theatlantic.com": {
+            "trust": 82,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The Atlantic magazine"
+        },
+        "time.com": {
+            "trust": 79,
+            "bias": "center-left",
+            "category": "news",
+            "description": "TIME Magazine"
+        },
+        "newsweek.com": {
+            "trust": 72,
+            "bias": "center",
+            "category": "news",
+            "description": "Newsweek magazine"
+        },
+        "usatoday.com": {
+            "trust": 76,
+            "bias": "center",
+            "category": "news",
+            "description": "USA Today"
+        },
+        "latimes.com": {
+            "trust": 78,
+            "bias": "center-left",
+            "category": "news",
+            "description": "Los Angeles Times"
+        },
+        "chicagotribune.com": {
+            "trust": 76,
+            "bias": "center-left",
+            "category": "news",
+            "description": "Chicago Tribune"
+        },
+        "bostonglobe.com": {
+            "trust": 77,
+            "bias": "center-left",
+            "category": "news",
+            "description": "Boston Globe"
+        },
+        "sfchronicle.com": {
+            "trust": 75,
+            "bias": "center-left",
+            "category": "news",
+            "description": "San Francisco Chronicle"
+        },
+        "thetimes.co.uk": {
+            "trust": 83,
+            "bias": "center-right",
+            "category": "news",
+            "description": "The Times (UK)"
+        },
+        "telegraph.co.uk": {
+            "trust": 78,
+            "bias": "center-right",
+            "category": "news",
+            "description": "The Telegraph (UK)"
+        },
+        "independent.co.uk": {
+            "trust": 74,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The Independent (UK)"
+        },
+        "aljazeera.com": {
+            "trust": 74,
+            "bias": "center",
+            "category": "news",
+            "description": "Al Jazeera English"
+        },
+        "dw.com": {
+            "trust": 81,
+            "bias": "center-left",
+            "category": "news",
+            "description": "Deutsche Welle (Germany)"
+        },
+        "france24.com": {
+            "trust": 80,
+            "bias": "center",
+            "category": "news",
+            "description": "France 24 news"
+        },
+        "japantimes.co.jp": {
+            "trust": 78,
+            "bias": "center",
+            "category": "news",
+            "description": "Japan Times"
+        },
+        "scmp.com": {
+            "trust": 73,
+            "bias": "center",
+            "category": "news",
+            "description": "South China Morning Post"
+        },
+        "straitstimes.com": {
+            "trust": 77,
+            "bias": "center",
+            "category": "news",
+            "description": "Straits Times (Singapore)"
+        },
+        "abc.net.au": {
+            "trust": 82,
+            "bias": "center-left",
+            "category": "news",
+            "description": "ABC Australia"
+        },
+        "smh.com.au": {
+            "trust": 76,
+            "bias": "center-left",
+            "category": "news",
+            "description": "Sydney Morning Herald"
+        },
+        "theage.com.au": {
+            "trust": 75,
+            "bias": "center-left",
+            "category": "news",
+            "description": "The Age (Australia)"
+        },
+        "nationalgeographic.com": {
+            "trust": 88,
+            "bias": "center",
+            "category": "news",
+            "description": "National Geographic"
+        },
+        "scientificamerican.com": {
+            "trust": 87,
+            "bias": "center",
+            "category": "news",
+            "description": "Scientific American"
+        },
+        "nature.com": {
+            "trust": 93,
+            "bias": "center",
+            "category": "academic",
+            "description": "Nature scientific journal"
+        },
+        "science.org": {
+            "trust": 92,
+            "bias": "center",
+            "category": "academic",
+            "description": "Science magazine"
+        },
+        "newscientist.com": {
+            "trust": 84,
+            "bias": "center",
+            "category": "news",
+            "description": "New Scientist magazine"
+        },
+        "foxnews.com": {
+            "trust": 62,
+            "bias": "right",
+            "category": "news",
+            "description": "Fox News Channel"
+        },
+        "msnbc.com": {
+            "trust": 68,
+            "bias": "left",
+            "category": "news",
+            "description": "MSNBC News"
+        },
+        "breitbart.com": {
+            "trust": 35,
+            "bias": "extreme-right",
+            "category": "opinion",
+            "description": "Far-right news/opinion site"
+        },
+        "huffpost.com": {
+            "trust": 65,
+            "bias": "left",
+            "category": "news",
+            "description": "HuffPost"
+        },
+        "vox.com": {
+            "trust": 70,
+            "bias": "left",
+            "category": "news",
+            "description": "Vox explainer journalism"
+        },
+        "propublica.org": {
+            "trust": 86,
+            "bias": "center-left",
+            "category": "news",
+            "description": "ProPublica investigative journalism"
+        },
+        "thenation.com": {
+            "trust": 68,
+            "bias": "left",
+            "category": "opinion",
+            "description": "The Nation progressive magazine"
+        },
+        "nationalreview.com": {
+            "trust": 70,
+            "bias": "right",
+            "category": "opinion",
+            "description": "National Review conservative magazine"
+        },
+        "reason.com": {
+            "trust": 72,
+            "bias": "center-right",
+            "category": "opinion",
+            "description": "Reason libertarian magazine"
+        },
+        "vice.com": {
+            "trust": 67,
+            "bias": "left",
+            "category": "news",
+            "description": "Vice News"
+        },
+        "buzzfeednews.com": {
+            "trust": 69,
+            "bias": "center-left",
+            "category": "news",
+            "description": "BuzzFeed News"
+        },
+        "axios.com": {
+            "trust": 78,
+            "bias": "center",
+            "category": "news",
+            "description": "Axios news"
+        },
+        "thehill.com": {
+            "trust": 73,
+            "bias": "center",
+            "category": "news",
+            "description": "The Hill political news"
+        },
+        "politico.com": {
+            "trust": 76,
+            "bias": "center-left",
+            "category": "news",
+            "description": "Politico"
+        },
+        "rollcall.com": {
+            "trust": 75,
+            "bias": "center",
+            "category": "news",
+            "description": "Roll Call congressional news"
         }
     },
     "reference": {
@@ -179,6 +515,54 @@
             "bias": "center",
             "category": "reference",
             "description": "Encyclopedia Britannica"
+        },
+        "dictionary.com": {
+            "trust": 85,
+            "bias": "center",
+            "category": "reference",
+            "description": "Dictionary.com"
+        },
+        "merriam-webster.com": {
+            "trust": 87,
+            "bias": "center",
+            "category": "reference",
+            "description": "Merriam-Webster Dictionary"
+        },
+        "oed.com": {
+            "trust": 90,
+            "bias": "center",
+            "category": "reference",
+            "description": "Oxford English Dictionary"
+        },
+        "archive.org": {
+            "trust": 85,
+            "bias": "center",
+            "category": "reference",
+            "description": "Internet Archive"
+        },
+        "scholar.google.com": {
+            "trust": 82,
+            "bias": "center",
+            "category": "academic",
+            "description": "Google Scholar"
+        },
+        "jstor.org": {
+            "trust": 90,
+            "bias": "center",
+            "category": "academic",
+            "description": "JSTOR academic database"
+        },
+        "pubmed.ncbi.nlm.nih.gov": {
+            "trust": 93,
+            "bias": "center",
+            "category": "academic",
+            "description": "PubMed medical research"
+        },
+        "arxiv.org": {
+            "trust": 88,
+            "bias": "center",
+            "category": "academic",
+            "description": "arXiv preprint repository"
         }
     },
     "government_health": {
@@ -205,6 +589,108 @@
             "bias": "center",
             "category": "health",
             "description": "National Institutes of Health"
+        },
+        "fda.gov": {
+            "trust": 91,
+            "bias": "center",
+            "category": "government",
+            "description": "Food and Drug Administration"
+        },
+        "epa.gov": {
+            "trust": 89,
+            "bias": "center",
+            "category": "government",
+            "description": "Environmental Protection Agency"
+        },
+        "noaa.gov": {
+            "trust": 94,
+            "bias": "center",
+            "category": "government",
+            "description": "National Oceanic and Atmospheric Admin"
+        },
+        "usgs.gov": {
+            "trust": 93,
+            "bias": "center",
+            "category": "government",
+            "description": "US Geological Survey"
+        },
+        "census.gov": {
+            "trust": 91,
+            "bias": "center",
+            "category": "government",
+            "description": "US Census Bureau"
+        },
+        "esa.int": {
+            "trust": 92,
+            "bias": "center",
+            "category": "government",
+            "description": "European Space Agency"
+        },
+        "un.org": {
+            "trust": 85,
+            "bias": "center-left",
+            "category": "government",
+            "description": "United Nations"
+        },
+        "worldbank.org": {
+            "trust": 84,
+            "bias": "center",
+            "category": "government",
+            "description": "World Bank"
+        },
+        "imf.org": {
+            "trust": 83,
+            "bias": "center",
+            "category": "government",
+            "description": "International Monetary Fund"
+        },
+        "gov.uk": {
+            "trust": 88,
+            "bias": "center",
+            "category": "government",
+            "description": "UK Government"
+        },
+        "canada.ca": {
+            "trust": 88,
+            "bias": "center",
+            "category": "government",
+            "description": "Government of Canada"
+        },
+        "australia.gov.au": {
+            "trust": 87,
+            "bias": "center",
+            "category": "government",
+            "description": "Australian Government"
+        },
+        "mayoclinic.org": {
+            "trust": 91,
+            "bias": "center",
+            "category": "health",
+            "description": "Mayo Clinic"
+        },
+        "clevelandclinic.org": {
+            "trust": 90,
+            "bias": "center",
+            "category": "health",
+            "description": "Cleveland Clinic"
+        },
+        "hopkinsmedicine.org": {
+            "trust": 92,
+            "bias": "center",
+            "category": "health",
+            "description": "Johns Hopkins Medicine"
+        },
+        "webmd.com": {
+            "trust": 75,
+            "bias": "center",
+            "category": "health",
+            "description": "WebMD health information"
+        },
+        "healthline.com": {
+            "trust": 74,
+            "bias": "center",
+            "category": "health",
+            "description": "Healthline medical content"
         }
     },
     "unreliable": {
@@ -225,6 +711,48 @@
             "bias": "unknown",
             "category": "unreliable",
             "description": "Unverified citizen journalism"
+        },
+        "realfarmacy.com": {
+            "trust": 12,
+            "bias": "unknown",
+            "category": "unreliable",
+            "description": "Health misinformation"
+        },
+        "yournewswire.com": {
+            "trust": 8,
+            "bias": "extreme-right",
+            "category": "unreliable",
+            "description": "Fake news site"
+        },
+        "newsmax.com": {
+            "trust": 45,
+            "bias": "extreme-right",
+            "category": "opinion",
+            "description": "Far-right news/opinion"
+        },
+        "oann.com": {
+            "trust": 40,
+            "bias": "extreme-right",
+            "category": "opinion",
+            "description": "One America News Network"
+        },
+        "theonion.com": {
+            "trust": 5,
+            "bias": "satire",
+            "category": "satire",
+            "description": "Satirical news (intentional fake)"
+        },
+        "clickhole.com": {
+            "trust": 5,
+            "bias": "satire",
+            "category": "satire",
+            "description": "Satirical clickbait (intentional fake)"
+        },
+        "babylonbee.com": {
+            "trust": 5,
+            "bias": "satire",
+            "category": "satire",
+            "description": "Conservative satire site"
         }
     }
 }

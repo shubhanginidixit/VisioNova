@@ -680,8 +680,83 @@
                                     updateLoadingStatus('Preparing results...');
                                     return null;
                                 }
+                            } else if (mediaType === 'image') {
+                                // Handle image analysis with backend API
+                                logDebug('Starting image analysis...');
+
+                                // Step 1: Pixel Pattern Analysis
+                                updateStepProgress(0, 'processing', 30);
+                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing pixel patterns...');
+
+                                let progressValue = 30;
+                                const progressInterval = setInterval(() => {
+                                    if (progressValue < 80) {
+                                        progressValue += 2;
+                                        updateStepProgress(0, 'processing', progressValue);
+                                    }
+                                }, 300);
+
+                                try {
+                                    const controller = new AbortController();
+                                    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s for image processing
+
+                                    const response = await fetch(`${API_BASE_URL}/api/detect-image`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            image: inputData.data,
+                                            filename: inputData.fileName,
+                                            include_ela: true,
+                                            include_metadata: true,
+                                            include_watermark: true,
+                                            include_c2pa: true,
+                                            include_ai_analysis: true
+                                        }),
+                                        signal: controller.signal
+                                    });
+
+                                    clearTimeout(timeoutId);
+                                    clearInterval(progressInterval);
+
+                                    if (!response.ok) {
+                                        const errorText = await response.text();
+                                        logDebug(`Image API error: ${response.status}`, errorText);
+                                        throw new Error(`Image analysis failed: ${response.status}`);
+                                    }
+
+                                    // Step 1: Complete
+                                    updateStepProgress(0, 'complete', 100);
+
+                                    // Step 2: Metadata Extraction
+                                    updateStepProgress(1, 'processing', 50);
+                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting metadata...');
+
+                                    const result = await response.json();
+                                    logDebug('Image analysis result:', result);
+
+                                    await new Promise(r => setTimeout(r, 400));
+                                    updateStepProgress(1, 'complete', 100);
+
+                                    // Step 3: AI Artifact Detection
+                                    updateStepProgress(2, 'processing', 60);
+                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting AI artifacts...');
+
+                                    // Store result for ImageResultPage to use
+                                    sessionStorage.setItem('visioNova_image_result', JSON.stringify(result));
+                                    logDebug('Image result stored in sessionStorage');
+
+                                    await new Promise(r => setTimeout(r, 600));
+                                    updateStepProgress(2, 'complete', 100);
+                                    updateLoadingStatus('Analysis complete! Redirecting...');
+
+                                    return result;
+                                } catch (fetchError) {
+                                    clearInterval(progressInterval);
+                                    logDebug('Image API error:', fetchError);
+                                    throw fetchError;
+                                }
                             } else {
-                                // For other media types (image, video, audio), simulate progress
+                                // For other media types (video, audio), simulate progress
                                 for (let i = 0; i < config.steps.length; i++) {
                                     updateStepProgress(i, 'processing', 30);
                                     updateLoadingStatus(config.statusMessages[i] || 'Processing...');

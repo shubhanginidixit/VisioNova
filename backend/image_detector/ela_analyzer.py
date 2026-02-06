@@ -65,13 +65,19 @@ class ELAAnalyzer:
             # Generate visualization
             ela_base64 = self._image_to_base64(ela_image)
             
+            # Calculate grid consistency (DCT block analysis)
+            grid_consistency = self._analyze_dct_grid(original)
+            
             return {
                 'success': True,
                 'ela_image': ela_base64,
                 'error_stats': error_stats,
                 'analysis': analysis,
                 'manipulation_likelihood': analysis['manipulation_score'],
-                'suspicious_regions': analysis['suspicious_regions']
+                'suspicious_regions': analysis['suspicious_regions'],
+                'ela_score': analysis['manipulation_score'],
+                'clone_detected': len(analysis['suspicious_regions']) > 2,
+                'grid_consistency': grid_consistency
             }
             
         except Exception as e:
@@ -347,3 +353,55 @@ class ELAAnalyzer:
         result[:, :, 2] = (84 + normalized * (253 - 84) * (1 - normalized)).astype(np.uint8)
         
         return result
+    
+    def _analyze_dct_grid(self, image: Image.Image) -> int:
+        """
+        Analyze 8x8 DCT block consistency (JPEG compression grid).
+        
+        Real JPEG images have consistent 8x8 block structure.
+        AI images or heavily processed images may have inconsistent grids.
+        
+        Returns:
+            Consistency percentage (0-100, higher is better)
+        """
+        try:
+            # Convert to grayscale
+            if image.mode != 'L':
+                gray = image.convert('L')
+            else:
+                gray = image
+            
+            img_arr = np.array(gray, dtype=np.float32)
+            h, w = img_arr.shape
+            
+            # Analyze 8x8 blocks
+            block_size = 8
+            block_variances = []
+            
+            for i in range(0, h - block_size, block_size):
+                for j in range(0, w - block_size, block_size):
+                    block = img_arr[i:i+block_size, j:j+block_size]
+                    variance = np.var(block)
+                    block_variances.append(variance)
+            
+            if not block_variances:
+                return 50  # Default for small images
+            
+            # Calculate consistency based on variance distribution
+            overall_std = np.std(block_variances)
+            overall_mean = np.mean(block_variances)
+            
+            # Lower coefficient of variation = more consistent
+            if overall_mean > 0:
+                cv = overall_std / overall_mean
+                # Typical JPEG images have CV around 0.5-2.0
+                # More consistent images have lower CV
+                consistency = max(0, min(100, 100 - (cv * 30)))
+            else:
+                consistency = 100  # Perfectly uniform (suspicious)
+            
+            return int(consistency)
+            
+        except Exception as e:
+            logger.warning(f"DCT grid analysis failed: {e}")
+            return 50  # Default value on error

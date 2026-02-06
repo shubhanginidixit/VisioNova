@@ -1,220 +1,107 @@
 # VisioNova
 
-**Multi-Modal AI Credibility Engine for Digital Media Verification**
+VisioNova is a multi-modal AI credibility engine designed to verify the authenticity of digital media and detect misinformation. It provides comprehensive forensic analysis for images, videos, audio, text, and fact-checking.
 
-VisioNova is a comprehensive forensic analysis platform that verifies the authenticity of digital media and detects misinformation across text, images, audio, and video. It combines state-of-the-art AI detection with explainable verdicts.
+## Problem & Solution
 
----
+VisioNova provides a secure and comprehensive platform to analyze all digital media (images, videos, audio, text) in one place without trusting sources blindly on the internet. Users can easily upload, analyze, and verify the authenticity of content with detailed forensic reports whenever they need them. It keeps information integrity at the forefront, helps users make informed decisions, and ensures they always have access to transparent explanations during verification, giving users full control over what they believe and share.
 
-## The Problem (2025-2026)
+**The Challenge:**  
+Generative AI tools (ChatGPT, Midjourney, ElevenLabs, Sora) have made it trivially easy to create convincing fake content. Deepfakes spread 6x faster than truth on social media, and traditional verification methods (metadata checks, watermarking) fail as AI learns to cover its tracks.
 
-| Threat | Scale |
-|--------|-------|
-| Deepfake videos | 8M+ (16× increase from 2023) |
-| AI face-swap attacks | +300% surge |
-| AI-generated online content | Est. 50%+ |
-| Consumers who can spot deepfakes | 0.1% |
+**The VisioNova Solution:**  
+A multi-modal forensic engine that doesn't just detect AI media—it *explains* why content is flagged. By analyzing text, images, audio, and video simultaneously, and cross-referencing factual claims against trusted sources, VisioNova restores the "Chain of Trust" in digital media consumption.
 
-Generative AI tools (Sora, Midjourney, ElevenLabs, ChatGPT) have made it trivially easy to create convincing fake content. Traditional verification methods fail as AI learns to cover its tracks.
+## Key Capabilities
 
-## The Solution
+### Image Verification
+*   **AI Generation Detection:** Identifies images created by generative adversarial networks (GANs) or diffusion models.
+*   **Error Level Analysis (ELA):** Highlights areas of potential manipulation within an image file.
+*   **Metadata Forensics:**  Analyzes Exif data for inconsistencies.
+*   See [Image Detection Strategy](docs/Image_Detection_Strategy.md) for technical details.
 
-VisioNova provides a **multi-modal forensic engine** that doesn't just detect AI media—it *explains why* content is flagged. By analyzing text, images, audio, and video simultaneously, and cross-referencing claims against trusted sources, VisioNova restores the "Chain of Trust" in digital media.
+### Video Analysis
+*   **Deepfake Detection:** Analyzes frame-by-frame artifacts, facial landmarks, and lip-sync consistency to identify synthetic videos.
+*   **Motion Consistency:** Verifies that physical movements obey natural laws.
+*   See [Video & Deepfake Strategy](docs/Video_Deepfake_Strategy.md) for technical details.
 
----
+### Audio Forensics
+*   **Voice Cloning Detection:** Identifies synthetic vocal patterns and indicators of text-to-speech generation.
+*   **Spectral Analysis:** Examines frequency distribution for anomalies typical of AI audio.
+*   See [Audio Detection Strategy](docs/Audio_Detection_Strategy.md) for technical details.
 
-## Features
-
-### Text Detection
-| Method | Technology | Accuracy |
-|--------|------------|----------|
-| Neural Detection | DeBERTa-v3 + Ensemble | 95%+ |
-| Zero-Shot | Binoculars (perplexity analysis) | Cross-generator |
-| Stylometry | Statistical patterns | Supplementary |
-
-**Detects:** ChatGPT, Claude, DeepSeek R1, Gemini, LLaMA, Mistral  
-📄 [Text Detection Strategy](docs/Text_Detection_Strategy.md)
-
----
-
-### Image Detection
-| Method | Technology | Performance |
-|--------|------------|-------------|
-| ViT Detection | NYUAD Model | 97.36% accuracy |
-| Forensic Analysis | ELA, Frequency (FFT/DCT) | Artifact detection |
-| Provenance | C2PA, SynthID | Watermark verification |
-
-**Detects:** Midjourney, DALL-E 3, Stable Diffusion, Firefly  
-📄 [Image Detection Strategy](docs/Image_Detection_Strategy.md)
-
----
-
-### Audio Detection
-| Method | Technology | Performance |
-|--------|------------|-------------|
-| Deep Learning | HuBERT, WavLM | 2.89% EER |
-| Spectral Analysis | MFCCs, Mel-spectrograms | Voice cloning patterns |
-| Watermarks | AudioSeal, SynthID | Origin verification |
-
-**Detects:** ElevenLabs, XTTS, Tortoise TTS, voice cloning  
-📄 [Audio Detection Strategy](docs/Audio_Detection_Strategy.md)
-
----
-
-### Video Detection
-| Method | Technology | Performance |
-|--------|------------|-------------|
-| Frame Analysis | EfficientNet-B4 | 95.59% AUC |
-| Temporal | LSTM + Landmark tracking | Motion consistency |
-| Audio-Visual | SyncNet, TrueSync | Lip-sync verification |
-| Biological | rPPG | Pulse signal detection |
-
-**Detects:** Sora, Veo, Runway, DeepFaceLab, face swaps  
-📄 [Video Deepfake Strategy](docs/Video_Deepfake_Strategy.md)
-
----
+### Text Analysis
+*   **AI Text Detection:** Distinguishes between human-written and AI-generated text using hybrid analysis (Neural Models + Stylometry).
+*   **Pattern Recognition:** Identifies common rhetorical patterns found in Large Language Model outputs.
+*   See [Text Detection Strategy](docs/Text_Detection_Strategy.md) for technical details.
 
 ### Fact Checking
-| Feature | Description |
-|---------|-------------|
-| Multi-Source Search | Google, DuckDuckGo, Wikipedia |
-| Credibility Scoring | 70+ rated sources (Snopes, Reuters, AP) |
-| Temporal Analysis | Historical vs. current context |
-| AI Analysis | LLM-powered verdict with fallback |
-
-**Verdicts:** TRUE, FALSE, PARTIALLY TRUE, MISLEADING, UNVERIFIABLE  
-📄 [Fact Check Documentation](docs/FactCheck_Documentation.md)
-
----
+*   **Atomic Claim Verification:** Decomposes complex multi-part rumors into individual atomic facts for precise verification.
+*   **Claim Verification:** Cross-references claims against trusted news sources and fact-checking databases.
+*   **Temporal Analysis:** Contextualizes claims within their correct time period (historical vs. current).
+*   **Source Credibility:** Scores the reliability of sources based on a curated database of domain trust ratings.
+*   See [Fact Check Documentation](docs/FactCheck_Documentation.md) for technical details.
 
 ## Technology Stack
 
-| Layer | Technologies |
-|-------|--------------|
-| **Backend** | Python 3.10+, Flask, Flask-CORS |
-| **AI/ML** | PyTorch, Transformers (DeBERTa, ViT, Wav2Vec2), Groq API (LLaMA 3) |
-| **Frontend** | HTML5, CSS3, JavaScript |
-| **Analysis** | OpenCV, Librosa, Scikit-learn, torchaudio |
-| **Search** | Google Custom Search API, DuckDuckGo, MediaWiki API |
-
----
+*   **Backend:** Python 3.10+, Flask
+*   **AI/ML:** PyTorch, Transformers (DistilBERT), Groq API (Llama 3)
+*   **Frontend:** HTML5, CSS3, JavaScript
+*   **Analysis:** OpenCV, Librosa, Scikit-learn
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- Groq API Key (for LLM features)
-- Google API Key (optional, for enhanced search)
+*   Python 3.10 or higher
+*   Groq API Key (for LLM features)
 
 ### Installation
 
-```bash
-# Clone repository
-git clone https://github.com/DhanushPillay/VisioNova.git
-cd VisioNova
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/DhanushPillay/VisioNova.git
+    cd VisioNova
+    ```
 
-# Create virtual environment
-python -m venv .venv
+2.  **Set up Virtual Environment**
+    ```bash
+    python -m venv .venv
+    # Windows
+    .venv\Scripts\activate
+    # Linux/Mac
+    source .venv/bin/activate
+    ```
 
-# Activate (Windows)
-.venv\Scripts\activate
+3.  **Install Dependencies**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *(Note: Ensure all dependencies from `backend/requirements.txt` are installed if available, or install manually: `flask flask-cors python-dotenv requests beautifulsoup4 groq torch transformers`)*
 
-# Activate (Linux/Mac)
-source .venv/bin/activate
+4.  **Configuration**
+    Create a `.env` file in the `backend/` directory:
+    ```env
+    GROQ_API_KEY=your_api_key_here
+    GROQ_MODEL=llama-3.3-70b-versatile
+    ```
 
-# Install dependencies
-pip install -r backend/requirements.txt
-```
+5.  **Run the Application**
+    ```bash
+    python backend/app.py
+    ```
 
-### Configuration
+## Usage
 
-Create `backend/.env`:
+Access the web interface by opening the corresponding HTML files in the `frontend/html/` directory or accessing the local server if configured to serve static files.
 
-```env
-# Required
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama-3.3-70b-versatile
-
-# Optional (enhanced fact-checking)
-GOOGLE_API_KEY=your_google_api_key
-GOOGLE_CSE_ID=your_custom_search_engine_id
-```
-
-### Run
-
-```bash
-python backend/app.py
-```
-
-Access the dashboard at `http://localhost:5000` or open:
-- **Dashboard:** `frontend/html/AnalysisDashboard.html`
-- **Fact Check:** `frontend/html/FactCheckPage.html`
-
----
-
-## Project Structure
-
-```
-VisioNova/
-├── backend/
-│   ├── app.py              # Flask API server
-│   ├── AI/                 # Groq/LLM integration
-│   ├── text_detector/      # Text AI detection
-│   ├── image_detector/     # Image forensics
-│   ├── fact_check/         # Fact verification pipeline
-│   └── requirements.txt
-├── frontend/
-│   ├── html/               # Page templates
-│   ├── js/                 # Frontend logic
-│   └── css/                # Styles
-└── docs/                   # Strategy documentation
-```
-
----
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Problem Statement](docs/Problem_Statement_and_Solutions.md) | The crisis of digital authenticity |
-| [Text Detection](docs/Text_Detection_Strategy.md) | DeBERTa, Binoculars, RAID dataset |
-| [Image Detection](docs/Image_Detection_Strategy.md) | ViT, ELA, C2PA, SynthID |
-| [Audio Detection](docs/Audio_Detection_Strategy.md) | HuBERT, WavLM, AudioSeal |
-| [Video Detection](docs/Video_Deepfake_Strategy.md) | Frame analysis, temporal, rPPG |
-| [Fact Checking](docs/FactCheck_Documentation.md) | Full verification pipeline |
-
----
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/analyze/text` | POST | Analyze text for AI generation |
-| `/api/analyze/image` | POST | Image forensic analysis |
-| `/api/analyze/audio` | POST | Audio deepfake detection |
-| `/api/analyze/video` | POST | Video manipulation detection |
-| `/api/fact-check` | POST | Verify claims against sources |
-| `/api/fact-check/deep` | POST | Enhanced temporal-aware check |
-
----
+*   **Dashboard:** `frontend/html/AnalysisDashboard.html`
+*   **Fact Check:** `frontend/html/FactCheckPage.html`
 
 ## Contributors
 
-- **Dhanush Pillay** - Lead Developer
-- **Shubhangini Dixit** - Developer
-
----
+*   Dhanush Pillay
+*   Shubhangini Dixit
 
 ## License
 
 This project is intended for educational and research purposes.
-
----
-
-## Acknowledgments
-
-- [Hugging Face](https://huggingface.co) - Transformers library
-- [Groq](https://groq.com) - LLM inference
-- [NYUAD](https://github.com/Yanyirong/NYUAD-ViT) - ViT detection model
-- [ASVspoof](https://www.asvspoof.org) - Audio deepfake benchmarks
-- [FaceForensics++](https://github.com/ondyari/FaceForensics) - Video deepfake datasets
