@@ -281,8 +281,14 @@
                             scan including
                             cross-referencing archives from the relevant time period.</p>
                         <button id="deepScanBtn"
-                            class="bg-white text-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors relative z-10 w-full disabled:opacity-50 disabled:cursor-not-allowed">Start
+                            class="bg-white text-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors relative z-10 w-full disabled:opacity-50 disabled:cursor-not-allowed mb-3">Start
                             Deep Scan</button>
+                        <button id="exportPdfBtn"
+                            class="bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors relative z-10 w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            <span class="material-symbols-outlined text-[18px]">download</span>
+                            Export as PDF
+                        </button>
                     </div>
                 </div>
                 <!-- Right Column: Content & Analysis Stream -->
@@ -297,15 +303,33 @@
                             Analysis</button>
                         <button id="tabClaims" data-tab="claims"
                             class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Claims
-                            & Evidence</button>
-                    </div>
+                            & Evidence</button>                        <button id="tabReasoning" data-tab="reasoning"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">AI
+                            Reasoning</button>                    </div>
 
                     <!-- Claim Preview & Sources List -->
                     <div id="claimsCard"
                         class="bg-card-dark rounded-2xl border border-white/5 shadow-xl overflow-hidden flex flex-col">
                         <div class="p-6 border-b border-white/5 bg-gradient-to-r from-card-dark to-surface-dark">
-                            <h2 id="claimTitle" class="text-xl font-bold text-white leading-tight">Enter a claim to
-                                verify</h2>
+                            <div class="flex items-start justify-between">
+                                <h2 id="claimTitle" class="text-xl font-bold text-white leading-tight flex-1">Enter a claim to
+                                    verify</h2>
+                                <!-- Feedback Buttons -->
+                                <div id="feedbackButtons" class="hidden flex items-center gap-2 ml-4">
+                                    <button id="feedbackAgree" 
+                                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/10 hover:bg-success/20 border border-success/30 text-success transition-colors text-sm font-medium"
+                                        title="Agree with verdict">
+                                        <span class="material-symbols-outlined text-[18px]">thumb_up</span>
+                                        <span>Agree</span>
+                                    </button>
+                                    <button id="feedbackDisagree" 
+                                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger transition-colors text-sm font-medium"
+                                        title="Disagree with verdict">
+                                        <span class="material-symbols-outlined text-[18px]">thumb_down</span>
+                                        <span>Disagree</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div id="sourcesContainer" class="p-6 space-y-6">
                             <!-- Empty State -->
@@ -324,8 +348,79 @@
         </main>
     </div>
 
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div class="bg-card-dark rounded-2xl border border-white/10 shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-white/10 bg-gradient-to-r from-card-dark to-surface-dark">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">feedback</span>
+                        Submit Feedback
+                    </h3>
+                    <button id="closeFeedbackModal" class="size-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div>
+                    <p class="text-slate-300 text-sm mb-3">Help us improve by sharing why you disagree with this verdict.</p>
+                    <div class="bg-background-dark/50 rounded-lg p-3 border border-white/5">
+                        <p class="text-xs text-slate-400 mb-1">System Verdict</p>
+                        <p id="feedbackSystemVerdict" class="text-white font-semibold">--</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-white text-sm font-medium mb-2 block">Your Verdict</label>
+                    <select id="feedbackUserVerdict" class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="TRUE">TRUE - Claim is accurate</option>
+                        <option value="FALSE">FALSE - Claim is false</option>
+                        <option value="PARTIALLY TRUE">PARTIALLY TRUE - Mixed accuracy</option>
+                        <option value="MISLEADING">MISLEADING - Deceptive context</option>
+                        <option value="UNVERIFIABLE">UNVERIFIABLE - Cannot verify</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="text-white text-sm font-medium mb-2 block">Reason (Optional)</label>
+                    <textarea id="feedbackReason" 
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" 
+                        rows="3"
+                        placeholder="Why do you disagree? What did we miss?"></textarea>
+                </div>
+                
+                <div>
+                    <label class="text-white text-sm font-medium mb-2 block">Additional Sources (Optional)</label>
+                    <input id="feedbackSources" 
+                        type="text" 
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="https://example.com/source1, https://example.com/source2">
+                    <p class="text-xs text-slate-400 mt-1">Separate multiple URLs with commas</p>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="p-6 border-t border-white/10 bg-background-dark/30 flex gap-3">
+                <button id="cancelFeedback" class="flex-1 px-4 py-2 rounded-lg bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 font-medium transition-colors">
+                    Cancel
+                </button>
+                <button id="submitFeedback" class="flex-1 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    Submit Feedback
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Storage Utilities -->
     <script src="../js/storage-utils.js"></script>
+
+    <!-- jsPDF for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- Dynamic Content Loading Script -->
     <script src="../js/fact-check.js"></script>

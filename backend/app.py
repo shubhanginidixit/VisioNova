@@ -9,6 +9,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from fact_check import FactChecker
+from fact_check.feedback_handler import FeedbackHandler
 from text_detector import AIContentDetector, TextExplainer, DocumentParser
 from image_detector import (
     ImageDetector, MetadataAnalyzer, ELAAnalyzer, 
@@ -30,6 +31,7 @@ limiter = Limiter(
 
 # Initialize the fact checker and AI content detector
 fact_checker = FactChecker()
+feedback_handler = FeedbackHandler()  # Initialize feedback handler
 ai_detector = AIContentDetector(use_ml_model=False)  # Use offline statistical detection (more reliable)
 text_explainer = TextExplainer()
 doc_parser = DocumentParser()
@@ -1152,6 +1154,22 @@ def deep_check_fact():
         }), 500
 
 
+@app.route('/api/fact-check/feedback/stats', methods=['GET'])
+def feedback_stats():
+    """Get feedback statistics."""
+    try:
+        stats = feedback_handler.get_feedback_stats()
+        return jsonify({
+            'success': True,
+            **stats
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error retrieving feedback stats: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     print("Starting VisioNova Fact-Check API Server...")
     print("API available at: http://localhost:5000")
@@ -1159,6 +1177,7 @@ if __name__ == '__main__':
     print("  GET  /                    - Health check")
     print("  POST /api/fact-check      - Check a claim/URL")
     print("  GET  /api/fact-check?q=   - Check a claim (simple)")
+    print("  POST /api/fact-check/feedback - Submit user feedback")
     print()
     
     app.run(debug=True, host='0.0.0.0', port=5000)

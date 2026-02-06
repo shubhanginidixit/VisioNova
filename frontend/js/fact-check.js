@@ -17,19 +17,156 @@ let currentTab = 'summary'; // Default tab
 let currentController = null;  // AbortController for cancelling requests
 let debounceTimer = null;      // Timer for debouncing
 
+// IndexedDB for history
+let historyDB = null;
+const DB_NAME = 'VisioNovaFactCheck';
+const DB_VERSION = 1;
+const HISTORY_STORE = 'checkHistory';
+
+/**
+ * Initialize IndexedDB for persistent history
+ */
+function initHistoryDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => {
+            console.error('[History] Failed to open IndexedDB:', request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            historyDB = request.result;
+            console.log('[History] IndexedDB initialized');
+            resolve(historyDB);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            if (!db.objectStoreNames.contains(HISTORY_STORE)) {
+                const objectStore = db.createObjectStore(HISTORY_STORE, { keyPath: 'id', autoIncrement: true });
+                objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+                objectStore.createIndex('claim', 'claim', { unique: false });
+                objectStore.createIndex('verdict', 'verdict', { unique: false });
+                console.log('[History] Object store created');
+            }
+        };
+    });
+}
+
+/**
+ * Save fact-check result to history
+ */
+function saveToHistory(result) {
+    if (!historyDB) {
+        console.warn('[History] DB not initialized');
+        return;
+    }
+    
+    try {
+        const transaction = historyDB.transaction([HISTORY_STORE], 'readwrite');
+        const store = transaction.objectStore(HISTORY_STORE);
+        
+        const historyEntry = {
+            timestamp: Date.now(),
+            claim: result.claim || result.url || 'Unknown',
+            verdict: result.verdict,
+            confidence: result.confidence,
+            sourceCount: result.source_count || 0,
+            inputType: result.input_type,
+            summary: result.summary?.one_liner || '',
+            deepScan: result.deep_scan || false
+        };
+        
+        store.add(historyEntry);
+        
+        transaction.oncomplete = () => {
+            console.log('[History] Saved to history');
+        };
+        
+        transaction.onerror = () => {
+            console.error('[History] Failed to save:', transaction.error);
+        };
+    } catch (error) {
+        console.error('[History] Error saving to history:', error);
+    }
+}
+
+/**
+ * Get history entries
+ */
+function getHistory(limit = 20) {
+    return new Promise((resolve, reject) => {
+        if (!historyDB) {
+            reject('DB not initialized');
+            return;
+        }
+        
+        const transaction = historyDB.transaction([HISTORY_STORE], 'readonly');
+        const store = transaction.objectStore(HISTORY_STORE);
+        const index = store.index('timestamp');
+        
+        const request = index.openCursor(null, 'prev'); // Descending order
+        const results = [];
+        
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor && results.length < limit) {
+                results.push(cursor.value);
+                cursor.continue();
+            } else {
+                resolve(results);
+            }
+        };
+        
+        request.onerror = () => {
+            reject(request.error);
+        };
+    });
+}
+
+/**
+ * Clear all history
+ */
+function clearHistory() {
+    return new Promise((resolve, reject) => {
+        if (!historyDB) {
+            reject('DB not initialized');
+            return;
+        }
+        
+        const transaction = historyDB.transaction([HISTORY_STORE], 'readwrite');
+        const store = transaction.objectStore(HISTORY_STORE);
+        const request = store.clear();
+        
+        request.onsuccess = () => {
+            console.log('[History] History cleared');
+            resolve();
+        };
+        
+        request.onerror = () => {
+            reject(request.error);
+        };
+    });
+}
+
 /**
  * Initialize the fact-check page
  */
-function initFactCheck() {
+async function initFactCheck() {
     urlInput = document.getElementById('urlInput');
     console.log('[FactCheck] Initializing...');
 
-    // Initialize tabs
-    initTabs();
+    // Initialize IndexedDB for history
+    try {
+        await initHistoryDB();
+    } catch (error) {
+        console.error('[FactCheck] Failed to initialize history DB:', error);
+    }
 
     // Initialize tabs
     initTabs();
-
 
     // Find the verify button and attach handler
     const buttons = document.querySelectorAll('button');
@@ -95,9 +232,175 @@ function initFactCheck() {
     const deepScanBtn = document.getElementById('deepScanBtn');
     if (deepScanBtn) {
         deepScanBtn.addEventListener('click', handleDeepScan);
+        console.log('[FactCheck] Deep Scan button initialized');
+    } else {
+        console.warn('[FactCheck] Deep Scan button NOT FOUND - check if id="deepScanBtn" exists in HTML');
+    }
+
+    // Initialize feedback modal handlers
+    initFeedbackModal();
+
+    // Initialize PDF export button
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', exportToPDF);
     }
 
     console.log('[FactCheck] Initialization complete');
+}
+
+/**
+ * Initialize feedback modal and button handlers
+ */
+function initFeedbackModal() {
+    const feedbackAgree = document.getElementById('feedbackAgree');
+    const feedbackDisagree = document.getElementById('feedbackDisagree');
+    const closeFeedbackModal = document.getElementById('closeFeedbackModal');
+    const cancelFeedback = document.getElementById('cancelFeedback');
+    const submitFeedback = document.getElementById('submitFeedback');
+    const feedbackModal = document.getElementById('feedbackModal');
+
+    if (feedbackAgree) {
+        feedbackAgree.addEventListener('click', () => {
+            showNotification('Thank you for your feedback!', 'success');
+            // Optional: Send agreement feedback to backend
+            sendFeedbackToBackend('agree');
+        });
+    }
+
+    if (feedbackDisagree) {
+        feedbackDisagree.addEventListener('click', () => {
+            openFeedbackModal();
+        });
+    }
+
+    if (closeFeedbackModal) {
+        closeFeedbackModal.addEventListener('click', () => {
+            feedbackModal.classList.add('hidden');
+        });
+    }
+
+    if (cancelFeedback) {
+        cancelFeedback.addEventListener('click', () => {
+            feedbackModal.classList.add('hidden');
+        });
+    }
+
+    if (submitFeedback) {
+        submitFeedback.addEventListener('click', handleFeedbackSubmission);
+    }
+
+    // Close modal on outside click
+    if (feedbackModal) {
+        feedbackModal.addEventListener('click', (e) => {
+            if (e.target === feedbackModal) {
+                feedbackModal.classList.add('hidden');
+            }
+        });
+    }
+}
+
+/**
+ * Open feedback modal
+ */
+function openFeedbackModal() {
+    const feedbackModal = document.getElementById('feedbackModal');
+    const feedbackSystemVerdict = document.getElementById('feedbackSystemVerdict');
+    
+    if (!currentResult) {
+        showNotification('No analysis result to provide feedback on', 'warning');
+        return;
+    }
+
+    if (feedbackSystemVerdict && currentResult.verdict) {
+        feedbackSystemVerdict.textContent = currentResult.verdict;
+    }
+
+    if (feedbackModal) {
+        feedbackModal.classList.remove('hidden');
+    }
+}
+
+/**
+ * Handle feedback form submission
+ */
+async function handleFeedbackSubmission() {
+    const feedbackUserVerdict = document.getElementById('feedbackUserVerdict');
+    const feedbackReason = document.getElementById('feedbackReason');
+    const feedbackSources = document.getElementById('feedbackSources');
+    const submitBtn = document.getElementById('submitFeedback');
+
+    if (!currentResult) {
+        showNotification('No analysis result to provide feedback on', 'error');
+        return;
+    }
+
+    const userVerdict = feedbackUserVerdict.value;
+    const reason = feedbackReason.value.trim();
+    const sourcesInput = feedbackSources.value.trim();
+    const additionalSources = sourcesInput ? sourcesInput.split(',').map(s => s.trim()).filter(s => s) : [];
+
+    // Disable submit button
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Submitting...';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/fact-check/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                claim: currentResult.claim || currentResult.url || urlInput.value,
+                original_verdict: currentResult.verdict,
+                user_verdict: userVerdict,
+                reason: reason,
+                additional_sources: additionalSources
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        showNotification('Feedback submitted successfully! Thank you for helping us improve.', 'success');
+        
+        // Close modal and reset form
+        document.getElementById('feedbackModal').classList.add('hidden');
+        feedbackReason.value = '';
+        feedbackSources.value = '';
+
+    } catch (error) {
+        console.error('[Feedback] Submission error:', error);
+        showNotification('Failed to submit feedback. Please try again.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+    }
+}
+
+/**
+ * Send simple feedback (agree) to backend
+ */
+async function sendFeedbackToBackend(type) {
+    if (!currentResult) return;
+
+    try {
+        await fetch(`${API_BASE_URL}/api/fact-check/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                claim: currentResult.claim || currentResult.url || urlInput.value,
+                original_verdict: currentResult.verdict,
+                user_verdict: currentResult.verdict, // Same as system for agreement
+                reason: 'User agreed with the verdict',
+                additional_sources: []
+            })
+        });
+    } catch (error) {
+        console.error('[Feedback] Error sending agreement:', error);
+    }
 }
 
 /**
@@ -117,18 +420,24 @@ function debouncedVerify() {
  * Performs enhanced analysis with archive cross-referencing
  */
 async function handleDeepScan() {
+    console.log('[FactCheck] Deep Scan button clicked');
+
     // Get the current input
     const input = urlInput?.value?.trim();
     if (!input) {
+        console.log('[FactCheck] Deep Scan: No input provided');
         showNotification('Please enter a claim, question, or URL first', 'warning');
         return;
     }
 
     // If no current result, run regular analysis first
     if (!currentResult) {
+        console.log('[FactCheck] Deep Scan: No previous result exists - need to run regular analysis first');
         showNotification('Please run a regular analysis first', 'warning');
         return;
     }
+
+    console.log('[FactCheck] Deep Scan: Starting deep analysis...');
 
     const deepScanBtn = document.getElementById('deepScanBtn');
     const explanationBox = document.getElementById('explanationBox');
@@ -416,6 +725,9 @@ function displayResults(result) {
     // Store result for tab switching
     currentResult = result;
 
+    // Save to history
+    saveToHistory(result);
+
     // Update trust score display
     updateTrustScore(result.confidence, result.verdict);
 
@@ -442,12 +754,31 @@ function displayResults(result) {
     const claimTitle = document.getElementById('claimTitle');
     if (claimTitle) claimTitle.textContent = "Verification Results";
 
+    // Show feedback buttons
+    const feedbackButtons = document.getElementById('feedbackButtons');
+    if (feedbackButtons) {
+        feedbackButtons.classList.remove('hidden');
+        feedbackButtons.classList.add('flex');
+    }
+
     // Update deep scan description with temporal context if available
     if (result.temporal_context && result.temporal_context.description) {
         const deepScanDescElement = document.getElementById('deepScanDescription');
         if (deepScanDescElement) {
             deepScanDescElement.textContent = `Run a deeper scan including cross-referencing ${result.temporal_context.description}.`;
         }
+    }
+
+    // Enable deep scan button after regular check
+    const deepScanBtn = document.getElementById('deepScanBtn');
+    if (deepScanBtn) {
+        deepScanBtn.disabled = false;
+    }
+
+    // Enable PDF export button
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.disabled = false;
     }
 
     // Render content for the current tab
@@ -547,6 +878,9 @@ function renderTabContent(result, tabName) {
             break;
         case 'claims':
             sourcesContainer.innerHTML = buildClaimsHTML(result);
+            break;
+        case 'reasoning':
+            sourcesContainer.innerHTML = buildReasoningHTML(result);
             break;
         default:
             sourcesContainer.innerHTML = buildSummaryHTML(result);
@@ -803,6 +1137,144 @@ function getClaimStatusConfig(status) {
 }
 
 /**
+ * Build AI Reasoning tab content - shows source stances and confidence breakdown
+ */
+function buildReasoningHTML(result) {
+    const sourceAnalysis = result.source_analysis || [];
+    const confidenceBreakdown = result.confidence_breakdown || {};
+    
+    // Build confidence breakdown visualization
+    const confidenceHTML = `
+        <div class="space-y-3">
+            <h4 class="text-white font-medium text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">analytics</span>
+                Confidence Breakdown
+            </h4>
+            <p class="text-slate-400 text-xs mb-3">${escapeHTML(confidenceBreakdown.explanation || 'How we calculated the confidence score.')}</p>
+            
+            <div class="space-y-2">
+                ${buildConfidenceBar('Source Quality', confidenceBreakdown.source_quality || 0, 25, 'High-trust sources increase confidence')}
+                ${buildConfidenceBar('Source Quantity', confidenceBreakdown.source_quantity || 0, 20, 'More sources provide better coverage')}
+                ${buildConfidenceBar('Fact-Check Sites', confidenceBreakdown.factcheck_found || 0, 25, 'Professional fact-checkers found')}
+                ${buildConfidenceBar('Source Consensus', confidenceBreakdown.consensus || 0, 30, 'Agreement between sources')}
+            </div>
+            
+            <div class="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-300">Total Confidence</span>
+                    <span class="text-2xl font-bold text-primary">${result.confidence}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Build source stance analysis
+    const sourceStancesHTML = sourceAnalysis.length > 0 ? `
+        <div class="space-y-3 mt-6">
+            <h4 class="text-white font-medium text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">balance</span>
+                Source Stance Analysis
+            </h4>
+            <p class="text-slate-400 text-xs mb-3">How each source positions relative to the claim</p>
+            
+            <div class="space-y-3">
+                ${sourceAnalysis.map(source => {
+                    const stanceConfig = getStanceConfig(source.stance);
+                    return `
+                        <div class="bg-background-dark/50 rounded-lg p-4 border border-white/5">
+                            <div class="flex items-start justify-between gap-3 mb-2">
+                                <h5 class="text-white font-medium text-sm flex-1">${escapeHTML(source.source_title || 'Unknown Source')}</h5>
+                                <span class="px-2 py-1 rounded-md ${stanceConfig.bgClass} ${stanceConfig.textClass} text-xs font-bold border ${stanceConfig.borderClass} shrink-0">
+                                    ${source.stance || 'NEUTRAL'}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs text-slate-500">Relevance:</span>
+                                <div class="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-primary rounded-full transition-all" style="width: ${source.relevance || 50}%"></div>
+                                </div>
+                                <span class="text-xs text-slate-400 font-mono">${source.relevance || 50}%</span>
+                            </div>
+                            ${source.key_excerpt ? `
+                                <div class="mt-3 p-3 rounded-lg bg-card-dark border border-white/5">
+                                    <p class="text-xs text-slate-400 mb-1">Key Excerpt:</p>
+                                    <p class="text-sm text-slate-300 italic">"${escapeHTML(source.key_excerpt)}"</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    ` : `
+        <div class="mt-6 flex flex-col items-center justify-center py-8 text-center">
+            <div class="size-12 rounded-full bg-slate-500/10 flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-2xl text-slate-400">analytics</span>
+            </div>
+            <h4 class="text-white font-medium mb-1">No Source Analysis Available</h4>
+            <p class="text-slate-400 text-sm">Detailed source stance analysis was not generated for this check.</p>
+        </div>
+    `;
+    
+    // Contradictions found section
+    const contradictionsHTML = result.contradictions_found ? `
+        <div class="mt-6 p-4 rounded-lg bg-warning/10 border border-warning/20">
+            <div class="flex items-center gap-2 text-warning mb-2">
+                <span class="material-symbols-outlined">warning</span>
+                <h4 class="font-bold text-sm">Contradictions Detected</h4>
+            </div>
+            <p class="text-sm text-slate-300">Our analysis found conflicting information between sources. Review the source stances above to understand different perspectives.</p>
+        </div>
+    ` : '';
+    
+    return `
+        <div class="space-y-6">
+            ${confidenceHTML}
+            ${contradictionsHTML}
+            ${sourceStancesHTML}
+        </div>
+    `;
+}
+
+/**
+ * Build a confidence breakdown bar
+ */
+function buildConfidenceBar(label, value, maxValue, tooltip) {
+    const percentage = (value / maxValue) * 100;
+    return `
+        <div class="group relative">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400 flex items-center gap-1">
+                    ${label}
+                    <span class="material-symbols-outlined text-[14px] text-slate-500 cursor-help" title="${tooltip}">info</span>
+                </span>
+                <span class="text-xs text-white font-mono">${value}/${maxValue}</span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-primary to-accent-success rounded-full transition-all duration-500" 
+                     style="width: ${percentage}%"></div>
+            </div>
+            <div class="hidden group-hover:block absolute left-0 -top-8 bg-card-dark border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-300 whitespace-nowrap z-10">
+                ${tooltip}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Get styling config for source stance
+ */
+function getStanceConfig(stance) {
+    const configs = {
+        'SUPPORTS': { bgClass: 'bg-success/20', textClass: 'text-success', borderClass: 'border-success/30' },
+        'REFUTES': { bgClass: 'bg-danger/20', textClass: 'text-danger', borderClass: 'border-danger/30' },
+        'NEUTRAL': { bgClass: 'bg-slate-500/20', textClass: 'text-slate-400', borderClass: 'border-slate-500/30' },
+        'MIXED': { bgClass: 'bg-warning/20', textClass: 'text-warning', borderClass: 'border-warning/30' }
+    };
+    return configs[stance] || configs['NEUTRAL'];
+}
+
+/**
  * Get verdict color class
  */
 function getVerdictColor(verdict) {
@@ -1031,5 +1503,179 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notification.remove(), 5000);
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', initFactCheck);
+/**
+ * Export the current fact-check result as PDF
+ */
+function exportToPDF() {
+    if (!currentResult) {
+        showNotification('No fact-check result to export', 'warning');
+        return;
+    }
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        let yPos = 20;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 20;
+        const maxWidth = pageWidth - 2 * margin;
+        
+        // Title
+        doc.setFontSize(20);
+        doc.setFont(undefined, 'bold');
+        doc.text('VisioNova Fact-Check Report', margin, yPos);
+        yPos += 10;
+        
+        // Verdict Badge
+        doc.setFontSize(16);
+        const verdictColor = {
+            'TRUE': [0, 217, 145],
+            'FALSE': [255, 74, 74],
+            'PARTIALLY TRUE': [255, 183, 74],
+            'MISLEADING': [255, 183, 74],
+            'UNVERIFIABLE': [148, 163, 184]
+        }[currentResult.verdict] || [148, 163, 184];
+        
+        doc.setTextColor(...verdictColor);
+        doc.text(currentResult.verdict || 'UNKNOWN', margin, yPos);
+        doc.setTextColor(0, 0, 0);
+        yPos += 8;
+        
+        // Confidence Score
+        doc.setFontSize(12);
+        doc.text(`Confidence: ${currentResult.confidence}%`, margin, yPos);
+        yPos += 10;
+        
+        // Separator
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 10;
+        
+        // Claim
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Claim:', margin, yPos);
+        yPos += 7;
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(11);
+        const claimText = currentResult.claim || currentResult.url || 'N/A';
+        const splitClaim = doc.splitTextToSize(claimText, maxWidth);
+        doc.text(splitClaim, margin, yPos);
+        yPos += (splitClaim.length * 6) + 8;
+        
+        // Summary
+        if (currentResult.summary && currentResult.summary.one_liner) {
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Summary:', margin, yPos);
+            yPos += 7;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(11);
+            const summaryText = doc.splitTextToSize(currentResult.summary.one_liner, maxWidth);
+            doc.text(summaryText, margin, yPos);
+            yPos += (summaryText.length * 6) + 8;
+        }
+        
+        // Key Points
+        if (currentResult.summary && currentResult.summary.key_points && currentResult.summary.key_points.length > 0) {
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Key Points:', margin, yPos);
+            yPos += 7;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+            
+            currentResult.summary.key_points.forEach((point, index) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                const bulletPoint = `• ${point}`;
+                const splitPoint = doc.splitTextToSize(bulletPoint, maxWidth - 5);
+                doc.text(splitPoint, margin + 2, yPos);
+                yPos += (splitPoint.length * 5) + 3;
+            });
+            yPos += 5;
+        }
+        
+        // Sources
+        if (currentResult.sources && currentResult.sources.length > 0) {
+            if (yPos > 240) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Sources (${currentResult.sources.length}):`, margin, yPos);
+            yPos += 7;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(9);
+            
+            currentResult.sources.slice(0, 10).forEach((source, index) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                const sourceNum = `[${index + 1}] `;
+                const sourceTitle = source.title || source.domain || 'Source';
+                const trustLabel = source.is_factcheck ? 'Fact-Check' : source.trust_level;
+                
+                doc.setFont(undefined, 'bold');
+                doc.text(sourceNum, margin, yPos);
+                doc.setFont(undefined, 'normal');
+                
+                const titleSplit = doc.splitTextToSize(sourceTitle, maxWidth - 15);
+                doc.text(titleSplit, margin + 8, yPos);
+                yPos += (titleSplit.length * 4) + 2;
+                
+                doc.setTextColor(100, 100, 100);
+                doc.text(`${source.domain} • ${trustLabel}`, margin + 8, yPos);
+                doc.setTextColor(0, 0, 0);
+                yPos += 4;
+                
+                doc.setFontSize(8);
+                doc.setTextColor(50, 50, 200);
+                const urlSplit = doc.splitTextToSize(source.url, maxWidth - 8);
+                doc.text(urlSplit, margin + 8, yPos);
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(9);
+                yPos += (urlSplit.length * 3) + 5;
+            });
+        }
+        
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text(`Generated by VisioNova | ${new Date().toLocaleDateString()} | Page ${i} of ${pageCount}`, 
+                margin, doc.internal.pageSize.getHeight() - 10);
+        }
+        
+        // Save PDF
+        const filename = `VisioNova_FactCheck_${Date.now()}.pdf`;
+        doc.save(filename);
+        
+        showNotification('PDF exported successfully!', 'success');
+        
+    } catch (error) {
+        console.error('[PDF Export] Error:', error);
+        showNotification('Failed to export PDF. Please try again.', 'error');
+    }
+}
+
+// Initialize when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFactCheck);
+} else {
+    initFactCheck();
+}
+
