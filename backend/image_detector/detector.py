@@ -122,17 +122,53 @@ class ImageDetector:
             # Load image
             image = Image.open(io.BytesIO(image_data))
             if image.mode != 'RGB':
+                original_mode = image.mode
                 image = image.convert('RGB')
+            else:
+                original_mode = 'RGB'
             
             # Get image info
             width, height = image.size
+            
+            # Extract color space and bit depth info
+            color_space = original_mode  # e.g., 'RGB', 'RGBA', 'L', 'CMYK', 'P'
+            
+            # Map PIL modes to human-readable color spaces
+            color_space_map = {
+                'RGB': 'RGB',
+                'RGBA': 'RGBA',
+                'L': 'Grayscale',
+                'P': 'Palette',
+                'CMYK': 'CMYK',
+                '1': '1-bit',
+                'LAB': 'LAB'
+            }
+            color_space_name = color_space_map.get(original_mode, original_mode)
+            
+            # Calculate bits per pixel
+            mode_to_bits = {
+                '1': 1,
+                'L': 8,
+                'P': 8,
+                'RGB': 24,
+                'RGBA': 32,
+                'CMYK': 32,
+                'YCbCr': 24,
+                'LAB': 24,
+                'HSV': 24,
+                'I': 32,
+                'F': 32
+            }
+            bit_depth = mode_to_bits.get(original_mode, 24)
             
             # Run detection methods
             results = {
                 'success': True,
                 'filename': filename,
                 'dimensions': {'width': width, 'height': height},
-                'file_size_bytes': len(image_data),
+                'file_size': len(image_data),  # Changed from file_size_bytes for frontend compatibility
+                'color_space': color_space_name,
+                'bit_depth': bit_depth,
             }
             
             # Statistical analysis (always available)
@@ -147,6 +183,14 @@ class ImageDetector:
                 results['ai_probability'] = (
                     results['ai_probability'] * 0.3 + ml_result['confidence'] * 0.7
                 )
+                
+                # Generate ML heatmap for visualization
+                try:
+                    ml_heatmap = self._generate_ml_heatmap(image)
+                    if ml_heatmap:
+                        results['ml_heatmap'] = ml_heatmap
+                except Exception as e:
+                    logger.warning(f"ML heatmap generation failed: {e}")
             
             # Determine verdict
             ai_prob = results['ai_probability']
@@ -565,6 +609,110 @@ class ImageDetector:
                 'confidence': 50.0,
                 'error': str(e)
             }
+    
+    def _generate_ml_heatmap(self, image: Image.Image, patch_size: int = 64, stride: int = 32) -> Optional[str]:
+        """
+        Generate ML-based probability heatmap showing AI likelihood in different regions.
+        
+        Divides image into overlapping patches and runs ML inference on each patch.
+        Creates a visualization showing which regions are more/less likely AI-generated.
+        
+        Args:
+            image: PIL Image to analyze
+            patch_size: Size of each patch (default 64x64)
+            stride: Stride between patches (default 32 for 50% overlap)
+            
+        Returns:
+            Base64-encoded PNG heatmap overlay, or None if generation fails
+        """
+        if not self.ml_detectors:
+            return None
+        
+        try:
+            import cv2
+            
+            # Resize image if too large (for performance)
+            width, height = image.size
+            max_dim = 512
+            if max(width, height) > max_dim:
+                scale = max_dim / max(width, height)
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                image_resized = image.resize((new_width, new_height), Image.Resampling.BILINEAR)
+            else:
+                image_resized = image
+                new_width, new_height = width, height
+            
+            # Convert to numpy array
+            img_array = np.array(image_resized)
+            
+            # Initialize heatmap
+            heatmap = np.zeros((new_height, new_width), dtype=np.float32)
+            counts = np.zeros((new_height, new_width), dtype=np.float32)
+            
+            # Get active ML detector
+            active_detector = None
+            if self.ml_detectors.get('dire') and self.ml_detectors['dire'].model_loaded:
+                active_detector = self.ml_detectors['dire']
+            elif self.ml_detectors.get('nyuad') and self.ml_detectors['nyuad'].model_loaded:
+                active_detector = self.ml_detectors['nyuad']
+            
+            if not active_detector:
+                return None
+            
+            # Extract and analyze patches
+            for y in range(0, new_height - patch_size + 1, stride):
+                for x in range(0, new_width - patch_size + 1, stride):
+                    # Extract patch
+                    patch = img_array[y:y+patch_size, x:x+patch_size]
+                    
+                    # Convert patch to PIL Image
+                    patch_img = Image.fromarray(patch)
+                    
+                    # Convert to bytes for detector
+                    patch_buffer = io.BytesIO()
+                    patch_img.save(patch_buffer, format='PNG')
+                    patch_bytes = patch_buffer.getvalue()
+                    
+                    # Run detection on patch
+                    try:
+                        result = active_detector.detect(patch_bytes)
+                        if result.get('success'):
+                            prob = result.get('ai_probability', 50) / 100.0
+                            # Add to heatmap
+                            heatmap[y:y+patch_size, x:x+patch_size] += prob
+                            counts[y:y+patch_size, x:x+patch_size] += 1
+                    except:
+                        # If patch detection fails, use neutral value
+                        heatmap[y:y+patch_size, x:x+patch_size] += 0.5
+                        counts[y:y+patch_size, x:x+patch_size] += 1
+            
+            # Average overlapping predictions
+            counts[counts == 0] = 1  # Avoid division by zero
+            heatmap = heatmap / counts
+            
+            # Normalize to 0-255
+            heatmap_normalized = (heatmap * 255).astype(np.uint8)
+            
+            # Apply colormap (red = AI, blue = real)
+            heatmap_colored = cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET)
+            heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
+            
+            # Resize back to original dimensions if needed
+            if (new_width, new_height) != (width, height):
+                heatmap_colored = cv2.resize(heatmap_colored, (width, height), interpolation=cv2.INTER_LINEAR)
+            
+            # Convert to PIL and encode as base64
+            heatmap_img = Image.fromarray(heatmap_colored)
+            buffer = io.BytesIO()
+            heatmap_img.save(buffer, format='PNG')
+            heatmap_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            return f"data:image/png;base64,{heatmap_base64}"
+            
+        except Exception as e:
+            logger.error(f"ML heatmap generation failed: {e}")
+            return None
     
     def detect_from_base64(self, base64_data: str, filename: str = "image") -> dict:
         """
