@@ -367,6 +367,7 @@ function buildMetadataHTML(result) {
         <div class="space-y-6">
             ${buildMetadataOverviewCard(result)}
             ${buildEXIFDataCard(result)}
+            ${buildWatermarkMetadataCard(result)}
             ${buildC2PACredentialsCard(result)}
             ${buildFilePropertiesCard(result)}
         </div>
@@ -1015,57 +1016,230 @@ function buildNoiseAnalysisCard(result) {
 }
 
 /**
- * Build Watermark Detection Card
+ * Build Watermark Detection Card - Comprehensive Forensic Version
  */
 function buildWatermarkDetectionCard(result) {
     const watermark = result.watermark || {};
+    const methods = watermark.detection_methods || {};
     
     return `
         <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
             <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">verified</span>
-                AI Watermark Detection
+                Invisible Watermark Detection
             </h3>
             
             <p class="text-slate-300 text-sm mb-4">
-                Many AI image generators embed invisible watermarks to identify their output.
+                AI generators embed invisible watermarks to identify their output. Advanced forensic analysis using 10 detection methods.
             </p>
             
-            <div class="p-4 rounded-lg ${watermark.watermark_detected ? 'bg-red-500/10 border-red-500/20' : 'bg-accent-green/10 border-accent-green/20'} border mb-4">
-                <div class="flex items-center gap-3">
-                    <span class="material-symbols-outlined ${watermark.watermark_detected ? 'text-red-500' : 'text-accent-green'} text-2xl">
-                        ${watermark.watermark_detected ? 'warning' : 'check_circle'}
-                    </span>
-                    <div>
-                        <div class="text-white font-medium">
+            <!-- Overall Status Banner -->
+            <div class="p-4 rounded-lg ${watermark.watermark_detected ? 'bg-red-500/10 border-red-500/20' : 'bg-accent-green/10 border-accent-green/20'} border mb-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="text-3xl">${watermark.watermark_detected ? '⚠️' : '✅'}</span>
+                    <div class="flex-1">
+                        <div class="text-white font-semibold text-lg">
                             ${watermark.watermark_detected ? 'Watermark Detected' : 'No Watermark Found'}
                         </div>
-                        <div class="text-slate-300 text-xs mt-1">
-                            ${watermark.watermark_detected 
-                                ? `Found: ${watermark.watermarks_found?.join(', ') || 'Unknown'}` 
-                                : 'Image passed watermark screening'}
-                        </div>
+                        ${watermark.watermark_detected ? `
+                            <div class="text-sm text-slate-300 mt-1">
+                                Primary Type: <span class="font-medium text-white">${escapeHTML(watermark.watermark_type || 'Unknown')}</span> 
+                                <span class="ml-2 px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-xs">${watermark.confidence}% confidence</span>
+                            </div>
+                        ` : `
+                            <div class="text-sm text-slate-400 mt-1">
+                                Scanned with 10 detection methods - No invisible watermarks found
+                            </div>
+                        `}
                     </div>
+                </div>
+                
+                ${watermark.ai_generator_signature ? `
+                    <div class="mt-3 p-2 rounded bg-background-dark/50 border border-white/10">
+                        <span class="text-xs text-slate-400">🎯 Identified Generator:</span>
+                        <span class="text-white font-medium ml-2">${formatGeneratorName(watermark.ai_generator_signature)}</span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- Detection Methods Breakdown -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-white font-medium text-sm">Detection Methods Analysis</h4>
+                    <button onclick="toggleWatermarkFilters()" class="text-xs text-primary hover:text-blue-400 transition-colors">
+                        Filter Methods
+                    </button>
+                </div>
+                
+                <div class="space-y-2" id="watermarkMethodsList">
+                    ${buildWatermarkMethodRow('DWT-DCT Watermark', methods.invisible_watermark, 'Stable Diffusion, ComfyUI, AUTOMATIC1111')}
+                    ${buildWatermarkMethodRow('Meta Stable Signature', methods.stable_signature, 'Meta AI generators - 48-bit neural watermark')}
+                    ${buildWatermarkMethodRow('Spectral Analysis', methods.spectral_analysis, 'Frequency-domain patterns, Tree-Ring detection')}
+                    ${buildWatermarkMethodRow('LSB Steganography', methods.lsb_analysis, 'Least Significant Bit watermarks')}
+                    ${buildWatermarkMethodRow('Tree-Ring Pattern', methods.treering_analysis, 'Academic diffusion watermarking method')}
+                    ${buildWatermarkMethodRow('Gaussian Shading', methods.gaussian_shading, 'Variance-based watermark detection')}
+                    ${buildWatermarkMethodRow('Metadata Markers', methods.metadata_watermark, 'IPTC DigitalSourceType, EXIF AI markers')}
+                    ${buildWatermarkMethodRow('SteganoGAN', methods.steganogan, 'GAN-based steganographic watermarks')}
+                    ${buildWatermarkMethodRow('Adversarial (Exp.)', methods.adversarial_analysis, 'Glaze/Nightshade detection - experimental')}
                 </div>
             </div>
             
-            ${watermark.watermark_detected && watermark.watermarks_found ? `
-                <div class="space-y-2">
-                    <div class="text-slate-400 text-xs uppercase tracking-wider mb-2">Detected Watermarks:</div>
-                    ${watermark.watermarks_found.map(wm => `
-                        <div class="flex items-center gap-2 p-2 rounded bg-background-dark/50 border border-white/5">
-                            <span class="material-symbols-outlined text-red-500 text-sm">verified</span>
-                            <span class="text-white text-sm">${wm}</span>
-                        </div>
-                    `).join('')}
+            <!-- Detailed Findings -->
+            ${watermark.details && watermark.details.length > 0 ? `
+                <div class="border-t border-white/10 pt-4 mb-4">
+                    <h4 class="text-white font-medium text-sm mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-base">description</span>
+                        Detailed Findings
+                    </h4>
+                    <ul class="space-y-2">
+                        ${watermark.details.map(detail => `
+                            <li class="flex items-start gap-2 text-sm text-slate-300">
+                                <span class="text-primary mt-0.5">•</span>
+                                <span>${escapeHTML(detail)}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
                 </div>
-            ` : `
-                <p class="text-slate-400 text-xs">
-                    Scanned for watermarks from: Stable Diffusion, DALL-E, Midjourney, and other popular generators.
-                </p>
-            `}
+            ` : ''}
+            
+            <!-- Watermark Visualization (if heatmap available) -->
+            ${watermark.visualizations?.watermark_heatmap ? `
+                <div class="border-t border-white/10 pt-4">
+                    <h4 class="text-white font-medium text-sm mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-base">heat_pump</span>
+                        Spatial Watermark Heatmap
+                    </h4>
+                    <div class="relative rounded-lg overflow-hidden border border-white/10">
+                        <img src="${watermark.visualizations.watermark_heatmap}" 
+                             alt="Watermark Heatmap" 
+                             class="w-full h-auto"
+                             style="image-rendering: pixelated;">
+                        <div class="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-xs text-white">
+                            Red = High watermark strength
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        Heatmap showing spatial distribution of watermark signals across the image
+                    </p>
+                </div>
+            ` : ''}
+            
+            <!-- Known Limitations Note -->
+            ${methods.synthid ? `
+                <div class="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-blue-400 text-sm mt-0.5">info</span>
+                        <p class="text-xs text-blue-300">
+                            <strong>Note:</strong> Google SynthID watermarks cannot be detected externally (requires Google API). 
+                            This analysis covers DWT-DCT, Stable Signature, and other open watermarking standards.
+                        </p>
+                    </div>
+                </div>
+            ` : ''}
         </div>
     `;
+}
+
+/**
+ * Build individual watermark method detection row
+ */
+function buildWatermarkMethodRow(name, methodResult, description) {
+    if (!methodResult) {
+        return `
+            <div class="flex items-center justify-between p-2 rounded bg-background-dark/30 border border-white/5 opacity-50">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-slate-500 text-sm">cancel</span>
+                    <div>
+                        <span class="text-sm text-slate-400">${escapeHTML(name)}</span>
+                        ${description ? `<div class="text-xs text-slate-500 mt-0.5">${escapeHTML(description)}</div>` : ''}
+                    </div>
+                </div>
+                <span class="text-xs text-slate-500">Not run</span>
+            </div>
+        `;
+    }
+    
+    const detected = methodResult.detected || methodResult.patterns_found || methodResult.anomaly_detected || false;
+    const confidence = methodResult.confidence || 0;
+    const hasError = methodResult.error;
+    const hasNote = methodResult.note;
+    
+    return `
+        <div class="flex items-center justify-between p-3 rounded ${detected ? 'bg-red-500/10 border-red-500/20' : 'bg-background-dark/30 border-white/5'} border transition-all hover:bg-background-dark/50">
+            <div class="flex items-center gap-3 flex-1">
+                <span class="material-symbols-outlined text-sm ${detected ? 'text-red-500' : hasError ? 'text-yellow-500' : 'text-slate-500'}">
+                    ${detected ? 'check_circle' : hasError ? 'error' : 'cancel'}
+                </span>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm ${detected ? 'text-white font-medium' : 'text-slate-400'}">${escapeHTML(name)}</span>
+                        ${hasNote ? `<span class="text-xs text-blue-400" title="${escapeHTML(hasNote)}">ℹ️</span>` : ''}
+                    </div>
+                    ${description ? `
+                        <div class="text-xs text-slate-500 mt-0.5">${escapeHTML(description)}</div>
+                    ` : ''}
+                    ${detected && methodResult.type ? `
+                        <div class="text-xs text-slate-400 mt-1">Type: <span class="text-white">${escapeHTML(methodResult.type)}</span></div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                ${detected ? `
+                    <div class="flex items-center gap-2">
+                        <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all" 
+                                 style="width: ${confidence}%"></div>
+                        </div>
+                        <div class="px-2 py-0.5 rounded text-xs font-medium ${confidence > 70 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}">
+                            ${confidence}%
+                        </div>
+                    </div>
+                ` : hasError ? `
+                    <span class="text-xs text-yellow-400" title="${escapeHTML(methodResult.error)}">⚠️ Error</span>
+                ` : `
+                    <span class="text-xs text-slate-500">Not detected</span>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Format generator name for display
+ */
+function formatGeneratorName(signature) {
+    const nameMap = {
+        'stable_diffusion': 'Stable Diffusion',
+        'sd_webui': 'AUTOMATIC1111 WebUI',
+        'comfyui': 'ComfyUI',
+        'invokeai': 'InvokeAI',
+        'sdxl': 'Stable Diffusion XL',
+        'sd_turbo': 'SD Turbo',
+        'leonardo': 'Leonardo AI',
+        'runwayml': 'Runway ML',
+        'playground': 'Playground AI',
+        'ideogram': 'Ideogram',
+        'flux': 'FLUX',
+        'juggernaut': 'Juggernaut',
+        'imagen': 'Google Imagen',
+        'parti': 'Google Parti',
+        'muse': 'Google Muse',
+        'meta_ai': 'Meta AI',
+        'trainedAlgorithmicMedia': 'AI Generated (IPTC)',
+        'compositeWithTrainedAlgorithmicMedia': 'AI Composite (IPTC)',
+        'algorithmicMedia': 'Algorithmic Media'
+    };
+    
+    return nameMap[signature] || signature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+/**
+ * Toggle watermark method filters (placeholder for future implementation)
+ */
+function toggleWatermarkFilters() {
+    // Future: Add filter UI (All/Detected Only/High Confidence)
+    console.log('Filter toggle - feature to be implemented');
 }
 
 // ============================================================================
@@ -1148,6 +1322,83 @@ function buildMetadataOverviewCard(result) {
                                 strongly indicating this is an AI-generated image.
                             </p>
                         </div>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Build Watermark Metadata Card
+ */
+function buildWatermarkMetadataCard(result) {
+    const watermark = result.watermark || {};
+    const metadataWm = watermark.detection_methods?.metadata_watermark || {};
+    
+    // Only show if metadata watermark was found
+    if (!metadataWm.found && !watermark.ai_generator_signature) {
+        return ''; // Don't show card if no metadata-based watermarks
+    }
+    
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">verified_user</span>
+                Watermark Metadata
+            </h3>
+            
+            <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-red-500 text-2xl">warning</span>
+                    <div class="flex-1">
+                        <div class="text-white font-medium mb-2">AI Watermark Found in Metadata</div>
+                        
+                        ${metadataWm.type ? `
+                            <div class="mb-2">
+                                <span class="text-slate-400 text-sm">Watermark Type:</span>
+                                <span class="text-white font-medium ml-2">${escapeHTML(metadataWm.type)}</span>
+                            </div>
+                        ` : ''}
+                        
+                        ${metadataWm.ai_source_type ? `
+                            <div class="mb-2">
+                                <span class="text-slate-400 text-sm">IPTC Source Type:</span>
+                                <span class="text-white font-medium ml-2">${escapeHTML(metadataWm.ai_source_type)}</span>
+                            </div>
+                        ` : ''}
+                        
+                        ${watermark.ai_generator_signature ? `
+                            <div class="mb-2">
+                                <span class="text-slate-400 text-sm">Generator Identified:</span>
+                                <span class="text-white font-medium ml-2">${formatGeneratorName(watermark.ai_generator_signature)}</span>
+                            </div>
+                        ` : ''}
+                        
+                        ${metadataWm.content ? `
+                            <div class="mt-3 p-2 rounded bg-background-dark/50 border border-white/10">
+                                <div class="text-slate-400 text-xs mb-1">Watermark Content:</div>
+                                <div class="text-white text-sm font-mono break-all">${escapeHTML(metadataWm.content)}</div>
+                            </div>
+                        ` : ''}
+                        
+                        <p class="text-slate-300 text-sm mt-3">
+                            Metadata-based watermarks are embedded in image file headers (EXIF, IPTC, XMP). 
+                            They indicate AI generation with high reliability.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            ${metadataWm.fields_found && metadataWm.fields_found.length > 0 ? `
+                <div class="mt-4">
+                    <div class="text-slate-400 text-xs uppercase tracking-wider mb-2">Fields Checked:</div>
+                    <div class="flex flex-wrap gap-2">
+                        ${metadataWm.fields_found.map(field => `
+                            <span class="px-2 py-1 rounded bg-background-dark/50 border border-white/10 text-xs text-slate-300">
+                                ${escapeHTML(field)}
+                            </span>
+                        `).join('')}
                     </div>
                 </div>
             ` : ''}
@@ -1257,6 +1508,14 @@ function buildC2PACredentialsCard(result) {
  * Build File Properties Card
  */
 function buildFilePropertiesCard(result) {
+    // Format file size
+    const formatFileSize = (bytes) => {
+        if (!bytes || bytes === 'Unknown') return 'Unknown';
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    };
+    
     return `
         <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
             <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
@@ -1277,22 +1536,22 @@ function buildFilePropertiesCard(result) {
                 
                 <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
                     <div class="text-slate-400 text-xs mb-1">Dimensions</div>
-                    <div class="text-white text-sm">${result.width || '?'} x ${result.height || '?'}</div>
+                    <div class="text-white text-sm">${result.dimensions?.width || '?'} x ${result.dimensions?.height || '?'}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
                     <div class="text-slate-400 text-xs mb-1">File Size</div>
-                    <div class="text-white text-sm">${result.file_size || 'Unknown'}</div>
+                    <div class="text-white text-sm">${formatFileSize(result.file_size)}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
                     <div class="text-slate-400 text-xs mb-1">Color Space</div>
-                    <div class="text-white text-sm">${result.metadata?.color_space || 'RGB'}</div>
+                    <div class="text-white text-sm">${result.color_space || 'RGB'}</div>
                 </div>
                 
                 <div class="p-3 rounded-lg bg-background-dark/50 border border-white/5">
                     <div class="text-slate-400 text-xs mb-1">Bit Depth</div>
-                    <div class="text-white text-sm">${result.metadata?.bit_depth || '8-bit'}</div>
+                    <div class="text-white text-sm">${result.bit_depth ? `${result.bit_depth}-bit` : '24-bit'}</div>
                 </div>
             </div>
         </div>
