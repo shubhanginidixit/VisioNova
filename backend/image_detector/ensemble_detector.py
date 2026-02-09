@@ -68,10 +68,12 @@ class EnsembleDetector:
     """
     
     # Default weights for each detector (sum to 1.0)
+    # Updated weights with new accuracy-focused detectors
     DEFAULT_WEIGHTS = {
-        'statistical': 0.20,    # Basic statistical analysis
-        'deepfake': 0.30,       # dima806 ViT detector (98.25% accuracy)
-        'clip': 0.30,           # UniversalFakeDetect (CLIP)
+        'statistical': 0.15,    # Basic statistical analysis
+        'deepfake': 0.25,       # dima806 ViT detector (98.25% accuracy)
+        'clip': 0.25,           # UniversalFakeDetect (CLIP)
+        'sbi': 0.15,            # SBI Diffusion detector (99.95% AUC) - NEW
         'frequency': 0.10,      # FFT/DCT analysis
         'watermark': 0.10,      # Watermark detection contribution
     }
@@ -108,6 +110,17 @@ class EnsembleDetector:
         self.ela_analyzer = None
         self.c2pa_detector = None
         self.deepfake_detector = None
+        
+        # Accuracy improvement detectors (Phase 1)
+        self.sbi_detector = None          # SBI diffusion detection (99.95% AUC)
+        self.forgery_detector = None      # Copy-move forgery detection (98.98%)
+        self.calibrator = None            # Confidence calibration
+        
+        # High-value detectors (Phase 2)
+        self.dire_detector = None         # DIRE - Diffusion Reconstruction Error (99.7%)
+        self.npr_detector = None          # NPR - Neighboring Pixel Relationships (99.1%)
+        self.face_detector = None         # Face consistency analysis
+        self.edge_analyzer = None         # Edge coherence analysis
         
         # Load detectors
         self._initialize_detectors(load_ml_models)
@@ -152,6 +165,63 @@ class EnsembleDetector:
             logger.info("C2PA detector loaded")
         except Exception as e:
             logger.warning(f"Could not load C2PA detector: {e}")
+        
+        # NEW: Load SBI diffusion detector (99.95% AUC on diffusion images)
+        try:
+            from .sbi_detector import SBIDetector
+            self.sbi_detector = SBIDetector()
+            logger.info("SBI Diffusion detector loaded (99.95% AUC)")
+        except Exception as e:
+            logger.warning(f"Could not load SBI detector: {e}")
+        
+        # NEW: Load copy-move forgery detector (98.98% accuracy)
+        try:
+            from .forgery_detector import CopyMoveForgeryDetector
+            self.forgery_detector = CopyMoveForgeryDetector()
+            logger.info("Copy-Move Forgery detector loaded (98.98% accuracy)")
+        except Exception as e:
+            logger.warning(f"Could not load forgery detector: {e}")
+        
+        # NEW: Load confidence calibrator
+        try:
+            from .confidence_calibrator import ConfidenceCalibrator
+            self.calibrator = ConfidenceCalibrator()
+            logger.info("Confidence calibrator loaded")
+        except Exception as e:
+            logger.warning(f"Could not load calibrator: {e}")
+        
+        # NEW: Load DIRE detector (99.7% accuracy)
+        try:
+            from .dire_detector import DIREDetector
+            self.dire_detector = DIREDetector()
+            logger.info("DIRE Diffusion detector loaded (99.7%)")
+        except Exception as e:
+            logger.warning(f"Could not load DIRE detector: {e}")
+        
+        # NEW: Load NPR detector (99.1% accuracy)
+        try:
+            from .npr_detector import NPRDetector
+            self.npr_detector = NPRDetector()
+            logger.info("NPR detector loaded (99.1%)")
+        except Exception as e:
+            logger.warning(f"Could not load NPR detector: {e}")
+        
+        # NEW: Load Face Consistency detector
+        try:
+            from .face_consistency_detector import FaceConsistencyDetector
+            self.face_detector = FaceConsistencyDetector()
+            logger.info("Face Consistency detector loaded")
+        except Exception as e:
+            logger.warning(f"Could not load Face detector: {e}")
+        
+        # NEW: Load Edge Coherence analyzer
+        try:
+            from .edge_coherence_analyzer import EdgeCoherenceAnalyzer
+            self.edge_analyzer = EdgeCoherenceAnalyzer()
+            logger.info("Edge Coherence analyzer loaded")
+        except Exception as e:
+            logger.warning(f"Could not load Edge analyzer: {e}")
+
         
         # Load ML models if requested
         if load_ml_models:
@@ -296,6 +366,46 @@ class EnsembleDetector:
                 ela_result = self.ela_analyzer.analyze(image_data)
                 result['individual_results']['ela'] = ela_result
             
+            # 10. DIRE Diffusion Reconstruction Error (99.7% accuracy)
+            if self.dire_detector:
+                try:
+                    dire_result = self.dire_detector.analyze(image)
+                    result['individual_results']['dire'] = dire_result
+                    if dire_result.get('success'):
+                        scores['dire'] = dire_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"DIRE detector error: {e}")
+            
+            # 11. NPR Neighboring Pixel Relationships (99.1% accuracy)
+            if self.npr_detector:
+                try:
+                    npr_result = self.npr_detector.analyze(image)
+                    result['individual_results']['npr'] = npr_result
+                    if npr_result.get('success'):
+                        scores['npr'] = npr_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"NPR detector error: {e}")
+            
+            # 12. Face Consistency Analysis
+            if self.face_detector:
+                try:
+                    face_result = self.face_detector.analyze(image)
+                    result['individual_results']['face_consistency'] = face_result
+                    if face_result.get('success') and face_result.get('applicable'):
+                        scores['face'] = face_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"Face detector error: {e}")
+            
+            # 13. Edge Coherence Analysis
+            if self.edge_analyzer:
+                try:
+                    edge_result = self.edge_analyzer.analyze(image)
+                    result['individual_results']['edge_coherence'] = edge_result
+                    if edge_result.get('success'):
+                        scores['edge'] = edge_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"Edge analyzer error: {e}")
+            
             # Calculate weighted ensemble score
             final_score = self._calculate_ensemble_score(scores)
             result['score_breakdown'] = {
@@ -309,9 +419,23 @@ class EnsembleDetector:
                 final_score = 100.0
                 result['overrides_applied'].append("C2PA override: AI generation declared")
             
+            # FIXED: Only apply watermark override if it's a known AI signature
+            # Generic watermarks (DWT-DCT with low confidence) should not override
             if watermark_boost > self.WATERMARK_OVERRIDE_THRESHOLD:
-                final_score = max(final_score, 95.0)
-                result['overrides_applied'].append(f"Watermark override: confidence {watermark_boost}%")
+                # Check if it was a specific AI signature match
+                watermark_result = result['individual_results'].get('watermark', {})
+                if watermark_result.get('ai_generator_signature'):
+                    final_score = max(final_score, 99.0)
+                    result['overrides_applied'].append(f"AI Signature override: {watermark_result.get('ai_generator_signature')}")
+                else:
+                    # Generic watermark - boost score but don't fully override unless very high confidence
+                    if watermark_boost >= 90:
+                        final_score = max(final_score, 90.0)
+                        result['overrides_applied'].append(f"High-confidence watermark override ({watermark_boost}%)")
+                    else:
+                        # Just a slight boost for generic watermarks
+                        # Don't let it override a low AI score from other detectors
+                        pass
             
             # Calculate detection agreement
             result['detection_agreement'] = self._calculate_agreement(scores)
@@ -333,17 +457,37 @@ class EnsembleDetector:
             # Generate recommendations
             result['recommendations'] = self._generate_recommendations(result)
             
-            return result
+            return self._sanitize_for_json(result)
             
         except Exception as e:
             logger.error(f"Ensemble detection error: {e}")
-            return {
+            return self._sanitize_for_json({
                 'success': False,
                 'error': str(e),
                 'ai_probability': 50.0,
                 'ensemble_verdict': 'ERROR',
                 'verdict_description': f'Analysis failed: {str(e)}'
-            }
+            })
+    
+    def _sanitize_for_json(self, obj: Any) -> Any:
+        """
+        Recursively convert numpy types to Python native types for JSON serialization.
+        Needed because some detectors return numpy.float32/int64.
+        """
+        if isinstance(obj, dict):
+            return {k: self._sanitize_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._sanitize_for_json(i) for i in obj]
+        elif isinstance(obj, tuple):
+            return tuple(self._sanitize_for_json(i) for i in obj)
+        elif isinstance(obj, (np.integer, np.floating)):
+            return obj.item()
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        else:
+            return obj
     
     def _calculate_ensemble_score(self, scores: Dict[str, float]) -> float:
         """

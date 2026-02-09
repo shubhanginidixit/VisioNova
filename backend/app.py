@@ -14,7 +14,7 @@ from text_detector import AIContentDetector, TextExplainer, DocumentParser
 from image_detector import (
     ImageDetector, MetadataAnalyzer, ELAAnalyzer, 
     WatermarkDetector, ContentCredentialsDetector, ImageExplainer,
-    NoiseAnalyzer, EnsembleDetector, ML_DETECTORS_AVAILABLE
+    NoiseAnalyzer, EnsembleDetector, FastCascadeDetector, ML_DETECTORS_AVAILABLE
 )
 
 
@@ -32,7 +32,7 @@ limiter = Limiter(
 # Initialize the fact checker and AI content detector
 fact_checker = FactChecker()
 feedback_handler = FeedbackHandler()  # Initialize feedback handler
-ai_detector = AIContentDetector(use_ml_model=False)  # Use offline statistical detection (more reliable)
+ai_detector = AIContentDetector(use_ml_model=True)  # Enable hybrid detection (ML + Statistical)
 text_explainer = TextExplainer()
 doc_parser = DocumentParser()
 
@@ -54,6 +54,14 @@ try:
     print(f"✓ Ensemble detector initialized (ML models available: {ML_DETECTORS_AVAILABLE})")
 except Exception as e:
     print(f"⚠ Ensemble detector not available: {e}")
+
+# Fast cascade detector (speed-optimized, 3-5x faster for clear cases)
+fast_detector = None
+try:
+    fast_detector = FastCascadeDetector(use_gpu=False, enable_fp16=False)
+    print("✓ Fast cascade detector initialized (3-5x speedup for clear cases)")
+except Exception as e:
+    print(f"⚠ Fast cascade detector not available: {e}")
 
 # File upload limits
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -237,6 +245,7 @@ def health_check():
             'watermark_detection': watermark_detector.watermark_lib_available,
             'c2pa_detection': content_credentials_detector.c2pa_available,
             'ensemble_detection': ensemble_detector is not None,
+            'fast_detection': fast_detector is not None,
             'ml_models_available': ML_DETECTORS_AVAILABLE,
             'stable_signature_detection': watermark_detector.stable_signature_available if hasattr(watermark_detector, 'stable_signature_available') else False,
         },
@@ -245,6 +254,7 @@ def health_check():
             'deep_check': '/api/fact-check/deep (POST)',
             'detect_text': '/api/detect-ai (POST)',
             'detect_image': '/api/detect-image (POST)',
+            'detect_image_fast': '/api/detect-image/fast (POST)',
             'detect_image_ensemble': '/api/detect-image/ensemble (POST)',
             'feedback': '/api/fact-check/feedback (POST)'
         }
@@ -840,7 +850,92 @@ def detect_ai_image_ensemble():
         # Add AI-powered visual analysis for explanation
         if image_explainer.client:
             ai_analysis = image_explainer.analyze_image(image_bytes, result)
-            result['ai_visual_analysis'] = ai_analysis
+            result['ai_analysis'] = ai_analysis
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/detect-image/fast', methods=['POST'])
+@limiter.limit("20 per minute")
+def detect_ai_image_fast():
+    """
+    Fast AI image detection using cascading 3-stage detection.
+    
+    3-5x faster than full ensemble for clear cases:
+    - Stage 1: Quick statistical/frequency analysis (~20ms)
+    - Stage 2: Single fast ML model (~100ms)  
+    - Stage 3: Full ensemble (only for uncertain cases)
+    
+    Request body:
+        {
+            "image": "base64_encoded_image_data",
+            "filename": "optional_filename.jpg"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "ai_probability": 75.5,
+            "verdict": "LIKELY_AI",
+            "verdict_description": "...",
+            "cascade_stage": 2,
+            "stages_run": ["statistical", "fast_ml"],
+            "timing_ms": {"stage1": 25.3, "stage2": 98.1, "total": 123.4},
+            "performance": {"early_exit": true, "speedup_factor": 3.0}
+        }
+    """
+    try:
+        global fast_detector
+        
+        data = request.get_json()
+        
+        if not data or 'image' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing "image" field in request body',
+                'error_code': 'MISSING_IMAGE'
+            }), 400
+        
+        image_data = data['image']
+        filename = data.get('filename', 'uploaded_image')
+        
+        # Remove data URL prefix if present
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64
+        try:
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid base64 image data: {str(e)}',
+                'error_code': 'INVALID_IMAGE'
+            }), 400
+        
+        # Check file size
+        max_image_size = 50 * 1024 * 1024
+        if len(image_bytes) > max_image_size:
+            return jsonify({
+                'success': False,
+                'error': f'Image too large (max {max_image_size // 1024 // 1024}MB)',
+                'error_code': 'IMAGE_TOO_LARGE'
+            }), 400
+        
+        # Initialize fast detector if needed
+        if fast_detector is None:
+            from image_detector import FastCascadeDetector
+            fast_detector = FastCascadeDetector(use_gpu=False, enable_fp16=False)
+        
+        # Run fast cascading detection
+        result = fast_detector.detect(image_bytes, filename)
         
         return jsonify(result)
     

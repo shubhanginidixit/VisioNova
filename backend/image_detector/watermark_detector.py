@@ -538,6 +538,9 @@ class WatermarkDetector:
                                 if byte_variety > 0.9:  # Too random, likely not a real watermark
                                     logger.debug(f"Rejected watermark candidate: byte variety too high ({byte_variety:.2f})")
                                     continue
+                                    
+                                decoded_text = None
+                                is_ai_signature = False
                                 
                                 # Try to decode as text
                                 try:
@@ -545,17 +548,58 @@ class WatermarkDetector:
                                     decoded_text = ''.join(c for c in decoded_text if c.isprintable())
                                 except:
                                     decoded_text = None
+                                    
+                                # Check against known AI signatures directly here
+                                for gen_name, signature in self.KNOWN_SIGNATURES.items():
+                                    if signature in watermark_bytes:
+                                        result['detected'] = True
+                                        result['type'] = method
+                                        result['raw_bytes'] = watermark_bytes.hex()
+                                        result['content'] = f"Matched signature: {gen_name}"
+                                        result['confidence'] = 99  # High confidence for exact match
+                                        result['bit_length'] = wm_length
+                                        result['is_ai_signature'] = True
+                                        logger.info(f"AI Watermark detected: {gen_name} ({method})")
+                                        return result
+
+                                # If no AI signature match, treat as generic watermark
+                                # Only return if it looks very structured or contains readable text
+                                if decoded_text and len(decoded_text) > 4:
+                                     # It's a watermark, but maybe not AI
+                                     # Check for AI keywords in the decoded text
+                                     ai_keywords = ['ai', 'gen', 'stable', 'diff', 'midjo', 'dall']
+                                     if any(k in decoded_text.lower() for k in ai_keywords):
+                                         result['detected'] = True
+                                         result['type'] = method
+                                         result['raw_bytes'] = watermark_bytes.hex()
+                                         result['content'] = decoded_text
+                                         result['confidence'] = 85
+                                         result['bit_length'] = wm_length
+                                         result['is_ai_signature'] = True
+                                         return result
+                                     else:
+                                         # Generic watermark (copyright, etc.) - LOW confidence for AI
+                                         # USER REQUEST: "when i say watermark i only mean watermark that is left by AI"
+                                         # So we report detected=False for generic watermarks to avoid frontend confusion
+                                         logger.info(f"Generic watermark detected (ignored as non-AI): {decoded_text}")
+                                         result['detected'] = False  # STRICT FILTERING
+                                         result['type'] = None
+                                         result['raw_bytes'] = None # Don't expose bytes if we say not detected
+                                         result['content'] = None
+                                         result['confidence'] = 0 
+                                         result['bit_length'] = 0
+                                         result['is_ai_signature'] = False
+                                         
+                                         # OPTIONAL: We could store it in a separate 'generic_watermark' field if needed
+                                         # but for now we strictly hide it from the 'detected' flag.
+                                         return result
                                 
-                                result['detected'] = True
-                                result['type'] = method
-                                result['raw_bytes'] = watermark_bytes.hex()
-                                result['content'] = decoded_text if decoded_text and len(decoded_text) > 2 else f"Binary: {watermark_bytes.hex()[:32]}..."
-                                result['confidence'] = 75 if decoded_text else 60
-                                result['bit_length'] = wm_length
-                                
-                                logger.info(f"Watermark detected: {method} ({wm_length} bits)")
-                                return result
-                                
+                                # If just binary pattern but high structure (low entropy), might be AI but uncertain
+                                if byte_variety < 0.5:
+                                    # Too uncertain to call it an AI watermark
+                                    logger.debug(f"Ignored binary pattern with low entropy: {byte_variety:.2f}")
+                                    continue
+                                    
                     except Exception as e:
                         continue  # Try next combination
             
