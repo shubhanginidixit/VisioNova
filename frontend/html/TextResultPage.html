@@ -32,6 +32,10 @@
                         "accent-success": "#00D991",
                         "accent-warning": "#FFB74A",
                         "accent-danger": "#FF4A4A",
+                        "accent-emerald": "#00D991",
+                        "accent-amber": "#FFB74A",
+                        "accent-red": "#FF4A4A",
+                        "primary-dark": "#0D1B2A",
                         "background-light": "#F5F7FA",
                         "background-dark": "#0F121A",
                         "surface-dark": "#0D1B2A",
@@ -217,8 +221,8 @@
                             <div class="mt-4">
                                 <div class="w-full bg-black/40 rounded-full h-2 mb-2">
                                     <div id="scoreBar"
-                                        class="bg-accent-emerald h-2 rounded-full shadow-[0_0_10px_rgba(0,217,145,0.5)] transition-all duration-1000"
-                                        style="width: 0%"></div>
+                                        class="h-2 rounded-full transition-all duration-1000"
+                                        style="width: 0%; background: #00D991; box-shadow: 0 0 10px rgba(0,217,145,0.5)"></div>
                                 </div>
                                 <p id="metricsInfo" class="text-white/50 text-xs">Calculating metrics...</p>
                             </div>
@@ -234,8 +238,8 @@
                             <div class="flex flex-col gap-1 w-1/2">
                                 <span class="text-xs text-white/50">Human</span>
                                 <div class="h-16 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
-                                    <div id="humanBar" class="w-full bg-primary opacity-90 transition-all duration-1000"
-                                        style="height: 0%"></div>
+                                    <div id="humanBar" class="w-full transition-all duration-1000"
+                                        style="height: 0%; background: #3A8DFF; opacity: 0.9"></div>
                                     <span id="humanPercent"
                                         class="absolute bottom-1 w-full text-center text-xs font-bold text-white drop-shadow-md">--%</span>
                                 </div>
@@ -243,8 +247,8 @@
                             <div class="flex flex-col gap-1 w-1/2">
                                 <span class="text-xs text-white/50">AI-Gen</span>
                                 <div class="h-16 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
-                                    <div id="aiBar" class="w-full bg-accent-red opacity-80 transition-all duration-1000"
-                                        style="height: 0%"></div>
+                                    <div id="aiBar" class="w-full transition-all duration-1000"
+                                        style="height: 0%; background: #FF4A4A; opacity: 0.85"></div>
                                     <span id="aiPercent"
                                         class="absolute bottom-1 w-full text-center text-xs font-bold text-white/60">--%</span>
                                 </div>
@@ -257,7 +261,7 @@
                         </p>
                     </div>
                     <!-- Source Card -->
-                    <div class="bg-primary-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+                    <div id="sourceCard" class="bg-primary-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
                         <div class="flex justify-between items-start">
                             <h3 class="text-white/70 text-sm font-medium">Source Reliability</h3>
                             <span class="material-symbols-outlined text-white/30">domain_verification</span>
@@ -352,8 +356,9 @@
                                     <p class="text-white/40 text-xs">Sentence length variance</p>
                                 </div>
                                 <div class="flex gap-2">
-                                    <div class="flex items-center gap-1"><span
+                                    <div class="flex items-center gap-1"><span id="burstinenessLegendDot"
                                             class="size-2 rounded-full bg-accent-emerald"></span><span
+                                            id="burstinenessLegendLabel"
                                             class="text-[10px] text-white/60">Human</span></div>
                                     <div class="flex items-center gap-1"><span
                                             class="size-2 rounded-full bg-white/20"></span><span
@@ -362,34 +367,34 @@
                             </div>
                             <div class="flex-1 flex items-end justify-between gap-2 min-h-[120px] px-2 pt-4">
                                 <!-- Bars -->
-                                <div class="w-full bg-white/5 rounded-t h-[40%] relative group">
+                                <div class="w-full rounded-t h-[40%] relative group" style="background: rgba(255,255,255,0.08)">
                                     <div
-                                        class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t h-[90%] w-[60%] left-[20%]">
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 90%; width: 60%; left: 20%">
                                     </div>
                                 </div>
-                                <div class="w-full bg-white/5 rounded-t h-[70%] relative group">
+                                <div class="w-full rounded-t h-[70%] relative group" style="background: rgba(255,255,255,0.08)">
                                     <div
-                                        class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t h-[60%] w-[60%] left-[20%]">
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 60%; width: 60%; left: 20%">
                                     </div>
                                 </div>
-                                <div class="w-full bg-white/5 rounded-t h-[30%] relative group">
+                                <div class="w-full rounded-t h-[30%] relative group" style="background: rgba(255,255,255,0.08)">
                                     <div
-                                        class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t h-[80%] w-[60%] left-[20%]">
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 80%; width: 60%; left: 20%">
                                     </div>
                                 </div>
-                                <div class="w-full bg-white/5 rounded-t h-[90%] relative group">
+                                <div class="w-full rounded-t h-[90%] relative group" style="background: rgba(255,255,255,0.08)">
                                     <div
-                                        class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t h-[50%] w-[60%] left-[20%]">
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 50%; width: 60%; left: 20%">
                                     </div>
                                 </div>
-                                <div class="w-full bg-white/5 rounded-t h-[50%] relative group">
+                                <div class="w-full rounded-t h-[50%] relative group" style="background: rgba(255,255,255,0.08)">
                                     <div
-                                        class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t h-[70%] w-[60%] left-[20%]">
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 70%; width: 60%; left: 20%">
                                     </div>
                                 </div>
-                                <div class="w-full bg-white/5 rounded-t h-[60%] relative group">
+                                <div class="w-full rounded-t h-[60%] relative group" style="background: rgba(255,255,255,0.08)">
                                     <div
-                                        class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t h-[40%] w-[60%] left-[20%]">
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 40%; width: 60%; left: 20%">
                                     </div>
                                 </div>
                             </div>

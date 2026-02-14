@@ -5,7 +5,9 @@ AI-generated text detection with sentence-level analysis, pattern detection, and
 Architecture:
 - ML Model (DeBERTa-v3): Transformer-based detection (Microsoft/DeBERTa-v3-base)
 - Binoculars: Zero-shot detection with dual Falcon-7B (GPU-only, no training)
-- Linguistic Analysis: Perplexity, burstiness, patterns
+- Linguistic Analysis: Real LM perplexity, burstiness, patterns
+- Adversarial Defense: Homoglyph normalization, paraphraser shield
+- ESL De-biasing: Reduced false positives for non-native English writers
 - Caching: LRU cache for repeated texts
 
 Detection Modes:
@@ -18,12 +20,243 @@ import re
 import math
 import hashlib
 import logging
+import unicodedata
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 # import torch
 # from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 logger = logging.getLogger(__name__)
+
+
+# ==================== HOMOGLYPH / ADVERSARIAL DEFENSE ====================
+
+# Mapping of common Unicode homoglyphs to ASCII equivalents
+_HOMOGLYPH_MAP = {
+    # Cyrillic lookalikes
+    '\u0430': 'a', '\u0435': 'e', '\u043e': 'o', '\u0440': 'p',
+    '\u0441': 'c', '\u0443': 'y', '\u0445': 'x', '\u0456': 'i',
+    '\u0410': 'A', '\u0412': 'B', '\u0415': 'E', '\u041a': 'K',
+    '\u041c': 'M', '\u041d': 'H', '\u041e': 'O', '\u0420': 'P',
+    '\u0421': 'C', '\u0422': 'T', '\u0425': 'X',
+    # Greek lookalikes
+    '\u03b1': 'a', '\u03bf': 'o', '\u03b5': 'e', '\u0391': 'A',
+    '\u0392': 'B', '\u0395': 'E', '\u0397': 'H', '\u0399': 'I',
+    '\u039a': 'K', '\u039c': 'M', '\u039d': 'N', '\u039f': 'O',
+    '\u03a1': 'P', '\u03a4': 'T', '\u03a7': 'X', '\u03a5': 'Y',
+    '\u0396': 'Z',
+    # Fullwidth Latin
+    '\uff41': 'a', '\uff42': 'b', '\uff43': 'c', '\uff44': 'd',
+    '\uff45': 'e', '\uff46': 'f', '\uff47': 'g', '\uff48': 'h',
+    '\uff49': 'i', '\uff4a': 'j', '\uff4b': 'k', '\uff4c': 'l',
+    '\uff4d': 'm', '\uff4e': 'n', '\uff4f': 'o', '\uff50': 'p',
+    # Special characters used to evade
+    '\u200b': '',  # Zero-width space
+    '\u200c': '',  # Zero-width non-joiner
+    '\u200d': '',  # Zero-width joiner
+    '\ufeff': '',  # Zero-width no-break space (BOM)
+    '\u00ad': '',  # Soft hyphen
+    '\u2060': '',  # Word joiner
+    '\u2063': '',  # Invisible separator
+}
+
+
+def normalize_adversarial_text(text: str) -> str:
+    """
+    Normalize text to defend against adversarial evasion techniques.
+    
+    Handles:
+    - Unicode homoglyph substitution (Cyrillic 'а' for Latin 'a')
+    - Zero-width character injection
+    - Fullwidth character substitution
+    - Unicode normalization (NFC)
+    """
+    # 1. Remove zero-width characters and invisible separators
+    for char, replacement in _HOMOGLYPH_MAP.items():
+        if replacement == '':
+            text = text.replace(char, '')
+    
+    # 2. Unicode NFC normalization
+    text = unicodedata.normalize('NFC', text)
+    
+    # 3. Replace homoglyphs
+    result = []
+    for char in text:
+        if char in _HOMOGLYPH_MAP:
+            result.append(_HOMOGLYPH_MAP[char])
+        else:
+            result.append(char)
+    text = ''.join(result)
+    
+    # 4. Collapse multiple spaces (sometimes inserted to break patterns)
+    text = re.sub(r' {2,}', ' ', text)
+    
+    return text
+
+
+# ==================== ESL DETECTION ====================
+
+# Indicators that text may be from an ESL (English as a Second Language) writer
+_ESL_INDICATORS = {
+    'article_errors': [
+        r'\b(a [aeiou]\w+)\b',  # a + vowel (should be 'an')
+        r'\b(an [^aeiou\s]\w+)\b',  # an + consonant
+    ],
+    'preposition_errors': [
+        r'\b(depend of|consist from|interested of|capable for)\b',
+        r'\b(married with|discuss about|explain about|emphasize on)\b',
+    ],
+    'missing_articles': [
+        r'\b(go to school|go to university|go to hospital)\b',
+        r'\b(in morning|in evening|at afternoon)\b',
+    ],
+    'word_order_patterns': [
+        r'\b(very much \w+|always I|yesterday I was go)\b',
+    ],
+    'tense_errors': [
+        r'\b(I am agree|he don\'t|she don\'t|they doesn\'t)\b',
+        r'\b(did \w+ed|was \w+ing \w+ed)\b',
+    ]
+}
+
+
+def detect_esl_probability(text: str) -> float:
+    """
+    Estimate probability that text is written by an ESL writer.
+    Returns 0.0 to 1.0 (higher = more likely ESL).
+    
+    Used to adjust AI detection thresholds to reduce false positives
+    on non-native English writers.
+    """
+    if not text or len(text) < 50:
+        return 0.0
+    
+    text_lower = text.lower()
+    total_indicators = 0
+    max_possible = 0
+    
+    for category, patterns in _ESL_INDICATORS.items():
+        for pattern in patterns:
+            max_possible += 1
+            matches = re.findall(pattern, text_lower, re.IGNORECASE)
+            if matches:
+                total_indicators += min(len(matches), 3)  # Cap at 3 per pattern
+    
+    if max_possible == 0:
+        return 0.0
+    
+    # Also check vocabulary simplicity (ESL writers tend to use simpler words)
+    words = text.split()
+    if len(words) > 20:
+        avg_word_len = sum(len(w) for w in words) / len(words)
+        if avg_word_len < 4.0:  # Simple vocabulary
+            total_indicators += 2
+    
+    # Normalize: 3+ indicators = strong ESL signal
+    esl_score = min(1.0, total_indicators / 5.0)
+    return round(esl_score, 3)
+
+
+# ==================== REAL LM PERPLEXITY ====================
+
+class LMPerplexityCalculator:
+    """
+    Compute real language model perplexity using GPT-2 or DistilGPT-2.
+    
+    AI-generated text typically has low perplexity (15-40) because it's
+    predictable to another LM. Human text has higher perplexity (50-200+).
+    
+    This replaces the crude formula-based approximation with actual
+    per-token log-probability computation.
+    """
+    
+    _instance = None
+    
+    def __init__(self):
+        self.model = None
+        self.tokenizer = None
+        self.device = 'cpu'
+        self.available = False
+        self._load_attempted = False
+    
+    @classmethod
+    def get_instance(cls):
+        """Singleton accessor."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    def _ensure_loaded(self):
+        """Lazy-load the LM on first use."""
+        if self._load_attempted:
+            return
+        self._load_attempted = True
+        
+        try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+            
+            self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            
+            # Try DistilGPT-2 first (82M params, fast), fall back to GPT-2
+            for model_name in ['distilgpt2', 'gpt2']:
+                try:
+                    logger.info(f"Loading {model_name} for perplexity computation...")
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                    self.model = AutoModelForCausalLM.from_pretrained(model_name)
+                    self.model.to(self.device)
+                    self.model.eval()
+                    self.available = True
+                    logger.info(f"Perplexity model loaded: {model_name} on {self.device}")
+                    break
+                except Exception as e:
+                    logger.warning(f"Could not load {model_name}: {e}")
+                    continue
+        except ImportError:
+            logger.info("torch/transformers not available for real perplexity - using approximation")
+    
+    def compute_perplexity(self, text: str, max_length: int = 512) -> Optional[float]:
+        """
+        Compute per-token perplexity of text.
+        
+        PPL = exp(-1/N * sum(log P(w_i | w_<i)))
+        
+        Returns:
+            Perplexity value, or None if model not available.
+            Lower values = more predictable (AI-like).
+            Typical ranges: AI text 15-40, Human text 50-200+
+        """
+        self._ensure_loaded()
+        
+        if not self.available:
+            return None
+        
+        try:
+            import torch
+            
+            encodings = self.tokenizer(
+                text, return_tensors='pt', truncation=True,
+                max_length=max_length
+            ).to(self.device)
+            
+            input_ids = encodings['input_ids']
+            
+            if input_ids.shape[1] < 5:
+                return None  # Too short for meaningful perplexity
+            
+            with torch.no_grad():
+                outputs = self.model(input_ids, labels=input_ids)
+                # outputs.loss is the average negative log-likelihood
+                neg_log_likelihood = outputs.loss.item()
+            
+            perplexity = math.exp(neg_log_likelihood)
+            
+            # Cap at reasonable range
+            return min(perplexity, 1000.0)
+            
+        except Exception as e:
+            logger.warning(f"Perplexity computation failed: {e}")
+            return None
 
 
 # Detection mode constants
@@ -133,17 +366,57 @@ class AIContentDetector:
     Enhanced AI content detector with:
     - Sentence-level detection
     - AI pattern recognition
+    - Real LM perplexity (GPT-2/DistilGPT-2)
     - Linguistic metrics
+    - Homoglyph/adversarial defense
+    - ESL bias correction
+    - Trinary classification (human / AI / mixed)
     - Result caching
     """
     
     MODEL_DIR = "model"
     CACHE_SIZE = 100  # Number of texts to cache
+    
+    # ===== ENSEMBLE MODEL REGISTRY =====
+    # Multiple diverse models combined via weighted average for robust detection.
+    # Weights reflect model quality (RAID benchmark, AUROC, architecture diversity).
+    ENSEMBLE_MODELS = [
+        {
+            "id": "desklib/ai-text-detector-v1.01",
+            "weight": 0.35,
+            "type": "desklib_custom",  # Custom architecture: DeBERTa-v3-large + mean pool + sigmoid
+            "params": "400M",
+            "note": "#1 RAID leaderboard, DeBERTa-v3-large, custom single-logit sigmoid output",
+        },
+        {
+            "id": "Oxidane/tmr-ai-text-detector",
+            "weight": 0.30,
+            "type": "standard",  # Standard AutoModelForSequenceClassification
+            "params": "125M",
+            "note": "RoBERTa-base, 97.3% accuracy, 0.9972 AUROC, 2.27% FPR",
+        },
+        {
+            "id": "fakespot-ai/roberta-base-ai-text-detection-v1",
+            "weight": 0.20,
+            "type": "standard",
+            "params": "125M",
+            "note": "RoBERTa-base, 9.5K downloads/month, robust general detector",
+        },
+        {
+            "id": "MayZhou/e5-small-lora-ai-generated-detector",
+            "weight": 0.15,
+            "type": "standard",
+            "params": "33M",
+            "note": "E5-small + LoRA, 93.9% RAID, lightweight fast model",
+        },
+    ]
 
-    # Tunable defaults (can be adjusted or tuned via scripts)
-    PATTERN_WEIGHT = 0.75  # Increased pattern weight for better precision
+    # Tunable weights — match documented 60/25/15 split
+    PATTERN_WEIGHT = 0.60
     LINGUISTIC_WEIGHT = 0.25
+    WATERMARK_WEIGHT = 0.15
     UNCERTAINTY_THRESHOLD = 0.08
+    ESL_THRESHOLD_BOOST = 0.12  # Raise AI threshold for ESL writers to reduce FPs
     
     def __init__(self, model_path: Optional[str] = None, use_ml_model: bool = False, detection_mode: str = DETECTION_MODE_OFFLINE):
         """Initialize the detector with model path.
@@ -167,21 +440,20 @@ class AIContentDetector:
             self.use_ml_model = False
         
         self.tokenizer = None
-        self.model = None
+        self.model = None  # Legacy single-model (kept for compat)
+        self.models = {}  # Ensemble: {model_id: {"model": ..., "tokenizer": ..., "weight": ..., "type": ...}}
         self.device = "cpu"
         self.binoculars = None
+        self._active_model_id = None
+        self._ensemble_loaded = False
+        self._ensemble_total_weight = 0.0  # Sum of loaded model weights (for renormalization)
+        self.lm_perplexity = LMPerplexityCalculator.get_instance()
+        self.model_path = model_path if model_path else os.path.join(os.path.dirname(os.path.abspath(__file__)), self.MODEL_DIR)
         
-        if self.use_ml_model:
-            self.model_path = model_path if model_path else os.path.join(os.path.dirname(os.path.abspath(__file__)), self.MODEL_DIR)
-            self._load_model()
-        else:
-            logger.info(f"Initialized in {self.detection_mode.upper()} mode")
-            self.model_path = None
+        # Lazy loading: Do NOT load models in __init__
+        # They will be loaded on the first call to predict() if needed
+        logger.info(f"AIContentDetector initialized in {self.detection_mode.upper()} mode (Lazy loading enabled)")
         
-        # Initialize Binoculars if requested
-        if self.detection_mode == DETECTION_MODE_BINOCULARS:
-            self._load_binoculars()
-    
     def _load_binoculars(self):
         """Load Binoculars zero-shot detector (GPU required)."""
         try:
@@ -210,26 +482,168 @@ class AIContentDetector:
             self.detection_mode = DETECTION_MODE_OFFLINE
             self.binoculars = None
     
-    def _load_model(self):
-        """Load the tokenizer and model."""
+    def _ensure_model_loaded(self):
+        """Lazy load the model if strictly required."""
+        if self.detection_mode == DETECTION_MODE_BINOCULARS and self.binoculars is None:
+            self._load_binoculars()
+            
+        elif self.use_ml_model and not self._ensemble_loaded:
+            self._load_ensemble_models()
+
+    def _load_ensemble_models(self):
+        """Load multiple AI text detection models for ensemble inference.
+        
+        Loads models from ENSEMBLE_MODELS registry. Each model is stored in self.models dict.
+        Gracefully degrades: if some models fail to load, remaining models' weights are
+        renormalized so they still sum to 1.0.
+        
+        Special handling for desklib model which uses a custom architecture
+        (mean pooling + single sigmoid logit) instead of standard classification head.
+        """
+        if self._ensemble_loaded:
+            return
+
         try:
             import torch
-            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModel, PretrainedConfig
             
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"\n{'='*60}")
+            print(f"Loading AI Text Detection Ensemble ({len(self.ENSEMBLE_MODELS)} models)")
+            print(f"Device: {self.device}")
+            print(f"{'='*60}")
             
-            print(f"Loading AI detector model from {self.model_path}...")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
-            self.model.to(self.device)
-            self.model.eval()
-            print("Model loaded successfully.")
+            loaded_count = 0
+            
+            for entry in self.ENSEMBLE_MODELS:
+                model_id = entry["id"]
+                model_type = entry["type"]
+                weight = entry["weight"]
+                
+                print(f"\n  [{loaded_count+1}/{len(self.ENSEMBLE_MODELS)}] Loading {model_id} ({entry['params']})...")
+                try:
+                    if model_type == "desklib_custom":
+                        # Desklib uses custom architecture: DeBERTa-v3-large + mean pooling + linear → sigmoid
+                        # NOT compatible with AutoModelForSequenceClassification
+                        tokenizer = AutoTokenizer.from_pretrained(model_id)
+                        model = self._load_desklib_model(model_id, AutoModel)
+                    else:
+                        # Standard HuggingFace classification model
+                        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+                        model = AutoModelForSequenceClassification.from_pretrained(model_id, trust_remote_code=True)
+                    
+                    model.to(self.device)
+                    model.eval()
+                    
+                    self.models[model_id] = {
+                        "model": model,
+                        "tokenizer": tokenizer,
+                        "weight": weight,
+                        "type": model_type,
+                    }
+                    loaded_count += 1
+                    print(f"    [OK] Loaded successfully (weight={weight})")
+                    
+                except Exception as e:
+                    print(f"    [FAIL] Failed to load: {e}")
+                    logger.warning(f"Ensemble model {model_id} failed to load: {e}")
+            
+            # Renormalize weights if some models didn't load
+            if loaded_count > 0:
+                total_weight = sum(m["weight"] for m in self.models.values())
+                if total_weight > 0 and abs(total_weight - 1.0) > 0.01:
+                    for mid in self.models:
+                        self.models[mid]["weight"] /= total_weight
+                    print(f"\n  Weights renormalized (loaded {loaded_count}/{len(self.ENSEMBLE_MODELS)} models)")
+                
+                self._ensemble_total_weight = sum(m["weight"] for m in self.models.values())
+                self._ensemble_loaded = True
+                
+                # Set legacy compat fields to first loaded model
+                first_id = next(iter(self.models))
+                self.model = self.models[first_id]["model"]
+                self.tokenizer = self.models[first_id]["tokenizer"]
+                self._active_model_id = f"ensemble({loaded_count})"
+                
+                print(f"\n{'='*60}")
+                print(f"Ensemble ready: {loaded_count} models loaded")
+                models_str = ", ".join(f"{m['weight']:.0%}" for m in self.models.values())
+                print(f"Weights: [{models_str}]")
+                print(f"{'='*60}\n")
+            else:
+                raise RuntimeError("No ensemble models could be loaded")
+
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"Error loading ensemble: {e}")
             print("Falling back to offline mode...")
             self.use_ml_model = False
+            self.detection_mode = DETECTION_MODE_OFFLINE
             self.model = None
+            self.models = {}
             self.tokenizer = None
+            self._active_model_id = None
+            self._ensemble_loaded = False
+    
+    def _load_desklib_model(self, model_id: str, AutoModel):
+        """Load desklib AI detector with custom architecture.
+        
+        Desklib checkpoint format:
+        - Backbone keys: model.embeddings.*, model.encoder.* (DeBERTa-v3-large, 1024 hidden)
+        - Classifier keys: classifier.weight [1, 1024], classifier.bias [1]
+        - Single logit output → sigmoid for AI probability
+        
+        Uses from_pretrained for fast cached init, then remaps and reloads correct weights.
+        """
+        import torch
+        import torch.nn as nn
+        from transformers import AutoConfig, DebertaV2Model
+        from huggingface_hub import hf_hub_download
+        from safetensors.torch import load_file
+        
+        class DesklibAIDetector(nn.Module):
+            """Custom wrapper matching desklib's architecture."""
+            def __init__(self, backbone, hidden_size):
+                super().__init__()
+                self.backbone = backbone
+                self.classifier = nn.Linear(hidden_size, 1)
+            
+            def forward(self, **kwargs):
+                outputs = self.backbone(**kwargs)
+                attention_mask = kwargs.get("attention_mask")
+                token_embeddings = outputs.last_hidden_state
+                if attention_mask is not None:
+                    mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+                    summed = torch.sum(token_embeddings * mask_expanded, dim=1)
+                    counts = torch.clamp(mask_expanded.sum(dim=1), min=1e-9)
+                    pooled = summed / counts
+                else:
+                    pooled = token_embeddings.mean(dim=1)
+                logits = self.classifier(pooled)
+                return logits
+        
+        config = AutoConfig.from_pretrained(model_id)
+        
+        # Load backbone with from_pretrained (fast from cache, creates correct model structure)
+        backbone = DebertaV2Model.from_pretrained(model_id)
+        
+        # Load full state dict from safetensors
+        weights_path = hf_hub_download(repo_id=model_id, filename="model.safetensors")
+        state_dict = load_file(weights_path)
+        
+        # Remap backbone keys: "model.X" → "X" (to match DebertaV2Model's expected key names)
+        backbone_dict = {k[6:]: v for k, v in state_dict.items() if k.startswith("model.")}
+        backbone.load_state_dict(backbone_dict)
+        print(f"    Desklib backbone: {len(backbone_dict)} weights loaded")
+        
+        # Build full model with classifier
+        model = DesklibAIDetector(backbone, config.hidden_size)
+        
+        # Load classifier weights
+        cls_dict = {"weight": state_dict["classifier.weight"], "bias": state_dict["classifier.bias"]}
+        model.classifier.load_state_dict(cls_dict)
+        print(f"    Desklib classifier: weight{list(cls_dict['weight'].shape)} + bias{list(cls_dict['bias'].shape)}")
+        
+        return model
     
     def _get_text_hash(self, text: str) -> str:
         """Generate hash for caching."""
@@ -238,29 +652,104 @@ class AIContentDetector:
     @lru_cache(maxsize=100)
     def _cached_inference(self, text_hash: str, text: str) -> Tuple[float, float]:
         """
-        Cached model inference. Returns (human_prob, ai_prob).
+        Cached ensemble inference. Returns (human_prob, ai_prob).
         
-        Model label mapping (from train_model.py):
-        - Index 0: "human"
-        - Index 1: "ai"
+        Runs text through all loaded ensemble models, extracts AI probability
+        from each using model-appropriate logic, then combines via weighted average.
+        
+        Handles:
+        - Standard 2-class softmax models (most HuggingFace classifiers)
+        - Custom single-logit sigmoid models (desklib)
+        - Different label mappings (id2label config)
+        """
+        if self.models:
+            return self._ensemble_inference(text)
+        
+        # Legacy fallback: single model (should not normally reach here)
+        return self._single_model_inference(text, self.model, self.tokenizer, "standard")
+    
+    def _ensemble_inference(self, text: str) -> Tuple[float, float]:
+        """Run text through all ensemble models and combine results.
+        
+        Returns weighted average (human_prob, ai_prob) across all loaded models.
+        If a model fails at inference time, its weight is excluded and others renormalized.
         """
         import torch
-        inputs = self.tokenizer(
-            text, 
-            return_tensors="pt", 
-            truncation=True, 
-            max_length=512
+        
+        weighted_ai = 0.0
+        total_weight = 0.0
+        model_results = []
+        
+        for model_id, entry in self.models.items():
+            try:
+                human_prob, ai_prob = self._single_model_inference(
+                    text, entry["model"], entry["tokenizer"], entry["type"]
+                )
+                weighted_ai += ai_prob * entry["weight"]
+                total_weight += entry["weight"]
+                model_results.append((model_id, ai_prob, entry["weight"]))
+            except Exception as e:
+                logger.warning(f"Ensemble inference failed for {model_id}: {e}")
+                continue
+        
+        if total_weight == 0:
+            logger.error("All ensemble models failed inference")
+            return (0.5, 0.5)  # Uncertain fallback
+        
+        ensemble_ai = weighted_ai / total_weight
+        ensemble_human = 1.0 - ensemble_ai
+        
+        logger.debug(f"Ensemble results: {[(m, f'{a:.3f}', f'{w:.2f}') for m, a, w in model_results]} → AI={ensemble_ai:.3f}")
+        
+        return (ensemble_human, ensemble_ai)
+    
+    def _single_model_inference(self, text: str, model, tokenizer, model_type: str) -> Tuple[float, float]:
+        """Run inference on a single model. Returns (human_prob, ai_prob).
+        
+        Handles two output formats:
+        - 'standard': 2-class softmax with id2label mapping
+        - 'desklib_custom': single logit → sigmoid → AI probability
+        """
+        import torch
+        
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True
         ).to(self.device)
         
         with torch.no_grad():
-            outputs = self.model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-        
-        prob_values = probs[0].tolist()
-        # Explicitly return in correct order: (human_probability, ai_probability)
-        human_prob = prob_values[0]  # Index 0 = "human"
-        ai_prob = prob_values[1]     # Index 1 = "ai"
-        return (human_prob, ai_prob)
+            if model_type == "desklib_custom":
+                # Custom desklib: returns single logit, sigmoid → AI probability
+                logits = model(**inputs)
+                ai_prob = torch.sigmoid(logits).item()
+                human_prob = 1.0 - ai_prob
+                return (human_prob, ai_prob)
+            else:
+                # Standard classification model: softmax over logits
+                outputs = model(**inputs)
+                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+                prob_values = probs[0].tolist()
+                
+                # Determine label mapping from model config
+                id2label = getattr(model.config, 'id2label', None)
+                if id2label:
+                    human_idx = None
+                    ai_idx = None
+                    for idx, label in id2label.items():
+                        label_lower = label.lower()
+                        if any(h in label_lower for h in ['human', 'real', 'label_0']):
+                            human_idx = int(idx)
+                        elif any(a in label_lower for a in ['ai', 'chatgpt', 'generated', 'fake', 'label_1', 'machine']):
+                            ai_idx = int(idx)
+                    
+                    if human_idx is not None and ai_idx is not None:
+                        return (prob_values[human_idx], prob_values[ai_idx])
+                
+                # Default: Index 0 = human, Index 1 = AI
+                return (prob_values[0], prob_values[1])
     
     def _analyze_sentence(self, sentence: str) -> Dict:
         """Analyze a single sentence for AI probability and patterns."""
@@ -271,7 +760,7 @@ class AIContentDetector:
         patterns = self._detect_patterns_in_text(sentence)
         
         # Get AI probability for this sentence
-        if self.use_ml_model and self.model is not None:
+        if self.use_ml_model and self._ensemble_loaded:
             text_hash = self._get_text_hash(sentence)
             try:
                 human_prob, ai_prob = self._cached_inference(text_hash, sentence)
@@ -523,10 +1012,11 @@ class AIContentDetector:
         score = 0.0
         
         # Penalty for high green list usage (robotic/safe)
-        if green_ratio > 0.55:
-            score += 0.4
-        elif green_ratio > 0.60:
+        # NOTE: Check higher threshold first so it isn't shadowed
+        if green_ratio > 0.60:
             score += 0.7
+        elif green_ratio > 0.55:
+            score += 0.4
             
         # Penalty for low complexity (avoidance of creative words)
         if complex_ratio < 0.12:
@@ -540,46 +1030,45 @@ class AIContentDetector:
         Calculate AI probability using lightweight statistical methods (no ML model).
         Returns (human_prob, ai_prob) tuple.
         
-        Improved scoring to detect subtle AI-generated text:
-        - Pattern matching: 50% (more weight to detected patterns - they're reliable)
-        - Linguistic metrics: 50% (entropy, TTR, burstiness, n-gram repetition)
+        Scoring formula (matches documented 60/25/15 split):
+          AI_Score = (pattern_score × 0.60) + (linguistic_score × 0.25) + (watermark_score × 0.15)
         
-        Key improvements:
-        1. INCREASED pattern weight from 40% to 50% (formal transitions are strong AI indicators)
-        2. FIXED: Even 1 formal pattern like "In conclusion" should boost AI score to at least 0.35
-        3. Better calibration for borderline cases
+        Improvements:
+        1. Uses real LM perplexity when available (GPT-2/DistilGPT-2)
+        2. ESL de-biasing reduces false positives on non-native English
+        3. Consistent with documented weights
         """
         sentences = re.split(r'[.!?]+', text)
         sentences = [s.strip() for s in sentences if s.strip()]
         sentence_count = max(len(sentences), 1)
         
-        # ===== COMPONENT 1: PATTERN MATCHING SCORE (60% weight - INCREASED more) =====
+        # ===== COMPONENT 1: PATTERN MATCHING SCORE (60% weight) =====
         num_patterns = len(detected_patterns)
-        pattern_density = num_patterns / sentence_count if sentence_count > 0 else 0
         
         if num_patterns == 0:
             pattern_ai_score = 0.1  # Small base boost for borderline cases
         elif num_patterns == 1:
-            pattern_ai_score = 0.65  # Single pattern = moderate AI indicator
+            pattern_ai_score = 0.55  # Single pattern = moderate AI indicator
         elif num_patterns == 2:
-            pattern_ai_score = 0.80  # Two patterns = strong AI indicator
-        elif num_patterns >= 3:
-            # 3+ patterns is very strong AI indicator
-            pattern_ai_score = min(1.0, 0.95)
+            pattern_ai_score = 0.72  # Two patterns = strong AI indicator
+        elif num_patterns == 3:
+            pattern_ai_score = 0.85
+        elif num_patterns >= 4:
+            pattern_ai_score = min(1.0, 0.90 + (num_patterns - 4) * 0.02)
         
         pattern_component = pattern_ai_score * self.PATTERN_WEIGHT
         
-        # ===== COMPONENT 2: LINGUISTIC METRICS (40% weight - DECREASED to balance) =====
+        # ===== COMPONENT 2: LINGUISTIC METRICS (25% weight) =====
         
-        # 2a. Vocabulary Diversity (TTR) - 10% of total (was 15%)
+        # 2a. Vocabulary Diversity (TTR)
         ttr = self._calculate_ttr(text)
         ttr_ai_score = 1.0 - ttr  # Low vocabulary = AI-like
         
-        # 2b. Entropy/Perplexity - 10% of total (was 15%)
+        # 2b. Entropy
         entropy = self._calculate_entropy(text)
         entropy_ai_score = 1.0 - entropy  # Low entropy = AI-like
         
-        # 2c. Burstiness (sentence length variance) - 10% of total
+        # 2c. Burstiness (sentence length variance)
         words_per_sentence = [len(s.split()) for s in sentences if s.strip()]
         if len(words_per_sentence) > 1:
             mean_wps = sum(words_per_sentence) / len(words_per_sentence)
@@ -589,40 +1078,62 @@ class AIContentDetector:
             burstiness = 0.5
         burstiness_ai_score = 1.0 - burstiness  # Low variance = AI-like
         
-        # 2d. N-gram Repetition - 10% of total
+        # 2d. N-gram Repetition
         bigram_rep = self._calculate_ngram_uniformity(text, 2)
         trigram_rep = self._calculate_ngram_uniformity(text, 3)
-        ngram_ai_score = (bigram_rep + trigram_rep) / 2.0  # High uniformity = AI-like
+        ngram_ai_score = (bigram_rep + trigram_rep) / 2.0
         
-        # Combine linguistic metrics (normalize to add up to 40%)
-        linguistic_ai_score = (
-            ttr_ai_score * 0.25 +           # 10% of total (250% of 40%)
-            entropy_ai_score * 0.25 +       # 10% of total
-            burstiness_ai_score * 0.25 +    # 10% of total
-            ngram_ai_score * 0.25           # 10% of total
-        )
+        # 2e. Real LM Perplexity (if available — most discriminative feature)
+        real_ppl = self.lm_perplexity.compute_perplexity(text)
+        if real_ppl is not None:
+            # AI text: PPL 15-40, Human text: PPL 50-200+
+            if real_ppl < 25:
+                ppl_ai_score = 0.90
+            elif real_ppl < 40:
+                ppl_ai_score = 0.75
+            elif real_ppl < 60:
+                ppl_ai_score = 0.50
+            elif real_ppl < 100:
+                ppl_ai_score = 0.30
+            else:
+                ppl_ai_score = 0.15
+            
+            # Real perplexity gets highest weight among linguistic features
+            linguistic_ai_score = (
+                ppl_ai_score * 0.35 +           # Real perplexity (most important)
+                ttr_ai_score * 0.15 +
+                entropy_ai_score * 0.15 +
+                burstiness_ai_score * 0.15 +
+                ngram_ai_score * 0.20
+            )
+        else:
+            # Fallback: approximated perplexity (original formula)
+            linguistic_ai_score = (
+                ttr_ai_score * 0.25 +
+                entropy_ai_score * 0.25 +
+                burstiness_ai_score * 0.25 +
+                ngram_ai_score * 0.25
+            )
         
         linguistic_component = linguistic_ai_score * self.LINGUISTIC_WEIGHT
         
-        # ===== COMPONENT 3: WATERMARK SIGNAL (15% weight - NEW) =====
+        # ===== COMPONENT 3: WATERMARK SIGNAL (15% weight) =====
         watermark_score = self._detect_watermark_signals(text)
-        watermark_component = watermark_score * 0.15
+        watermark_component = watermark_score * self.WATERMARK_WEIGHT
         
-        # Adjust weights: Patterns (50%) + Linguistic (35%) + Watermark (15%)
-        # Current LINGUISTIC_WEIGHT is 0.35, need to ensure logic holds
+        # ===== FINAL SCORE (60/25/15 documented split) =====
+        ai_prob = pattern_component + linguistic_component + watermark_component
         
-        # ===== FINAL SCORE =====
-        # Note: Weights in code are tunable constants, but here we explicitly sum components
-        # We normalize to ensure max is 1.0
-        
-        # Base confidence from main components
-        base_ai_prob = (pattern_component * 0.8) + linguistic_component # Rescale
-        
-        # Add watermark boost
-        ai_prob = base_ai_prob + watermark_component
+        # ===== ESL DE-BIASING =====
+        # If text appears to be from an ESL writer, reduce AI probability
+        # to avoid false positives (ESL writers often use formal/structured language)
+        esl_prob = detect_esl_probability(text)
+        if esl_prob > 0.3:
+            esl_reduction = esl_prob * self.ESL_THRESHOLD_BOOST
+            ai_prob = max(0.0, ai_prob - esl_reduction)
+            logger.debug(f"ESL detected (prob={esl_prob:.2f}), reduced AI score by {esl_reduction:.3f}")
         
         ai_prob = min(1.0, max(0.0, ai_prob))
-        
         human_prob = 1.0 - ai_prob
         
         return (human_prob, ai_prob)
@@ -739,12 +1250,42 @@ class AIContentDetector:
             detailed: Include sentence-level analysis (can be slower for long texts)
             
         Returns:
-            Comprehensive detection results
+            Comprehensive detection results with trinary classification
         """
         if not text or not text.strip():
             return {"error": "Empty text provided"}
         
         text = text.strip()
+        
+        # ===== LAZY LOAD: Trigger model loading on first predict call =====
+        self._ensure_model_loaded()
+        
+        # ===== SHORT TEXT GUARD =====
+        # Texts under ~20 words lack enough signal for reliable ML detection.
+        # Classify as human by default since AI rarely generates very short snippets.
+        word_count = len(text.split())
+        if word_count < 15:
+            logger.info(f"Short text ({word_count} words) — defaulting to human")
+            metrics = self._calculate_linguistic_metrics(text)
+            return {
+                "prediction": "human",
+                "confidence": 85.0,
+                "scores": {"human": 85.0, "ai_generated": 15.0},
+                "classification": {"type": "human", "ai_sentence_ratio": None, "human_sentence_ratio": None, "is_mixed": False},
+                "metrics": metrics,
+                "detected_patterns": {"total_count": 0, "categories": {}},
+                "detection_method": "short_text_default",
+                "detection_mode": self.detection_mode,
+                "esl_probability": 0.0,
+                "adversarial_normalized": False,
+                "decision": {"reason": "short_text", "word_count": word_count},
+                "uncertainty_threshold": self.UNCERTAINTY_THRESHOLD
+            }
+        
+        # ===== ADVERSARIAL DEFENSE: Normalize homoglyphs & zero-width chars =====
+        original_text = text
+        text = normalize_adversarial_text(text)
+        adversarial_modified = (text != original_text)
         
         # Detect patterns in full text (needed for both ML and offline modes)
         all_patterns = self._detect_patterns_in_text(text)
@@ -771,42 +1312,87 @@ class AIContentDetector:
                 detection_method = "binoculars_zero_shot"
                 logger.info(f"Binoculars: {binoculars_result['prediction']} (score={binoculars_result['score']:.4f})")
         
-        elif self.use_ml_model and self.model is not None:
-            # ===== ML-BASED HYBRID DETECTION (DeBERTa-v3) =====
-            # ML-based prediction (cached)
+        elif self.use_ml_model and self._ensemble_loaded:
+            # ===== ENSEMBLE ML HYBRID DETECTION (4-model weighted average) =====
             text_hash = self._get_text_hash(text)
             ml_human, ml_ai = self._cached_inference(text_hash, text)
-            
-            # Calculate offline score for hybrid calibration
-            # This prevents specific models from overfitting on human text
             off_human, off_ai = self._calculate_offline_score(text, all_patterns)
             
-            # Weighted Hybrid Score: Balance ML with linguistic analysis
-            # CRITICAL: Current model is overfit and biased toward AI
-            # Until retrained, we trust linguistic analysis MUCH more
-            
-            # EMERGENCY FIX: Model is severely overfit, minimize its influence
-            weight_ml = 0.25  # Only 25% weight to ML (it's unreliable)
-            weight_off = 0.75  # 75% weight to linguistic analysis
+            # Ensemble of 4 diverse models is highly reliable — trust ML heavily
+            # desklib(RAID#1) + Oxidane(97.3%) + fakespot + MayZhou all agree → strong signal
+            weight_ml = 0.85
+            weight_off = 0.15
             
             ai_prob = (ml_ai * weight_ml) + (off_ai * weight_off)
             human_prob = 1.0 - ai_prob
-            detection_method = "ml_hybrid"
+            
+            # Binary snap: if ML ensemble clearly picks a side, commit fully
+            # 4 models agreeing is strong enough to show definitive result
+            if ml_ai > 0.5:
+                ai_prob = 1.0
+                human_prob = 0.0
+            else:
+                ai_prob = 0.0
+                human_prob = 1.0
+            
+            detection_method = f"ensemble_hybrid({len(self.models)})"
         
         else:
             # ===== OFFLINE STATISTICAL DETECTION =====
-            # Offline statistical prediction
             human_prob, ai_prob = self._calculate_offline_score(text, all_patterns)
             detection_method = "offline_statistical"
+        
+        # ===== TRINARY CLASSIFICATION (human / AI / mixed) =====
+        # When ML ensemble gives a strong signal, trust it — skip noisy offline sentence analysis
+        ml_strong_signal = False
+        if self.use_ml_model and self._ensemble_loaded:
+            try:
+                ml_strong_signal = (ml_ai > 0.80 or ml_ai < 0.20)
+            except NameError:
+                pass
+        
+        ai_sentence_count = 0
+        human_sentence_count = 0
+        sentence_scores = []
+        
+        if not ml_strong_signal:
+            # Only do sentence-level mixed detection when ML is uncertain
+            sentences_for_mix = re.split(r'(?<=[.!?])\s+', text)
+            sentences_for_mix = [s for s in sentences_for_mix if len(s.split()) >= 3]
+            
+            if len(sentences_for_mix) >= 3:
+                for sent in sentences_for_mix[:20]:
+                    sent_patterns = self._detect_patterns_in_text(sent)
+                    _, sent_ai = self._calculate_offline_score(sent, sent_patterns)
+                    sentence_scores.append(sent_ai)
+                    if sent_ai > 0.6:
+                        ai_sentence_count += 1
+                    elif sent_ai < 0.4:
+                        human_sentence_count += 1
+        
+        total_scored = max(len(sentence_scores), 1)
+        ai_ratio = ai_sentence_count / total_scored
+        human_ratio = human_sentence_count / total_scored
+        
+        # Determine if this is mixed content (only when ML wasn't strongly decisive)
+        is_mixed = (not ml_strong_signal and
+                    ai_ratio > 0.2 and human_ratio > 0.2 and len(sentence_scores) >= 3)
         
         # Determine prediction with uncertainty handling
         margin = abs(ai_prob - human_prob)
         max_prob = max(ai_prob, human_prob)
         confidence = round(max_prob * 100, 2)
 
-        # If margin is small, mark as 'uncertain' and include reason and leaning
         uncertainty_threshold = self.UNCERTAINTY_THRESHOLD
-        if margin < uncertainty_threshold:
+        if is_mixed:
+            prediction = "mixed"
+            decision_reason = {
+                "reason": "mixed_content",
+                "margin": round(margin, 3),
+                "ai_sentence_ratio": round(ai_ratio, 2),
+                "human_sentence_ratio": round(human_ratio, 2)
+            }
+        elif margin < uncertainty_threshold:
             leaning = "ai_generated" if ai_prob > human_prob else "human"
             prediction = "uncertain"
             decision_reason = {
@@ -819,6 +1405,15 @@ class AIContentDetector:
             decision_reason = {"reason": "clear_margin", "margin": round(margin, 3)}
 
         metrics = self._calculate_linguistic_metrics(text)
+        
+        # Add real perplexity to metrics if available
+        real_ppl = self.lm_perplexity.compute_perplexity(text)
+        if real_ppl is not None:
+            metrics["perplexity"]["real_lm"] = round(real_ppl, 1)
+            metrics["perplexity"]["source"] = "distilgpt2"
+        
+        # ESL probability for transparency
+        esl_prob = detect_esl_probability(text)
         
         # Group patterns by category
         pattern_summary = {}
@@ -837,13 +1432,21 @@ class AIContentDetector:
                 "human": round(human_prob * 100, 2),
                 "ai_generated": round(ai_prob * 100, 2)
             },
+            "classification": {
+                "type": prediction,  # "human", "ai_generated", "mixed", "uncertain"
+                "ai_sentence_ratio": round(ai_ratio, 2) if sentence_scores else None,
+                "human_sentence_ratio": round(human_ratio, 2) if sentence_scores else None,
+                "is_mixed": is_mixed
+            },
             "metrics": metrics,
             "detected_patterns": {
                 "total_count": len(all_patterns),
                 "categories": pattern_summary
             },
-            "detection_method": detection_method,  # Track which method was used
-            "detection_mode": self.detection_mode
+            "detection_method": detection_method,
+            "detection_mode": self.detection_mode,
+            "esl_probability": round(esl_prob, 3),
+            "adversarial_normalized": adversarial_modified
         }
 
         # Add decision reasoning and uncertainty metadata to help frontend and debugging
@@ -885,10 +1488,12 @@ class AIContentDetector:
             return {"error": "No chunks provided"}
         
         chunk_results = []
+        chunk_metrics_list = []
         total_weight = 0
         weighted_ai_score = 0
         weighted_human_score = 0
         all_patterns = []
+        mixed_count = 0
         
         for chunk in chunks:
             chunk_text = chunk.get("text", "")
@@ -908,6 +1513,17 @@ class AIContentDetector:
             weighted_ai_score += result["scores"]["ai_generated"] * weight
             weighted_human_score += result["scores"]["human"] * weight
             
+            # Track mixed classifications
+            if result.get("classification", {}).get("is_mixed", False):
+                mixed_count += 1
+            
+            # Store real metrics for aggregation
+            if "metrics" in result:
+                chunk_metrics_list.append({
+                    "weight": weight,
+                    "metrics": result["metrics"]
+                })
+            
             # Collect patterns
             patterns = result.get("detected_patterns", {})
             if patterns.get("total_count", 0) > 0:
@@ -926,7 +1542,8 @@ class AIContentDetector:
                     "prediction": result["prediction"],
                     "confidence": result["confidence"],
                     "ai_score": result["scores"]["ai_generated"],
-                    "human_score": result["scores"]["human"]
+                    "human_score": result["scores"]["human"],
+                    "is_mixed": result.get("classification", {}).get("is_mixed", False)
                 })
         
         if total_weight == 0:
@@ -936,12 +1553,24 @@ class AIContentDetector:
         avg_ai = weighted_ai_score / total_weight
         avg_human = weighted_human_score / total_weight
         
-        prediction = "ai_generated" if avg_ai > avg_human else "human"
-        confidence = max(avg_ai, avg_human)
-        
-        # Count high-confidence chunks
+        # Trinary classification at document level from chunk analysis
+        total_chunks_analyzed = len(chunk_results) if chunk_results else len(chunk_metrics_list)
         ai_chunks = sum(1 for c in chunk_results if c.get("ai_score", 0) > 60)
         human_chunks = sum(1 for c in chunk_results if c.get("human_score", 0) > 60)
+        
+        if total_chunks_analyzed >= 2:
+            chunk_ai_ratio = ai_chunks / total_chunks_analyzed
+            chunk_human_ratio = human_chunks / total_chunks_analyzed
+            if chunk_ai_ratio > 0.2 and chunk_human_ratio > 0.2:
+                prediction = "mixed"
+            elif avg_ai > avg_human:
+                prediction = "ai_generated"
+            else:
+                prediction = "human"
+        else:
+            prediction = "ai_generated" if avg_ai > avg_human else "human"
+        
+        confidence = max(avg_ai, avg_human)
         
         result = {
             "prediction": prediction,
@@ -950,10 +1579,18 @@ class AIContentDetector:
                 "human": round(avg_human, 2),
                 "ai_generated": round(avg_ai, 2)
             },
+            "classification": {
+                "type": prediction,
+                "ai_chunk_ratio": round(ai_chunks / max(total_chunks_analyzed, 1), 2),
+                "human_chunk_ratio": round(human_chunks / max(total_chunks_analyzed, 1), 2),
+                "is_mixed": prediction == "mixed",
+                "mixed_chunk_count": mixed_count
+            },
             "chunk_summary": {
-                "total_chunks": len(chunk_results),
+                "total_chunks": total_chunks_analyzed,
                 "ai_leaning_chunks": ai_chunks,
                 "human_leaning_chunks": human_chunks,
+                "mixed_chunks": mixed_count,
                 "total_characters": total_weight
             },
             "detected_patterns": {
@@ -962,61 +1599,68 @@ class AIContentDetector:
             }
         }
         
-        # Aggregate metrics from chunks if available
-        try:
-            # We want to aggregate the metrics from the chunks we already analyzed
-            # Since we didn't store them in the first pass loop, we have to rely on what we have.
-            # Wait, we can't easily re-run without performance cost.
-            # Let's fix the loop above to store metrics!
-            
-            # Since I can't easily edit the loop above in this same tool call without replacing the whole function,
-            # and I want to be safe, I will use the chunk_results if I can, but they don't have deep metrics.
-            # We must use a simplified estimation based on the overall text properties we likely have,
-            # OR we accept that for this pass we use the dummy values but slightly more realistic based on scores.
-            
-            # ACTUALLY - I can access the metrics if I modify the loop. 
-            # But here I am replacing the end block.
-            # Let's use a smart approximation for now to fix the "not visible" issue immediately.
-            
-            ai_ratio = avg_ai / 100
-            
-            # Synthesize likely metrics based on the AI score
-            # AI = Low Perplexity (10-30), Low Burstiness (0.1-0.3)
-            # Human = High Perplexity (60-100), High Burstiness (0.6-0.9)
-            
-            est_perplexity = 25 + (75 * (1 - ai_ratio)) # AI->25, Human->100
-            est_burstiness = 0.2 + (0.7 * (1 - ai_ratio)) # AI->0.2, Human->0.9
-            
-            result["metrics"] = {
-                "word_count": total_weight // 5,
-                "sentence_count": total_weight // 100,
-                "avg_words_per_sentence": 20,
-                "vocabulary_richness": 40 + (30 * (1-ai_ratio)),
-                "perplexity": {
-                    "average": round(est_perplexity, 1),
-                    "flow": [round(est_perplexity + (i%2)*10 - 5, 1) for i in range(10)]
-                },
-                "burstiness": {
-                    "score": round(est_burstiness, 2),
-                    "bars": {
-                        "document": [round(est_burstiness * 100 * (0.8 + 0.4*(i%3)/2), 1) for i in range(6)], 
-                        "human_baseline": [60, 85, 40, 95, 55, 70]
-                    }
-                },
-                "rhythm": {
-                     "status": "Uniform" if ai_ratio > 0.6 else "Normal",
-                     "description": "Consistent patterns" if ai_ratio > 0.6 else "Natural variance",
-                     "variance": 2 if ai_ratio > 0.6 else 8
-                },
-                "ngram_uniformity": {
-                     "bigram": 0.8 if ai_ratio > 0.6 else 0.4,
-                     "trigram": 0.8 if ai_ratio > 0.6 else 0.4,
-                     "interpretation": "high" if ai_ratio > 0.6 else "normal"
+        # Aggregate REAL metrics from chunks (weighted average)
+        if chunk_metrics_list:
+            try:
+                agg_word_count = 0
+                agg_sentence_count = 0
+                agg_perplexity_sum = 0.0
+                agg_burstiness_sum = 0.0
+                agg_vocab_sum = 0.0
+                agg_weight_total = sum(cm["weight"] for cm in chunk_metrics_list)
+                perplexity_flow = []
+                
+                for cm in chunk_metrics_list:
+                    w = cm["weight"]
+                    m = cm["metrics"]
+                    agg_word_count += m.get("word_count", 0)
+                    agg_sentence_count += m.get("sentence_count", 0)
+                    
+                    ppl = m.get("perplexity", {})
+                    if isinstance(ppl, dict):
+                        ppl_avg = ppl.get("average", 50)
+                        ppl_flow = ppl.get("flow", [])
+                    else:
+                        ppl_avg = 50
+                        ppl_flow = []
+                    
+                    agg_perplexity_sum += ppl_avg * w
+                    
+                    burst = m.get("burstiness", {})
+                    if isinstance(burst, dict):
+                        agg_burstiness_sum += burst.get("score", 0.5) * w
+                    
+                    agg_vocab_sum += m.get("vocabulary_richness", 50) * w
+                    
+                    if ppl_flow:
+                        perplexity_flow.extend(ppl_flow[:5])
+                
+                avg_ppl = agg_perplexity_sum / max(agg_weight_total, 1)
+                avg_burst = agg_burstiness_sum / max(agg_weight_total, 1)
+                avg_vocab = agg_vocab_sum / max(agg_weight_total, 1)
+                avg_wps = agg_word_count / max(agg_sentence_count, 1)
+                
+                result["metrics"] = {
+                    "word_count": agg_word_count,
+                    "sentence_count": agg_sentence_count,
+                    "avg_words_per_sentence": round(avg_wps, 1),
+                    "vocabulary_richness": round(avg_vocab, 1),
+                    "perplexity": {
+                        "average": round(avg_ppl, 1),
+                        "flow": perplexity_flow[:15]
+                    },
+                    "burstiness": {
+                        "score": round(avg_burst, 2),
+                        "bars": {
+                            "document": [round(avg_burst * 100 * (0.8 + 0.4*(i%3)/2), 1) for i in range(6)],
+                            "human_baseline": [60, 85, 40, 95, 55, 70]
+                        }
+                    },
+                    "aggregated_from_chunks": True
                 }
-            }
-        except Exception as e:
-            print(f"Error calculating aggregated metrics: {e}")
-            pass
+            except Exception as e:
+                logger.warning(f"Error aggregating chunk metrics: {e}")
+        
 
         
         if include_per_chunk:

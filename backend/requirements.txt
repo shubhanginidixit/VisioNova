@@ -14,6 +14,8 @@ transformers>=4.30.0
 torch>=2.0.0
 torchvision>=0.15.0
 timm>=0.9.0  # For advanced vision models
+safetensors>=0.4.0  # For loading model weights in safetensors format
+huggingface_hub>=0.20.0  # For downloading model files from HuggingFace
 binoculars>=0.1.0  # Zero-shot AI text detection (dual Falcon-7B, GPU-only)
 
 # Document Processing
@@ -26,7 +28,7 @@ datasets>=2.14.0
 accelerate>=0.20.0
 sentencepiece>=0.1.99
 
-# Image Detection Dependencies
+# Imageho Detection Dependencies
 pillow>=10.0.0
 numpy>=1.24.0
 scipy>=1.11.0
@@ -39,6 +41,23 @@ c2pa-python>=0.6.0  # For C2PA Content Credentials (DALL-E 3, Adobe Firefly, Mic
 steganogan>=0.1.3  # Optional: For SteganoGAN steganographic watermark detection
 
 # ML Image Detection Models (downloaded on first use)
+# haywoodsloan/ai-image-detector-dev-deploy (SwinV2, 98.1% accuracy)
+# Organika/sdxl-detector (Swin, 98.1% F1, diffusion specialist)
 # NYUAD-ComNets/NYUAD_AI-generated_images_detector (HuggingFace)
-# openai/clip-vit-large-patch14 (for UniversalFakeDetect)
 # dima806/deepfake_vs_real_image_detection (for deepfakes)
+
+# Audio Detection Dependencies
+soundfile>=0.12.0  # Audio file reading (wav, flac, ogg)
+librosa>=0.10.0  # Audio resampling and processing
+# Model: MelodyMachine/Deepfake-audio-detection-V2 (Wav2Vec2, 99.7% accuracy)
+
+# Video Detection Dependencies
+# opencv-python already listed above
+# Model: Naman712/Deep-fake-detection (ResNeXt50 + LSTM, 87% accuracy)
+# Fallback: dima806/deepfake_vs_real_faces_detection (ViT)
+
+# Text Detection Ensemble (4 models, weighted average)
+# desklib/ai-text-detector-v1.01 (DeBERTa-v3-large, 400M, RAID #1, w=0.35)
+# Oxidane/tmr-ai-text-detector (RoBERTa-base, 125M, 97.3% acc, w=0.30)
+# fakespot-ai/roberta-base-ai-text-detection-v1 (RoBERTa-base, 125M, w=0.20)
+# MayZhou/e5-small-lora-ai-generated-detector (E5-small+LoRA, 33M, w=0.15)

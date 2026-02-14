@@ -17,6 +17,21 @@ from image_detector import (
     NoiseAnalyzer, EnsembleDetector, FastCascadeDetector, ML_DETECTORS_AVAILABLE
 )
 
+# Audio and Video detectors (lazy-loaded)
+AUDIO_DETECTOR_AVAILABLE = False
+VIDEO_DETECTOR_AVAILABLE = False
+try:
+    from audio_detector import AudioDeepfakeDetector
+    AUDIO_DETECTOR_AVAILABLE = True
+except ImportError:
+    AudioDeepfakeDetector = None
+
+try:
+    from video_detector import VideoDeepfakeDetector
+    VIDEO_DETECTOR_AVAILABLE = True
+except ImportError:
+    VideoDeepfakeDetector = None
+
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)  # Enable CORS for frontend requests
@@ -63,9 +78,31 @@ try:
 except Exception as e:
     print(f"⚠ Fast cascade detector not available: {e}")
 
+# Audio deepfake detector (lazy-loaded, models downloaded on first use)
+audio_detector = None
+if AUDIO_DETECTOR_AVAILABLE:
+    try:
+        audio_detector = AudioDeepfakeDetector(use_gpu=False)
+        print("✓ Audio deepfake detector initialized (model loads on first use)")
+    except Exception as e:
+        print(f"⚠ Audio detector not available: {e}")
+
+# Video deepfake detector (lazy-loaded, models downloaded on first use)
+video_detector = None
+if VIDEO_DETECTOR_AVAILABLE:
+    try:
+        video_detector = VideoDeepfakeDetector(use_gpu=False)
+        print("✓ Video deepfake detector initialized (model loads on first use)")
+    except Exception as e:
+        print(f"⚠ Video detector not available: {e}")
+
 # File upload limits
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024  # 25MB for audio
+MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024  # 50MB for video
 ALLOWED_EXTENSIONS = {'.pdf', '.docx', '.txt', '.doc'}
+ALLOWED_AUDIO_EXTENSIONS = {'.wav', '.mp3', '.flac', '.ogg', '.m4a', '.webm', '.aac', '.wma'}
+ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.webm', '.wmv', '.flv'}
 
 # Input validation constants
 MAX_CLAIM_LENGTH = 1000
@@ -1216,6 +1253,259 @@ def detect_content_credentials():
         }), 500
 
 
+# ============================
+# AUDIO DETECTION ENDPOINTS
+# ============================
+
+@app.route('/api/detect-audio', methods=['POST'])
+@limiter.limit("20 per minute")
+def detect_audio_deepfake():
+    """
+    Detect AI-generated or deepfake audio.
+    
+    Uses MelodyMachine/Deepfake-audio-detection-V2 (Wav2Vec2, 99.7% accuracy).
+    
+    Request: multipart/form-data with 'audio' file field
+    Supported formats: wav, mp3, flac, ogg, m4a, webm, aac, wma
+    Max file size: 25MB
+    
+    Response:
+        {
+            "success": true,
+            "prediction": "real" or "ai_generated",
+            "confidence": 95.5,
+            "ai_probability": 95.5,
+            "human_probability": 4.5,
+            "model": "MelodyMachine/Deepfake-audio-detection-V2",
+            "duration_seconds": 12.5
+        }
+    """
+    try:
+        if audio_detector is None:
+            return jsonify({
+                'success': False,
+                'error': 'Audio detection not available. Install required packages: pip install soundfile librosa',
+                'error_code': 'AUDIO_DETECTOR_UNAVAILABLE'
+            }), 503
+
+        # Check for file upload
+        if 'audio' not in request.files:
+            # Also support base64 JSON body
+            data = request.get_json(silent=True)
+            if data and 'audio' in data:
+                audio_data = data['audio']
+                filename = data.get('filename', 'audio.wav')
+                
+                # Remove data URL prefix if present
+                if ',' in audio_data:
+                    audio_data = audio_data.split(',')[1]
+                
+                try:
+                    audio_bytes = base64.b64decode(audio_data)
+                except Exception as e:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Invalid base64 audio data: {str(e)}',
+                        'error_code': 'INVALID_AUDIO'
+                    }), 400
+                
+                if len(audio_bytes) > MAX_AUDIO_FILE_SIZE:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Audio file too large. Maximum size: {MAX_AUDIO_FILE_SIZE // (1024*1024)}MB',
+                        'error_code': 'FILE_TOO_LARGE'
+                    }), 400
+                
+                result = audio_detector.predict(audio_bytes, filename)
+                return jsonify(result)
+            
+            return jsonify({
+                'success': False,
+                'error': 'No audio file provided. Use multipart form with "audio" field or JSON with base64 "audio" field.',
+                'error_code': 'MISSING_AUDIO'
+            }), 400
+
+        file = request.files['audio']
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'error_code': 'NO_FILE'
+            }), 400
+
+        # Validate extension
+        import os
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_AUDIO_EXTENSIONS:
+            return jsonify({
+                'success': False,
+                'error': f'Unsupported audio format: {ext}. Supported: {", ".join(sorted(ALLOWED_AUDIO_EXTENSIONS))}',
+                'error_code': 'INVALID_FORMAT'
+            }), 400
+
+        # Read file bytes
+        audio_bytes = file.read()
+        if len(audio_bytes) > MAX_AUDIO_FILE_SIZE:
+            return jsonify({
+                'success': False,
+                'error': f'Audio file too large. Maximum size: {MAX_AUDIO_FILE_SIZE // (1024*1024)}MB',
+                'error_code': 'FILE_TOO_LARGE'
+            }), 400
+
+        # Run detection
+        result = audio_detector.predict(audio_bytes, file.filename)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/detect-audio/info', methods=['GET'])
+def audio_detector_info():
+    """Get audio detector model information."""
+    if audio_detector is None:
+        return jsonify({
+            'available': False,
+            'error': 'Audio detector not loaded'
+        })
+    return jsonify({
+        'available': True,
+        **audio_detector.get_model_info()
+    })
+
+
+# ============================
+# VIDEO DETECTION ENDPOINTS
+# ============================
+
+@app.route('/api/detect-video', methods=['POST'])
+@limiter.limit("10 per minute")
+def detect_video_deepfake():
+    """
+    Detect deepfake or AI-generated video.
+    
+    Uses frame-level analysis with pretrained models.
+    Extracts up to 20 frames and analyzes each for deepfake indicators.
+    
+    Request: multipart/form-data with 'video' file field
+    Supported formats: mp4, avi, mov, mkv, webm, wmv, flv
+    Max file size: 50MB
+    
+    Response:
+        {
+            "success": true,
+            "prediction": "real" or "deepfake",
+            "confidence": 87.3,
+            "ai_probability": 87.3,
+            "human_probability": 12.7,
+            "frame_count": 20,
+            "fake_frame_count": 17,
+            "temporal_consistency": 85.2,
+            "model": "Naman712/Deep-fake-detection"
+        }
+    """
+    try:
+        if video_detector is None:
+            return jsonify({
+                'success': False,
+                'error': 'Video detection not available. Install required packages: pip install opencv-python',
+                'error_code': 'VIDEO_DETECTOR_UNAVAILABLE'
+            }), 503
+
+        # Check for file upload
+        if 'video' not in request.files:
+            # Also support base64 JSON body
+            data = request.get_json(silent=True)
+            if data and 'video' in data:
+                video_data = data['video']
+                filename = data.get('filename', 'video.mp4')
+                
+                # Remove data URL prefix if present
+                if ',' in video_data:
+                    video_data = video_data.split(',')[1]
+                
+                try:
+                    video_bytes = base64.b64decode(video_data)
+                except Exception as e:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Invalid base64 video data: {str(e)}',
+                        'error_code': 'INVALID_VIDEO'
+                    }), 400
+                
+                if len(video_bytes) > MAX_VIDEO_FILE_SIZE:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Video file too large. Maximum size: {MAX_VIDEO_FILE_SIZE // (1024*1024)}MB',
+                        'error_code': 'FILE_TOO_LARGE'
+                    }), 400
+                
+                result = video_detector.predict(video_bytes, filename)
+                return jsonify(result)
+            
+            return jsonify({
+                'success': False,
+                'error': 'No video file provided. Use multipart form with "video" field or JSON with base64 "video" field.',
+                'error_code': 'MISSING_VIDEO'
+            }), 400
+
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'error_code': 'NO_FILE'
+            }), 400
+
+        # Validate extension
+        import os
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_VIDEO_EXTENSIONS:
+            return jsonify({
+                'success': False,
+                'error': f'Unsupported video format: {ext}. Supported: {", ".join(sorted(ALLOWED_VIDEO_EXTENSIONS))}',
+                'error_code': 'INVALID_FORMAT'
+            }), 400
+
+        # Read file bytes
+        video_bytes = file.read()
+        if len(video_bytes) > MAX_VIDEO_FILE_SIZE:
+            return jsonify({
+                'success': False,
+                'error': f'Video file too large. Maximum size: {MAX_VIDEO_FILE_SIZE // (1024*1024)}MB',
+                'error_code': 'FILE_TOO_LARGE'
+            }), 400
+
+        # Run detection
+        result = video_detector.predict(video_bytes, file.filename)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/detect-video/info', methods=['GET'])
+def video_detector_info():
+    """Get video detector model information."""
+    if video_detector is None:
+        return jsonify({
+            'available': False,
+            'error': 'Video detector not loaded'
+        })
+    return jsonify({
+        'available': True,
+        **video_detector.get_model_info()
+    })
+
+
 @app.route('/api/fact-check/deep', methods=['POST'])
 @limiter.limit("3 per minute")
 def deep_check_fact():
@@ -1292,6 +1582,13 @@ if __name__ == '__main__':
     print("  POST /api/fact-check      - Check a claim/URL")
     print("  GET  /api/fact-check?q=   - Check a claim (simple)")
     print("  POST /api/fact-check/feedback - Submit user feedback")
+    print("  POST /api/detect-ai       - Detect AI-generated text")
+    print("  POST /api/detect-image    - Detect AI-generated images")
+    print("  POST /api/detect-image/ensemble - Ensemble image detection")
+    print("  POST /api/detect-audio    - Detect AI-generated/deepfake audio")
+    print("  POST /api/detect-video    - Detect deepfake video")
+    print("  GET  /api/detect-audio/info - Audio detector info")
+    print("  GET  /api/detect-video/info - Video detector info")
     print()
     
     app.run(debug=True, host='0.0.0.0', port=5000)

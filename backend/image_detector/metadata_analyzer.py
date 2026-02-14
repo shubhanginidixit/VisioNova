@@ -173,6 +173,10 @@ class MetadataAnalyzer:
                         except:
                             value = str(value)
                     
+                    # Handle non-JSON serializable types (IFDRational, etc.)
+                    if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                        value = str(value)
+                    
                     exif_data[tag] = value
             
             # Also try to get IFD data (more detailed EXIF)
@@ -186,6 +190,11 @@ class MetadataAnalyzer:
                                 value = value.decode('utf-8', errors='ignore')
                             except:
                                 value = str(value)
+                        
+                        # Handle non-JSON serializable types
+                        if not isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                            value = str(value)
+                            
                         exif_data[tag] = value
                 except:
                     pass

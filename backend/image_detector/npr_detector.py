@@ -179,7 +179,7 @@ class NPRDetector:
     
     def _analyze_cooccurrence(self, img: np.ndarray) -> float:
         """
-        Analyze pixel co-occurrence patterns.
+        Analyze pixel co-occurrence patterns (vectorized).
         
         Co-occurrence matrix captures how often pixel value pairs
         appear next to each other. AI has different patterns.
@@ -189,39 +189,28 @@ class NPRDetector:
         # Quantize to reduce computation
         quantized = (gray // 16).astype(np.uint8)  # 16 levels
         
-        # Compute horizontal co-occurrence
-        h, w = quantized.shape
+        # Vectorized horizontal co-occurrence using numpy
+        left = quantized[:, :-1].ravel()
+        right = quantized[:, 1:].ravel()
         cooc = np.zeros((16, 16), dtype=np.float64)
-        
-        for i in range(h):
-            for j in range(w - 1):
-                v1, v2 = quantized[i, j], quantized[i, j + 1]
-                cooc[v1, v2] += 1
+        np.add.at(cooc, (left, right), 1)
         
         # Normalize
         cooc = cooc / (cooc.sum() + 1e-10)
         
-        # Compute features from co-occurrence matrix
+        # Vectorized feature computation using index grids
+        i_idx, j_idx = np.mgrid[0:16, 0:16]
         
         # 1. Contrast
-        contrast = 0
-        for i in range(16):
-            for j in range(16):
-                contrast += ((i - j) ** 2) * cooc[i, j]
+        contrast = np.sum(((i_idx - j_idx) ** 2) * cooc)
         
         # 2. Homogeneity
-        homogeneity = 0
-        for i in range(16):
-            for j in range(16):
-                homogeneity += cooc[i, j] / (1 + abs(i - j))
+        homogeneity = np.sum(cooc / (1 + np.abs(i_idx - j_idx)))
         
         # 3. Entropy
         flat_cooc = cooc.flatten()
         flat_cooc = flat_cooc[flat_cooc > 0]
         entropy = -np.sum(flat_cooc * np.log2(flat_cooc + 1e-10))
-        
-        # AI images often have lower contrast, higher homogeneity
-        # and different entropy patterns
         
         # Normalize scores
         contrast_score = 1 - min(1, contrast / 50)  # Low contrast = AI
@@ -306,19 +295,20 @@ class NPRDetector:
         # Extract noise residual using high-pass filter
         gray = np.mean(img, axis=2)
         
-        # Simple high-pass: Laplacian-like
-        kernel_size = 3
-        pad = kernel_size // 2
-        
-        padded = np.pad(gray, pad, mode='reflect')
-        smoothed = np.zeros_like(gray)
-        
-        # Simple mean filter
-        for i in range(gray.shape[0]):
-            for j in range(gray.shape[1]):
-                smoothed[i, j] = np.mean(
-                    padded[i:i+kernel_size, j:j+kernel_size]
-                )
+        # Simple high-pass: Laplacian-like (vectorized with uniform_filter)
+        try:
+            from scipy.ndimage import uniform_filter
+            smoothed = uniform_filter(gray, size=3, mode='reflect')
+        except ImportError:
+            # Fallback: vectorized mean filter using cumulative sums
+            kernel_size = 3
+            pad = kernel_size // 2
+            padded = np.pad(gray, pad, mode='reflect')
+            # Use view_as_windows-style sliding window via stride tricks
+            shape = gray.shape + (kernel_size, kernel_size)
+            strides = padded.strides + padded.strides
+            windows = np.lib.stride_tricks.as_strided(padded, shape=shape, strides=strides)
+            smoothed = windows.mean(axis=(-2, -1))
         
         noise = gray - smoothed
         
