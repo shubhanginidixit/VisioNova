@@ -158,6 +158,7 @@ async function analyzeText(text, preloadedResult = null) {
     // Try to use preloaded result from dashboard first
     let aiProbability = null;
     let backendMetrics = null;
+    let backendResult = null;
 
     if (preloadedResult && preloadedResult.success) {
         // Use cached ML model results from dashboard
@@ -174,7 +175,7 @@ async function analyzeText(text, preloadedResult = null) {
         // Try backend ML model
         try {
             showLoadingState();
-            const backendResult = await callTextDetectionAPI(text);
+            backendResult = await callTextDetectionAPI(text);
 
             if (backendResult && backendResult.success) {
                 aiProbability = {
@@ -446,18 +447,36 @@ function updateUI(results) {
     updateElement('scoreBar', null, { width: `${credibilityScore}%` });
     updateElement('metricsInfo', `Based on ${metrics.wordCount} words analyzed`);
 
-    // Update verdict badge
+    // Update score bar color based on credibility level
+    const scoreBar = document.getElementById('scoreBar');
+    if (scoreBar) {
+        if (credibilityScore >= 70) {
+            scoreBar.style.background = '#00D991';
+            scoreBar.style.boxShadow = '0 0 10px rgba(0,217,145,0.5)';
+        } else if (credibilityScore >= 40) {
+            scoreBar.style.background = '#FFB74A';
+            scoreBar.style.boxShadow = '0 0 10px rgba(255,183,74,0.5)';
+        } else {
+            scoreBar.style.background = '#FF4A4A';
+            scoreBar.style.boxShadow = '0 0 10px rgba(255,74,74,0.5)';
+        }
+    }
+
+    // Update verdict badge with inline styles for guaranteed color visibility
     const verdictBadge = document.getElementById('verdictBadge');
     if (verdictBadge) {
         if (credibilityScore >= 70) {
             verdictBadge.textContent = 'Likely Human';
-            verdictBadge.className = 'px-2 py-0.5 rounded-full bg-accent-emerald/20 text-accent-emerald text-xs font-bold border border-accent-emerald/20';
+            verdictBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold border';
+            verdictBadge.style.cssText = 'background: rgba(0,217,145,0.2); color: #00D991; border-color: rgba(0,217,145,0.3);';
         } else if (credibilityScore >= 40) {
             verdictBadge.textContent = 'Uncertain';
-            verdictBadge.className = 'px-2 py-0.5 rounded-full bg-accent-amber/20 text-accent-amber text-xs font-bold border border-accent-amber/20';
+            verdictBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold border';
+            verdictBadge.style.cssText = 'background: rgba(255,183,74,0.2); color: #FFB74A; border-color: rgba(255,183,74,0.3);';
         } else {
             verdictBadge.textContent = 'Likely AI';
-            verdictBadge.className = 'px-2 py-0.5 rounded-full bg-accent-red/20 text-accent-red text-xs font-bold border border-accent-red/20';
+            verdictBadge.className = 'px-2 py-0.5 rounded-full text-xs font-bold border';
+            verdictBadge.style.cssText = 'background: rgba(255,74,74,0.2); color: #FF4A4A; border-color: rgba(255,74,74,0.3);';
         }
     }
 
@@ -468,37 +487,59 @@ function updateUI(results) {
     updateElement('aiPercent', `${Math.round(aiProbability.ai)}%`);
 
     // Update probability note
+    const note = document.getElementById('probabilityNote');
     if (aiProbability.human >= 70) {
         updateElement('probabilityText', 'Consistent human writing patterns');
+        if (note) note.style.color = '#00D991';
     } else if (aiProbability.ai >= 70) {
         updateElement('probabilityText', 'AI-generated patterns detected');
-        const note = document.getElementById('probabilityNote');
-        if (note) note.className = note.className.replace('text-accent-emerald', 'text-accent-red');
+        if (note) note.style.color = '#FF4A4A';
     } else {
         updateElement('probabilityText', 'Mixed writing patterns detected');
-        const note = document.getElementById('probabilityNote');
-        if (note) note.className = note.className.replace('text-accent-emerald', 'text-accent-amber');
+        if (note) note.style.color = '#FFB74A';
     }
 
-    // Update source reliability
-    updateElement('sourceLevel', sources.level);
-    updateElement('sourceInfo', sources.info);
-    updateSourceTags(sources.domains);
+    // Update source reliability - hide if no sources found (irrelevant for plain text)
+    const sourceCard = document.getElementById('sourceCard');
+    if (sourceCard) {
+        if (sources.level === 'Unknown' && sources.domains.length === 0) {
+            sourceCard.style.display = 'none';
+        } else {
+            sourceCard.style.display = '';
+            updateElement('sourceLevel', sources.level);
+            updateElement('sourceInfo', sources.info);
+            updateSourceTags(sources.domains);
+        }
+    }
 
-    // Update perplexity chart
-    updateElement('perplexityAvg', `Avg: ${metrics.perplexity}`);
+    // Determine if AI was detected (for metric coloring)
+    const isAI = aiProbability.ai >= 60;
+    const isUncertain = aiProbability.ai >= 40 && aiProbability.ai < 60;
+
+    // Update perplexity chart - color reflects detection result
+    const perplexityEl = document.getElementById('perplexityAvg');
+    if (perplexityEl) {
+        perplexityEl.textContent = `Avg: ${metrics.perplexity}`;
+        if (isAI) {
+            perplexityEl.style.color = '#FF4A4A';
+        } else if (isUncertain) {
+            perplexityEl.style.color = '#FFB74A';
+        } else {
+            perplexityEl.style.color = '#00D991';
+        }
+    }
     if (metrics.perplexityFlow) {
-        updatePerplexityChart(metrics.perplexityFlow);
+        updatePerplexityChart(metrics.perplexityFlow, isAI);
     }
 
     // Update burstiness chart
     if (metrics.burstinenessData) {
-        updateBurstinessChart(metrics.burstinenessData);
+        updateBurstinessChart(metrics.burstinenessData, isAI);
     }
 
     // Update rhythm uniformity
     if (metrics.rhythm) {
-        updateRhythmStatus(metrics.rhythm);
+        updateRhythmStatus(metrics.rhythm, isAI);
     }
 }
 
@@ -600,12 +641,12 @@ function getRandomSource() {
 
 function getVerdictBadge(verdict) {
     const configs = {
-        'Verified': { icon: 'check_circle', bg: 'bg-accent-emerald/10', text: 'text-accent-emerald', border: 'border-accent-emerald/20' },
-        'Unverified': { icon: 'warning', bg: 'bg-accent-amber/10', text: 'text-accent-amber', border: 'border-accent-amber/20' },
-        'False': { icon: 'cancel', bg: 'bg-accent-red/10', text: 'text-accent-red', border: 'border-accent-red/20' }
+        'Verified': { icon: 'check_circle', style: 'background: rgba(0,217,145,0.1); color: #00D991; border-color: rgba(0,217,145,0.2);' },
+        'Unverified': { icon: 'warning', style: 'background: rgba(255,183,74,0.1); color: #FFB74A; border-color: rgba(255,183,74,0.2);' },
+        'False': { icon: 'cancel', style: 'background: rgba(255,74,74,0.1); color: #FF4A4A; border-color: rgba(255,74,74,0.2);' }
     };
     const c = configs[verdict] || configs['Unverified'];
-    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${c.bg} ${c.text} border ${c.border}">
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border" style="${c.style}">
         <span class="material-symbols-outlined text-[14px]">${c.icon}</span>${verdict}
     </span>`;
 }
@@ -622,7 +663,7 @@ function getSourceLink(source) {
  * Update the perplexity line chart with dynamic data
  * @param {number[]} flowData - Array of perplexity values for each section
  */
-function updatePerplexityChart(flowData) {
+function updatePerplexityChart(flowData, isAI = false) {
     const svg = document.querySelector('.bg-primary-dark\\/40 svg');
     if (!svg || !flowData || flowData.length < 2) return;
 
@@ -639,7 +680,6 @@ function updatePerplexityChart(flowData) {
     // Generate points
     const points = flowData.map((val, i) => {
         const x = padding + i * pointWidth;
-        // Invert Y because SVG Y increases downward
         const y = height - padding - ((val - minVal) / range) * (height - padding * 2);
         return { x, y };
     });
@@ -656,33 +696,50 @@ function updatePerplexityChart(flowData) {
     // Create fill path
     const fillD = `${pathD} V ${height} H ${points[0].x} Z`;
 
-    // Update the paths in SVG
+    // Update the paths in SVG - color based on AI detection
+    const lineColor = isAI ? '#FF4A4A' : '#00D991';
+    const fillColor = isAI ? 'rgba(255,74,74,0.15)' : 'rgba(0,217,145,0.15)';
     const paths = svg.querySelectorAll('path');
-    if (paths[0]) paths[0].setAttribute('d', pathD);
-    if (paths[1]) paths[1].setAttribute('d', fillD);
+    if (paths[0]) {
+        paths[0].setAttribute('d', pathD);
+        paths[0].setAttribute('stroke', lineColor);
+    }
+    if (paths[1]) {
+        paths[1].setAttribute('d', fillD);
+        paths[1].setAttribute('fill', fillColor);
+    }
 }
 
 /**
  * Update the burstiness bar chart with dynamic data
  * @param {object} data - Contains document bars and human_baseline bars
  */
-function updateBurstinessChart(data) {
+function updateBurstinessChart(data, isAI = false) {
     const container = document.querySelector('.bg-primary-dark\\/40 .flex-1.flex.items-end');
     if (!container || !data || !data.document) return;
 
     const docBars = data.document;
     const humanBars = data.human_baseline || [];
 
-    // Generate bar HTML
+    // Color bars based on AI detection result
+    const barColor = isAI ? '#FF4A4A' : '#00D991';
+    const barLabel = isAI ? 'AI-like pattern' : 'Human-like variance';
+
+    // Update legend dot & label
+    const legendDot = document.getElementById('burstinenessLegendDot');
+    const legendLabel = document.getElementById('burstinenessLegendLabel');
+    if (legendDot) legendDot.style.background = barColor;
+    if (legendLabel) legendLabel.textContent = isAI ? 'AI Pattern' : 'Human';
+
     let barsHtml = '';
     for (let i = 0; i < Math.max(docBars.length, 6); i++) {
         const docHeight = docBars[i] || 20;
         const humanHeight = humanBars[i] || 50;
 
         barsHtml += `
-            <div class="w-full bg-white/5 rounded-t relative group transition-all" style="height: ${docHeight}%">
-                <div class="absolute bottom-0 w-full bg-accent-emerald/80 rounded-t transition-all" 
-                     style="height: ${humanHeight}%; width: 60%; left: 20%"></div>
+            <div class="w-full rounded-t relative group transition-all" style="height: ${docHeight}%; background: rgba(255,255,255,0.08)" title="${barLabel}">
+                <div class="absolute bottom-0 rounded-t transition-all" 
+                     style="height: ${humanHeight}%; width: 60%; left: 20%; background: ${barColor}; opacity: 0.85"></div>
             </div>
         `;
     }
@@ -694,7 +751,7 @@ function updateBurstinessChart(data) {
  * Update the rhythm uniformity status display
  * @param {object} rhythm - Contains status and description
  */
-function updateRhythmStatus(rhythm) {
+function updateRhythmStatus(rhythm, isAI = false) {
     // Find the rhythm card (last card in the metrics section)
     const rhythmCard = document.querySelector('.bg-primary-dark\\/40.flex.items-center.justify-between');
     if (!rhythmCard || !rhythm) return;
@@ -709,15 +766,21 @@ function updateRhythmStatus(rhythm) {
     const badge = rhythmCard.querySelector('span.px-3');
     if (badge) {
         badge.textContent = rhythm.status;
+        badge.className = 'px-3 py-1 rounded-full text-xs font-bold border';
 
-        // Update badge color based on status
-        badge.className = 'px-3 py-1 rounded-full text-xs font-bold border ';
-        if (rhythm.status === 'Normal') {
-            badge.className += 'bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20';
-        } else if (rhythm.status === 'Uniform') {
-            badge.className += 'bg-accent-amber/10 text-accent-amber border-accent-amber/20';
+        // Color based on BOTH rhythm status AND overall AI detection
+        if (rhythm.status === 'Uniform' || isAI) {
+            // Uniform rhythm is an AI indicator — show warning/red
+            if (isAI) {
+                badge.style.cssText = 'background: rgba(255,74,74,0.1); color: #FF4A4A; border-color: rgba(255,74,74,0.2);';
+                if (descEl) descEl.textContent = rhythm.status === 'Uniform' ? 'Highly consistent rhythm (AI indicator)' : rhythm.description;
+            } else {
+                badge.style.cssText = 'background: rgba(255,183,74,0.1); color: #FFB74A; border-color: rgba(255,183,74,0.2);';
+            }
+        } else if (rhythm.status === 'Normal') {
+            badge.style.cssText = 'background: rgba(0,217,145,0.1); color: #00D991; border-color: rgba(0,217,145,0.2);';
         } else {
-            badge.className += 'bg-white/5 text-white border-white/10';
+            badge.style.cssText = 'background: rgba(0,217,145,0.1); color: #00D991; border-color: rgba(0,217,145,0.2);';
         }
     }
 }

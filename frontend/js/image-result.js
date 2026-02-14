@@ -199,7 +199,8 @@ function displayUploadedImage(imageData) {
  * Call the backend API to analyze the image
  */
 async function analyzeImage(imageData) {
-    const apiUrl = `${API_BASE_URL}/api/detect-image`;
+    // Use ensemble endpoint for advanced detection
+    const apiUrl = `${API_BASE_URL}/api/detect-image/ensemble`;
     console.log('[ImageResult] API URL:', apiUrl);
 
     try {
@@ -211,11 +212,7 @@ async function analyzeImage(imageData) {
             body: JSON.stringify({
                 image: imageData.data,
                 filename: imageData.fileName,
-                include_ela: true,
-                include_metadata: true,
-                include_watermark: true,
-                include_c2pa: true,
-                include_ai_analysis: true
+                load_ml_models: true // Enable advanced ML models
             })
         });
 
@@ -232,6 +229,21 @@ async function analyzeImage(imageData) {
         }
 
         const result = await response.json();
+
+        // Normalize ensemble result structure to match frontend expectations
+        if (result.individual_results) {
+            // Map individual results to top-level keys if missing
+            if (!result.metadata && result.individual_results.metadata) result.metadata = result.individual_results.metadata;
+            if (!result.ela && result.individual_results.ela) result.ela = result.individual_results.ela;
+            if (!result.watermark && result.individual_results.watermark) result.watermark = result.individual_results.watermark;
+            if (!result.content_credentials && result.individual_results.c2pa) result.content_credentials = result.individual_results.c2pa;
+
+            // Map noise analysis
+            if (!result.noise_analysis && result.individual_results.noise_analysis) {
+                result.noise_analysis = result.individual_results.noise_analysis;
+            }
+        }
+
         console.log('[ImageResult] Success! Response keys:', Object.keys(result));
         return result;
 
@@ -351,6 +363,7 @@ function buildTechnicalHTML(result) {
     return `
         <div class="space-y-6">
             ${buildDetectionMethodsCard(result)}
+            ${buildAdvancedDetectorsCard(result)}
             ${buildForensicAnalysisCard(result)}
             ${buildELAAnalysisCard(result)}
             ${buildNoiseAnalysisCard(result)}
@@ -1029,6 +1042,128 @@ function buildNoiseAnalysisCard(result) {
             ? '✓ Noise pattern is consistent with natural camera sensors'
             : '⚠ Noise pattern shows irregularities that may indicate AI generation or heavy processing'}
                 </p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Build Advanced AI Detectors Card
+ */
+function buildAdvancedDetectorsCard(result) {
+    const individualResults = result.individual_results || {};
+
+    // Prepare detector data
+    const detectors = [
+        {
+            id: 'dire',
+            name: 'DIRE (Diffusion Recon)',
+            icon: 'blur_on',
+            result: individualResults.dire,
+            description: 'Analyzes diffusion reconstruction error to detect diffusion models (like Stable Diffusion).',
+            findings: individualResults.dire?.interpretation
+        },
+        {
+            id: 'npr',
+            name: 'NPR (Pixel Relations)',
+            icon: 'grid_4x4',
+            result: individualResults.npr,
+            description: 'Examines neighboring pixel relationships and local anomalies.',
+            findings: individualResults.npr?.verdict
+        },
+        {
+            id: 'face',
+            name: 'Face Consistency',
+            icon: 'face',
+            result: individualResults.face_consistency,
+            description: 'Checks for facial artifacts like asymmetric eyes and lighting inconsistencies.',
+            findings: individualResults.face_consistency?.verdict
+        },
+        {
+            id: 'edge',
+            name: 'Edge Coherence',
+            icon: 'check_box_outline_blank',
+            result: individualResults.edge_coherence,
+            description: 'Analyzes edge sharpness and halo artifacts common in AI images.',
+            findings: individualResults.edge_coherence?.verdict
+        },
+        {
+            id: 'sbi',
+            name: 'SBI Diffusion',
+            icon: 'waves',
+            result: individualResults.sbi,
+            description: 'Self-Blended Images method for detecting latent diffusion artifacts.',
+            findings: null
+        },
+        {
+            id: 'forgery',
+            name: 'Forgery Detection',
+            icon: 'content_cut',
+            result: individualResults.forgery,
+            description: 'Detects copy-move forgery and cloning within the image.',
+            findings: individualResults.forgery?.verdict
+        }
+    ];
+
+    // Filter to only show detectors that ran
+    const activeDetectors = detectors.filter(d => d.result && d.result.success);
+
+    if (activeDetectors.length === 0) return '';
+
+    return `
+        <div class="bg-card-dark border border-[#20324b] rounded-xl p-6">
+            <h3 class="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">psychology</span>
+                Advanced AI Detectors
+            </h3>
+            
+            <p class="text-slate-300 text-sm mb-6">
+                Specialized detectors targeting specific AI generation artifacts and manipulation techniques.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${activeDetectors.map(d => {
+        const aiScore = d.result.ai_probability || 0;
+        const isAi = aiScore > 50;
+        const scoreColor = isAi ? 'text-red-500' : 'text-accent-green';
+        const barColor = isAi ? 'bg-red-500' : 'bg-accent-green';
+        const bgClass = isAi ? 'bg-red-500/5 border-red-500/10' : 'bg-accent-green/5 border-accent-green/10';
+
+        return `
+                        <div class="p-4 rounded-lg border ${bgClass} hover:border-white/10 transition-colors">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-slate-400">${d.icon}</span>
+                                    <h4 class="text-white font-medium text-sm">${d.name}</h4>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-slate-400">AI Prob:</span>
+                                    <span class="font-bold ${scoreColor}">${Math.round(aiScore)}%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="h-1.5 bg-slate-700/50 rounded-full overflow-hidden mb-3">
+                                <div class="h-full ${barColor} rounded-full" style="width: ${aiScore}%"></div>
+                            </div>
+                            
+                            <p class="text-slate-400 text-xs leading-relaxed mb-2">
+                                ${d.description}
+                            </p>
+                            
+                            ${d.findings ? `
+                                <div class="mt-2 pt-2 border-t border-white/5">
+                                    <span class="text-xs text-white opacity-80">Finding: ${d.findings}</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${d.id === 'face' && d.result.faces_found > 0 ? `
+                                <div class="mt-1">
+                                    <span class="text-xs text-slate-500">${d.result.faces_found} face(s) analyzed</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+    }).join('')}
             </div>
         </div>
     `;

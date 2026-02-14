@@ -221,6 +221,9 @@ class DocumentParser:
             # Use sort=True for natural reading order
             text_parts.append(page.get_text(sort=True))
         
+        # Join text parts first so full_text is defined before use
+        full_text = "\n\n".join(text_parts)
+        
         # Check for scanned PDF (low text density)
         avg_chars = len(full_text) / len(text_parts) if text_parts else 0
         
@@ -232,8 +235,6 @@ class DocumentParser:
                 print(f"[DocumentParser] OCR successful (extracted {len(full_text)} chars)")
         
         doc.close()
-        
-        full_text = "\n\n".join(text_parts) if avg_chars >= 50 else full_text
         
         metadata = {
             "format": "pdf",

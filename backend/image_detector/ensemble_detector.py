@@ -70,10 +70,11 @@ class EnsembleDetector:
     # Default weights for each detector (sum to 1.0)
     # Updated weights with new accuracy-focused detectors
     DEFAULT_WEIGHTS = {
-        'statistical': 0.15,    # Basic statistical analysis
-        'deepfake': 0.25,       # dima806 ViT detector (98.25% accuracy)
-        'clip': 0.25,           # UniversalFakeDetect (CLIP)
-        'sbi': 0.15,            # SBI Diffusion detector (99.95% AUC) - NEW
+        'statistical': 0.10,    # Basic statistical analysis
+        'deepfake': 0.20,       # dima806 ViT detector (98.25% accuracy)
+        'clip': 0.20,           # UniversalFakeDetect SwinV2 (98.1% accuracy)
+        'sdxl': 0.15,           # Organika/sdxl-detector (98.1% F1, diffusion specialist)
+        'sbi': 0.15,            # SBI Diffusion detector (99.95% AUC)
         'frequency': 0.10,      # FFT/DCT analysis
         'watermark': 0.10,      # Watermark detection contribution
     }
@@ -121,6 +122,9 @@ class EnsembleDetector:
         self.npr_detector = None          # NPR - Neighboring Pixel Relationships (99.1%)
         self.face_detector = None         # Face consistency analysis
         self.edge_analyzer = None         # Edge coherence analysis
+        
+        # Pretrained HuggingFace detectors
+        self.sdxl_detector = None         # Organika/sdxl-detector (98.1% for modern diffusion)
         
         # Load detectors
         self._initialize_detectors(load_ml_models)
@@ -226,7 +230,7 @@ class EnsembleDetector:
         # Load ML models if requested
         if load_ml_models:
             try:
-                from .ml_detector import NYUADDetector, UniversalFakeDetector, FrequencyAnalyzer, DeepfakeDetector
+                from .ml_detector import NYUADDetector, UniversalFakeDetector, SDXLDetector, FrequencyAnalyzer, DeepfakeDetector
                 
                 # Frequency analyzer (lightweight)
                 self.frequency_analyzer = FrequencyAnalyzer()
@@ -239,12 +243,19 @@ class EnsembleDetector:
                 else:
                     logger.warning("NYUAD detector failed to load model")
                 
-                # UniversalFakeDetect (CLIP-based)
+                # UniversalFakeDetect (SwinV2 pretrained - 98.1% accuracy)
                 self.clip_detector = UniversalFakeDetector(device=self.device)
                 if self.clip_detector.model_loaded:
-                    logger.info("UniversalFakeDetect (CLIP) loaded")
+                    logger.info("UniversalFakeDetect (SwinV2) loaded")
                 else:
-                    logger.warning("CLIP detector failed to load model")
+                    logger.warning("SwinV2 detector failed to load model")
+                
+                # SDXL Detector (Organika/sdxl-detector - 98.1% for modern diffusion)
+                self.sdxl_detector = SDXLDetector(device=self.device)
+                if self.sdxl_detector.model_loaded:
+                    logger.info("SDXL detector loaded (Organika/sdxl-detector)")
+                else:
+                    logger.warning("SDXL detector failed to load model")
                 
                 # Deepfake detector (optional, for face images)
                 self.deepfake_detector = DeepfakeDetector(device=self.device)
@@ -313,11 +324,18 @@ class EnsembleDetector:
                 result['individual_results']['nyuad'] = nyuad_result
                 scores['nyuad'] = nyuad_result.get('ai_probability', 50)
             
-            # 4. UniversalFakeDetect (CLIP)
+            # 4. UniversalFakeDetect (SwinV2)
             if self.clip_detector and self.clip_detector.model_loaded:
                 clip_result = self.clip_detector.predict(image)
                 result['individual_results']['clip'] = clip_result
                 scores['clip'] = clip_result.get('ai_probability', 50)
+            
+            # 4b. SDXL Detector (Organika/sdxl-detector - modern diffusion specialist)
+            if self.sdxl_detector and self.sdxl_detector.model_loaded:
+                sdxl_result = self.sdxl_detector.predict(image)
+                result['individual_results']['sdxl'] = sdxl_result
+                if sdxl_result.get('success', False):
+                    scores['sdxl'] = sdxl_result.get('ai_probability', 50)
             
             # 5. Frequency analysis
             if self.frequency_analyzer:
