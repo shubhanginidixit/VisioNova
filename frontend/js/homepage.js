@@ -112,6 +112,18 @@ function setupFileInputs() {
                     textarea.value = `[Document: ${file.name}]\n\nThis document will be sent to the backend for text extraction and AI analysis.`;
                     textarea.disabled = true;
                 }
+                // Show file indicator, hide upload zone
+                const indicator = document.getElementById('docFileIndicator');
+                const nameDisplay = document.getElementById('docFileNameDisplay');
+                const sizeDisplay = document.getElementById('docFileSizeDisplay');
+                const uploadZone = document.getElementById('docUploadZone');
+                if (indicator) {
+                    indicator.classList.remove('hidden');
+                    indicator.classList.add('flex');
+                }
+                if (nameDisplay) nameDisplay.textContent = file.name;
+                if (sizeDisplay) sizeDisplay.textContent = `${(file.size / 1024).toFixed(1)} KB — Ready for analysis`;
+                if (uploadZone) uploadZone.classList.add('hidden');
             } else {
                 // For plain text files, read as text
                 const reader = new FileReader();
@@ -133,6 +145,26 @@ function setupFileInputs() {
             }
         }
     });
+
+    // Document remove button
+    const docRemoveBtn = document.getElementById('docRemoveBtn');
+    if (docRemoveBtn) {
+        docRemoveBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const indicator = document.getElementById('docFileIndicator');
+            const uploadZone = document.getElementById('docUploadZone');
+            const textarea = document.querySelector('#text-upload textarea');
+            if (indicator) { indicator.classList.add('hidden'); indicator.classList.remove('flex'); }
+            if (uploadZone) uploadZone.classList.remove('hidden');
+            if (textarea) { textarea.value = ''; textarea.disabled = false; }
+            uploadedFiles.text = null;
+            VisioNovaStorage.clearDocumentFile();
+            document.getElementById('textFileInput').value = '';
+            // Hide success indicator if shown
+            const successEl = document.querySelector('#text-upload .upload-success');
+            if (successEl) successEl.remove();
+        });
+    }
 }
 
 // Handle file upload for image/video/audio
@@ -157,6 +189,11 @@ function showUploadSuccess(type, fileName) {
     // For image type, we now use the preview state instead of floating indicator
     if (type === 'image') {
         return; // Handled by showPreview
+    }
+    
+    // For text documents (PDF/DOCX), handled by docFileIndicator
+    if (type === 'text' && uploadedFiles.text && uploadedFiles.text.isDocument) {
+        return; // Handled by docFileIndicator
     }
     
     const uploadArea = document.getElementById(type + '-upload');

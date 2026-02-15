@@ -591,6 +591,31 @@ def detect_ai_file_upload():
             'paragraphs': metadata.get('paragraphs')
         }
         
+        # Include extracted text for frontend display (cap at 50k chars)
+        MAX_TEXT_RESPONSE = 50000
+        if len(text) > MAX_TEXT_RESPONSE:
+            result['extracted_text'] = text[:MAX_TEXT_RESPONSE]
+            result['file_info']['truncated'] = True
+        else:
+            result['extracted_text'] = text
+            result['file_info']['truncated'] = False
+        
+        # Generate sentence-level analysis for the document
+        # Use first 2000 chars to keep it fast (same limit as predict's detailed mode)
+        if 'sentence_analysis' not in result:
+            import re as _re
+            analysis_text = text[:2000]
+            sentences = _re.split(r'(?<=[.!?])\s+', analysis_text)
+            sentence_analysis = []
+            for sentence in sentences[:20]:
+                analysis = ai_detector._analyze_sentence_fast(sentence)
+                if analysis:
+                    sentence_analysis.append(analysis)
+            result['sentence_analysis'] = sentence_analysis
+            result['flagged_sentences'] = [
+                s for s in sentence_analysis if s.get('is_flagged')
+            ]
+        
         # Add Groq explanation if requested
         if explain:
             explanation = text_explainer.explain(result, text[:500])

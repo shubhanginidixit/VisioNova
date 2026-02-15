@@ -631,6 +631,145 @@ body.light {
    VISUALIZATION TOGGLE BUTTONS
    ============================================ */
 
+/* ============================================
+   SENTENCE HIGHLIGHTING (Text Result Page)
+   ============================================ */
+
+.sentence-highlight {
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: 0 -2px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+    position: relative;
+}
+
+.sentence-human {
+    background: rgba(0, 217, 145, 0.12);
+}
+.sentence-human:hover {
+    background: rgba(0, 217, 145, 0.25);
+    box-shadow: 0 0 0 1px rgba(0, 217, 145, 0.3);
+}
+
+.sentence-ai {
+    background: rgba(255, 74, 74, 0.15);
+}
+.sentence-ai:hover {
+    background: rgba(255, 74, 74, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 74, 74, 0.35);
+}
+
+.sentence-uncertain {
+    background: rgba(234, 179, 8, 0.12);
+}
+.sentence-uncertain:hover {
+    background: rgba(234, 179, 8, 0.25);
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.3);
+}
+
+/* Sentence tooltip */
+.sentence-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.sentence-highlight:hover .sentence-tooltip {
+    opacity: 1;
+}
+
+.sentence-tooltip-human {
+    background: #00D991;
+    color: #fff;
+}
+.sentence-tooltip-ai {
+    background: #FF4A4A;
+    color: #fff;
+}
+.sentence-tooltip-uncertain {
+    background: #EAB308;
+    color: #fff;
+}
+
+/* Document info header */
+.doc-format-pdf { background-color: #fef2f2; color: #dc2626; }
+.doc-format-docx { background-color: #eff6ff; color: #2563eb; }
+.doc-format-txt { background-color: #f0fdf4; color: #16a34a; }
+.doc-icon-pdf { background-color: #fef2f2; color: #dc2626; }
+.doc-icon-docx { background-color: #eff6ff; color: #2563eb; }
+.doc-icon-txt { background-color: #f0fdf4; color: #16a34a; }
+
+/* Pattern category chips */
+.pattern-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.2s ease;
+}
+.pattern-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pattern-example {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+/* Light mode: sentence highlighting */
+.light .sentence-human {
+    background: rgba(0, 217, 145, 0.15);
+}
+.light .sentence-human:hover {
+    background: rgba(0, 217, 145, 0.3);
+}
+.light .sentence-ai {
+    background: rgba(255, 74, 74, 0.18);
+}
+.light .sentence-ai:hover {
+    background: rgba(255, 74, 74, 0.32);
+}
+.light .sentence-uncertain {
+    background: rgba(234, 179, 8, 0.15);
+}
+.light .sentence-uncertain:hover {
+    background: rgba(234, 179, 8, 0.3);
+}
+
+/* Light mode: pattern chips */
+.light .pattern-chip {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+.light .pattern-chip:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+.light .pattern-example {
+    color: rgba(0, 0, 0, 0.4);
+}
+
 /* Dark Mode */
 .viz-btn {
     color: #8da8ce;

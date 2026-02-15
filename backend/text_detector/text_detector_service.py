@@ -1454,8 +1454,8 @@ class AIContentDetector:
         result["uncertainty_threshold"] = uncertainty_threshold
         
         # Sentence-level analysis (if detailed and text not too long)
-        # OPTIMIZATION: Skip detailed analysis for texts > 2000 chars to avoid slowdown
-        if detailed and len(text) < 2000:
+        # OPTIMIZATION: Skip detailed analysis for texts > 3000 chars to avoid slowdown
+        if detailed and len(text) < 3000:
             sentences = re.split(r'(?<=[.!?])\s+', text)
             sentence_analysis = []
             

@@ -488,7 +488,10 @@
                         const inputData = VisioNovaStorage.getFile(mediaType);
                         logDebug(`Input data for ${mediaType}:`, inputData);
 
-                        if (!inputData || !inputData.data) {
+                        // For document uploads (PDF/DOCX), data is in IndexedDB, not sessionStorage
+                        const isDocumentUpload = mediaType === 'text' && sessionStorage.getItem('visioNova_isDocument') === 'true';
+
+                        if (!isDocumentUpload && (!inputData || !inputData.data)) {
                             logDebug(`No input data found for: ${mediaType}`);
                             updateLoadingStatus('Error: No input data found. Please go back and upload/enter data.');
                             return null;
@@ -794,17 +797,23 @@
                         if (isAnalyzing) {
                             logDebug(`Starting analysis for media type: ${mediaType}`);
                             // Run analysis with real progress updates
-                            await performAnalysisWithProgress(mediaType, config);
+                            const analysisResult = await performAnalysisWithProgress(mediaType, config);
 
-                            // Redirect after completion
-                            logDebug(`Analysis complete, redirecting to: ${nextUrl || 'ImageResultPage.html'}`);
-                            setTimeout(() => {
-                                if (nextUrl) {
-                                    window.location.href = decodeURIComponent(nextUrl);
-                                } else {
-                                    window.location.href = 'ImageResultPage.html';
-                                }
-                            }, 500);
+                            if (analysisResult !== null) {
+                                // Redirect after successful completion
+                                logDebug(`Analysis complete, redirecting to: ${nextUrl || 'ImageResultPage.html'}`);
+                                setTimeout(() => {
+                                    if (nextUrl) {
+                                        window.location.href = decodeURIComponent(nextUrl);
+                                    } else {
+                                        window.location.href = 'ImageResultPage.html';
+                                    }
+                                }, 500);
+                            } else {
+                                // Analysis failed — show error and offer retry
+                                logDebug('Analysis failed, staying on dashboard');
+                                updateLoadingStatus('Analysis failed. Please go back and try again.');
+                            }
                         } else {
                             logDebug('Not analyzing, just displaying dashboard');
                         }
