@@ -52,18 +52,21 @@ document.addEventListener('DOMContentLoaded', async function () {
         updateElement('pageTitle', 'Analysis: ' + (documentFileName || 'Document'));
         updateElement('analysisDate', formatAnalysisDate(new Date()));
 
-        // Show document info
-        let displayTextContent = `[Document: ${documentFileName || 'Uploaded Document'}]\n\n`;
-        if (preloadedResult.file_info) {
-            const info = preloadedResult.file_info;
-            displayTextContent += `Format: ${info.format?.toUpperCase() || 'PDF'}\n`;
-            displayTextContent += `Pages: ${info.pages || 'N/A'}\n`;
-            displayTextContent += `Characters: ${(info.char_count || 0).toLocaleString()}\n\n`;
-        }
-        displayTextContent += 'Document text extracted and analyzed successfully.';
+        // Show document header with file info
+        const extractedText = preloadedResult.extracted_text || '';
+        const sentenceAnalysis = preloadedResult.sentence_analysis || [];
+        showDocumentHeader(preloadedResult.file_info, documentFileName);
 
-        console.log('[TextResult] Displaying document info');
-        displayText(displayTextContent);
+        // Display the actual extracted text with sentence highlighting
+        if (extractedText) {
+            displayTextWithHighlighting(extractedText, sentenceAnalysis);
+        } else {
+            // Fallback: show metadata summary if no extracted text
+            let displayTextContent = `[Document: ${documentFileName || 'Uploaded Document'}]\n\n`;
+            displayTextContent += 'Document text extracted and analyzed successfully.';
+            displayText(displayTextContent);
+        }
+
         await analyzeText('', preloadedResult);  // Pass empty text, use preloaded result
 
     } else if (textData && textData.data) {
@@ -73,8 +76,20 @@ document.addEventListener('DOMContentLoaded', async function () {
         updateElement('pageTitle', 'Analysis: ' + (textData.fileName || 'Text'));
         updateElement('analysisDate', formatAnalysisDate(new Date()));
 
-        displayText(textData.data);
+        // Display text initially without highlighting, will re-render after analysis
+        const sentenceAnalysis = preloadedResult?.sentence_analysis || [];
+        if (sentenceAnalysis.length > 0) {
+            displayTextWithHighlighting(textData.data, sentenceAnalysis);
+        } else {
+            displayText(textData.data);
+        }
         await analyzeText(textData.data, preloadedResult);
+        
+        // Re-render with highlighting if we got sentence analysis from the backend
+        if (analysisResults?.sentenceAnalysis?.length > 0) {
+            displayTextWithHighlighting(textData.data, analysisResults.sentenceAnalysis);
+        }
+        
         VisioNovaStorage.clearFile('text');
     } else {
         console.warn('[TextResult] No data found!');
@@ -110,6 +125,336 @@ function displayText(text) {
     if (placeholder) {
         placeholder.classList.add('hidden');
     }
+}
+
+/**
+ * Display text with sentence-level AI probability highlighting
+ * @param {string} text - The full text to display
+ * @param {Array} sentenceAnalysis - Array of {text, ai_score, human_score, is_flagged}
+ */
+function displayTextWithHighlighting(text, sentenceAnalysis) {
+    const placeholder = document.getElementById('noTextPlaceholder');
+    const uploadedText = document.getElementById('uploadedText');
+
+    if (!uploadedText) return;
+
+    if (!sentenceAnalysis || sentenceAnalysis.length === 0) {
+        // No analysis data, fall back to plain display
+        displayText(text);
+        return;
+    }
+
+    // Build a map of sentence text → analysis data
+    const sentenceMap = new Map();
+    sentenceAnalysis.forEach(sa => {
+        if (sa && sa.text) {
+            sentenceMap.set(sa.text.trim().toLowerCase(), sa);
+        }
+    });
+
+    // Split text into paragraphs
+    const paragraphs = text.split('\n\n').filter(p => p.trim());
+    let formattedHtml = '';
+
+    paragraphs.forEach(paragraph => {
+        formattedHtml += '<p class="mb-4">';
+        // Split paragraph into sentences
+        const sentences = paragraph.split(/(?<=[.!?])\s+/);
+        
+        sentences.forEach(sentence => {
+            const trimmed = sentence.trim();
+            if (!trimmed) return;
+
+            // Look up this sentence in analysis data
+            const analysis = sentenceMap.get(trimmed.toLowerCase());
+            
+            if (analysis) {
+                const aiScore = analysis.ai_score || 0;
+                const humanScore = analysis.human_score || 0;
+                let highlightClass, tooltipClass, tooltipText;
+
+                if (aiScore > 60) {
+                    highlightClass = 'sentence-ai';
+                    tooltipClass = 'sentence-tooltip-ai';
+                    tooltipText = `AI: ${aiScore.toFixed(0)}%`;
+                } else if (aiScore > 40) {
+                    highlightClass = 'sentence-uncertain';
+                    tooltipClass = 'sentence-tooltip-uncertain';
+                    tooltipText = `Uncertain (AI: ${aiScore.toFixed(0)}%)`;
+                } else {
+                    highlightClass = 'sentence-human';
+                    tooltipClass = 'sentence-tooltip-human';
+                    tooltipText = `Human: ${humanScore.toFixed(0)}%`;
+                }
+
+                formattedHtml += `<span class="sentence-highlight ${highlightClass}">${escapeHtml(trimmed)}<span class="sentence-tooltip ${tooltipClass}">${tooltipText}</span></span> `;
+            } else {
+                formattedHtml += escapeHtml(trimmed) + ' ';
+            }
+        });
+
+        formattedHtml += '</p>';
+    });
+
+    if (!formattedHtml.trim() || formattedHtml === '<p class="mb-4"></p>') {
+        formattedHtml = `<p class="mb-4">${escapeHtml(text).replace(/\n/g, '<br>')}</p>`;
+    }
+
+    uploadedText.innerHTML = formattedHtml;
+    uploadedText.classList.remove('hidden');
+    if (placeholder) {
+        placeholder.classList.add('hidden');
+    }
+}
+
+/**
+ * Show document info header for PDF/DOCX uploads
+ * @param {object} fileInfo - {filename, format, pages, char_count, paragraphs}
+ * @param {string} fileName - Original filename
+ */
+function showDocumentHeader(fileInfo, fileName) {
+    const header = document.getElementById('documentInfoHeader');
+    if (!header || !fileInfo) return;
+
+    const format = (fileInfo.format || 'pdf').toLowerCase();
+    const displayName = fileName || fileInfo.filename || 'Document';
+
+    // Set icon based on format
+    const iconContainer = document.getElementById('docIconContainer');
+    const iconMap = {
+        'pdf': { icon: 'picture_as_pdf', class: 'doc-icon-pdf' },
+        'docx': { icon: 'description', class: 'doc-icon-docx' },
+        'doc': { icon: 'description', class: 'doc-icon-docx' },
+        'txt': { icon: 'text_snippet', class: 'doc-icon-txt' }
+    };
+    const iconConfig = iconMap[format] || iconMap['pdf'];
+    if (iconContainer) {
+        iconContainer.className = `p-2.5 rounded-xl ${iconConfig.class}`;
+        iconContainer.querySelector('.material-symbols-outlined').textContent = iconConfig.icon;
+    }
+
+    // Set filename
+    const fileNameEl = document.getElementById('docFileName');
+    if (fileNameEl) fileNameEl.textContent = displayName;
+
+    // Set format badge
+    const formatBadge = document.getElementById('docFormatBadge');
+    if (formatBadge) {
+        const badgeMap = {
+            'pdf': 'doc-format-pdf',
+            'docx': 'doc-format-docx',
+            'doc': 'doc-format-docx',
+            'txt': 'doc-format-txt'
+        };
+        formatBadge.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badgeMap[format] || badgeMap['pdf']}`;
+        formatBadge.textContent = format.toUpperCase();
+    }
+
+    // Set metadata
+    const pageCountEl = document.getElementById('docPageCount');
+    if (pageCountEl) {
+        const pages = fileInfo.pages;
+        pageCountEl.querySelector('span:last-child').textContent = pages ? `${pages} page${pages > 1 ? 's' : ''}` : 'N/A';
+    }
+
+    const charCountEl = document.getElementById('docCharCount');
+    if (charCountEl) {
+        charCountEl.querySelector('span:last-child').textContent = `${(fileInfo.char_count || 0).toLocaleString()} chars`;
+    }
+
+    const wordCountEl = document.getElementById('docWordCount');
+    if (wordCountEl) {
+        // Estimate words from char count (avg 5 chars per word)
+        const estWords = Math.round((fileInfo.char_count || 0) / 5.5);
+        wordCountEl.querySelector('span:last-child').textContent = `~${estWords.toLocaleString()} words`;
+    }
+
+    header.classList.remove('hidden');
+}
+
+/**
+ * Render detected AI patterns in the patterns panel
+ * @param {object} detectedPatterns - {total_count, categories/patterns}
+ */
+function renderPatterns(detectedPatterns) {
+    const panel = document.getElementById('patternsPanel');
+    if (!panel || !detectedPatterns) return;
+
+    const totalCount = detectedPatterns.total_count || 0;
+    if (totalCount === 0) return; // Keep hidden if no patterns
+
+    panel.classList.remove('hidden');
+
+    // Update count text
+    const countText = document.getElementById('patternCountText');
+    if (countText) countText.textContent = `${totalCount} pattern${totalCount !== 1 ? 's' : ''} detected`;
+
+    const totalBadge = document.getElementById('patternTotalBadge');
+    if (totalBadge) totalBadge.textContent = totalCount;
+
+    const container = document.getElementById('patternCategories');
+    if (!container) return;
+
+    // Handle two formats: categories (from predict) or patterns (from analyze_chunks)
+    let html = '';
+
+    if (detectedPatterns.categories) {
+        // From predict() — grouped by category
+        const cats = detectedPatterns.categories;
+        for (const [catName, catInfo] of Object.entries(cats)) {
+            const count = catInfo.count || 0;
+            const examples = catInfo.examples || [];
+            const typeName = catInfo.type || catName;
+            const example = examples[0] || '';
+
+            html += `
+                <div class="pattern-chip">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-accent-danger text-xs font-bold">${count}×</span>
+                        <span class="text-white text-xs font-medium truncate">${escapeHtml(typeName)}</span>
+                    </div>
+                    ${example ? `<span class="pattern-example">"${escapeHtml(example)}"</span>` : ''}
+                </div>`;
+        }
+    } else if (detectedPatterns.patterns) {
+        // From analyze_chunks() — flat list
+        const grouped = {};
+        detectedPatterns.patterns.forEach(p => {
+            const type = p.type || p.category || 'Unknown';
+            if (!grouped[type]) grouped[type] = { count: 0, examples: [] };
+            grouped[type].count++;
+            if (grouped[type].examples.length < 1) {
+                grouped[type].examples.push(p.pattern);
+            }
+        });
+
+        for (const [type, info] of Object.entries(grouped)) {
+            const example = info.examples[0] || '';
+            html += `
+                <div class="pattern-chip">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-accent-danger text-xs font-bold">${info.count}×</span>
+                        <span class="text-white text-xs font-medium truncate">${escapeHtml(type)}</span>
+                    </div>
+                    ${example ? `<span class="pattern-example">"${escapeHtml(example)}"</span>` : ''}
+                </div>`;
+        }
+    }
+
+    container.innerHTML = html || '<p class="text-white/40 text-xs text-center py-2">No patterns found</p>';
+}
+
+/**
+ * Render AI explanation in the explanation panel
+ * @param {string|object} explanation - Explanation text or structured object
+ */
+function renderExplanation(explanation) {
+    const panel = document.getElementById('explanationPanel');
+    if (!panel || !explanation) return;
+
+    let htmlContent = '';
+
+    if (typeof explanation === 'string') {
+        htmlContent = `<p class="text-white/70 text-sm leading-relaxed">${escapeHtml(explanation)}</p>`;
+    } else if (typeof explanation === 'object') {
+        // Structured explanation from Groq/Llama
+        htmlContent = buildExplanationHTML(explanation);
+    }
+
+    if (!htmlContent) return;
+
+    panel.classList.remove('hidden');
+
+    const textEl = document.getElementById('explanationText');
+    if (textEl) textEl.innerHTML = htmlContent;
+
+    // Toggle collapse/expand
+    const toggleBtn = document.getElementById('explanationToggle');
+    const content = document.getElementById('explanationContent');
+    const chevron = document.getElementById('explanationChevron');
+
+    if (toggleBtn && content && chevron) {
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = content.classList.contains('hidden');
+            content.classList.toggle('hidden');
+            chevron.style.transform = isHidden ? 'rotate(180deg)' : '';
+        });
+    }
+}
+
+/**
+ * Build formatted HTML from a structured explanation object
+ */
+function buildExplanationHTML(expl) {
+    let html = '';
+
+    // Confidence note
+    if (expl.confidence_note) {
+        html += `<div class="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <div class="flex items-start gap-2">
+                <span class="material-symbols-outlined text-primary !text-[18px] mt-0.5 shrink-0">info</span>
+                <p class="text-white/70 text-sm leading-relaxed">${escapeHtml(expl.confidence_note)}</p>
+            </div>
+        </div>`;
+    }
+
+    // Key indicators
+    if (expl.key_indicators && expl.key_indicators.length > 0) {
+        html += `<div class="mb-4">
+            <h5 class="text-white/90 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px] text-accent-amber">key</span>
+                Key Indicators
+            </h5>
+            <ul class="space-y-1.5">`;
+        expl.key_indicators.forEach(indicator => {
+            html += `<li class="flex items-start gap-2 text-white/60 text-sm leading-relaxed">
+                <span class="text-accent-amber mt-1 shrink-0">•</span>
+                <span>${escapeHtml(indicator)}</span>
+            </li>`;
+        });
+        html += `</ul></div>`;
+    }
+
+    // Pattern breakdown
+    if (expl.pattern_breakdown) {
+        html += `<div class="mb-4">
+            <h5 class="text-white/90 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px] text-accent-danger">pattern</span>
+                Pattern Breakdown
+            </h5>
+            <p class="text-white/60 text-sm leading-relaxed">${escapeHtml(expl.pattern_breakdown)}</p>
+        </div>`;
+    }
+
+    // Suggestions
+    if (expl.suggestions && expl.suggestions.length > 0) {
+        html += `<div class="mb-2">
+            <h5 class="text-white/90 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px] text-accent-success">lightbulb</span>
+                Suggestions
+            </h5>
+            <ul class="space-y-1.5">`;
+        expl.suggestions.forEach(suggestion => {
+            html += `<li class="flex items-start gap-2 text-white/60 text-sm leading-relaxed">
+                <span class="text-accent-success mt-1 shrink-0">•</span>
+                <span>${escapeHtml(suggestion)}</span>
+            </li>`;
+        });
+        html += `</ul></div>`;
+    }
+
+    // Fallback: render any remaining top-level string fields
+    if (!html) {
+        const skipKeys = ['ai_explained', 'confidence_note', 'key_indicators', 'pattern_breakdown', 'suggestions'];
+        for (const [key, value] of Object.entries(expl)) {
+            if (skipKeys.includes(key)) continue;
+            if (typeof value === 'string') {
+                html += `<p class="text-white/60 text-sm leading-relaxed mb-2"><strong class="text-white/80">${escapeHtml(key.replace(/_/g, ' '))}:</strong> ${escapeHtml(value)}</p>`;
+            }
+        }
+    }
+
+    return html || `<p class="text-white/50 text-sm italic">No detailed explanation available.</p>`;
 }
 
 /**
@@ -540,6 +885,16 @@ function updateUI(results) {
     // Update rhythm uniformity
     if (metrics.rhythm) {
         updateRhythmStatus(metrics.rhythm, isAI);
+    }
+
+    // Render detected AI patterns
+    if (results.detectedPatterns) {
+        renderPatterns(results.detectedPatterns);
+    }
+
+    // Render AI explanation
+    if (results.explanation) {
+        renderExplanation(results.explanation);
     }
 }
 
