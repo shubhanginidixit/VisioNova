@@ -378,6 +378,73 @@ Use DeepSeek R1 distilled datasets as a proxy for GPT-5:
 | `ml` | DeBERTa + statistical hybrid | Model files | Balanced accuracy/speed |
 | `binoculars` | Dual Falcon-7B zero-shot | GPU (16GB+) | Maximum accuracy |
 
+### Document Upload & Processing
+
+VisioNova supports analyzing text from uploaded documents (PDF, DOCX, TXT):
+
+| Feature | Details |
+|---------|--------|
+| **Extraction** | PyMuPDF for PDF, python-docx for DOCX, OCR fallback via pytesseract |
+| **Chunking** | Sentence-boundary splitting into ~2000 char chunks for large documents |
+| **AI Enhancement** | Optional Groq/Llama 4 Scout cleanup for extracted text |
+| **Max File Size** | 10MB |
+| **Response** | Extracted text (up to 50k chars), sentence analysis, file metadata |
+
+#### Document Analysis Flow
+
+```
+User Upload (PDF/DOCX/TXT)
+    → IndexedDB (File stored client-side)
+    → AnalysisDashboard (FormData POST to /api/detect-ai/upload)
+    → Backend: DocumentParser.parse_bytes()
+        → Text extraction (PyMuPDF / python-docx / OCR)
+        → Optional AI enhancement (Groq/Llama 4 Scout)
+        → Chunking at sentence boundaries
+    → AIContentDetector.predict() or analyze_chunks()
+    → Sentence-level analysis (_analyze_sentence_fast)
+    → JSON response: scores, metrics, extracted_text, sentence_analysis, explanation
+    → TextResultPage: Document header + highlighted text + patterns + explanation
+```
+
+### Text Result Page Features
+
+| Component | Description |
+|-----------|-------------|
+| **Document Header** | Shows filename, format badge (PDF/DOCX/TXT), page count, character count |
+| **Sentence Highlighting** | Color-coded sentences: green (human), yellow (uncertain), red (AI), with hover tooltips showing per-sentence AI probability |
+| **Detected AI Patterns** | Panel showing pattern categories (hedging, transitions, AI phrases) with counts and examples |
+| **AI Explanation** | Collapsible panel with Groq/Llama-generated analysis: key indicators, pattern breakdown, suggestions |
+| **Perplexity Chart** | SVG line chart showing text unpredictability flow |
+| **Burstiness Chart** | Bar chart comparing document sentence variance vs human baseline |
+| **Rhythm Uniformity** | Status badge indicating sentence rhythm consistency |
+
+### API Endpoints
+
+#### `POST /api/detect-ai` — Plain Text Analysis
+- **Input:** `{ "text": "...", "explain": true/false }`
+- **Max:** 10,000 characters
+- **Rate limit:** 10/minute
+- **Returns:** `{ success, prediction, confidence, scores, metrics, sentence_analysis, detected_patterns, explanation }`
+
+#### `POST /api/detect-ai/upload` — Document Upload
+- **Input:** `multipart/form-data` with `file` field (PDF/DOCX/TXT) + optional `explain` field
+- **Max file size:** 10MB
+- **Rate limit:** 5/minute
+- **Processing:** Small docs (≤5k chars) → single `predict()`, large docs → chunked `analyze_chunks()`
+- **Returns:** Same as above, plus `extracted_text` (capped at 50k chars) and `file_info`:
+  ```json
+  {
+    "file_info": {
+      "filename": "report.pdf",
+      "format": "pdf",
+      "pages": 5,
+      "char_count": 12345,
+      "paragraphs": 42,
+      "truncated": false
+    }
+  }
+  ```
+
 ### Scoring Formula
 
 ```

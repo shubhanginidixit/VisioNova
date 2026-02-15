@@ -33,6 +33,9 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 ### Text Analysis
 *   **AI Text Detection:** Distinguishes between human-written and AI-generated text using hybrid analysis (Neural Models + Stylometry).
 *   **Pattern Recognition:** Identifies common rhetorical patterns found in Large Language Model outputs.
+*   **Document Support:** Upload PDF, DOCX, or TXT files for full text extraction and AI detection with sentence-level analysis.
+*   **Sentence Highlighting:** Color-coded sentence-by-sentence AI probability (green=human, yellow=uncertain, red=AI) with hover tooltips.
+*   **AI Explanation:** Groq/Llama-powered detailed breakdown of detection results with key indicators, pattern analysis, and improvement suggestions.
 *   See [Text Detection Strategy](docs/Text_Detection_Strategy.md) for technical details.
 
 ### Fact Checking
@@ -45,8 +48,9 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 ## Technology Stack
 
 *   **Backend:** Python 3.10+, Flask
-*   **AI/ML:** PyTorch, Transformers (DistilBERT), Groq API (Llama 3)
-*   **Frontend:** HTML5, CSS3, JavaScript
+*   **AI/ML:** PyTorch, Transformers (DeBERTa-v3, RoBERTa, DistilGPT-2), Groq API (Llama 4 Scout)
+*   **Document Parsing:** PyMuPDF (PDF), python-docx (DOCX), pytesseract (OCR)
+*   **Frontend:** HTML5, Tailwind CSS, JavaScript
 *   **Analysis:** OpenCV, Librosa, Scikit-learn
 
 ## Quick Start
@@ -105,7 +109,13 @@ VisioNova/
 │   ├── AI/                    # AI/LLM integration modules
 │   ├── fact_check/            # Fact-checking engine
 │   ├── image_detector/        # Image analysis detectors
-│   ├── text_detector/         # Text AI detection
+│   ├── text_detector/         # Text AI detection & document parsing
+│   │   ├── text_detector_service.py  # Core detection engine (offline/ML/binoculars)
+│   │   ├── document_parser.py        # PDF/DOCX/TXT extraction with OCR fallback
+│   │   ├── binoculars_detector.py    # Zero-shot Falcon-7B detector
+│   │   └── preprocessor.py           # NLP preprocessing utilities
+│   ├── audio_detector/        # Audio deepfake detection
+│   ├── video_detector/        # Video deepfake detection
 │   ├── app.py                 # Main Flask application
 │   └── requirements.txt       # Python dependencies
 ├── docs/                      # Documentation
