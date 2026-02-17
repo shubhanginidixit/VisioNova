@@ -1288,7 +1288,9 @@ def detect_audio_deepfake():
     """
     Detect AI-generated or deepfake audio.
     
-    Uses MelodyMachine/Deepfake-audio-detection-V2 (Wav2Vec2, 99.7% accuracy).
+    Uses an **Ensemble** of:
+    1. Wav2Vec2 (MelodyMachine) - 60% weight
+    2. WavLM (DavidCombei) - 40% weight
     
     Request: multipart/form-data with 'audio' file field
     Supported formats: wav, mp3, flac, ogg, m4a, webm, aac, wma
@@ -1299,9 +1301,8 @@ def detect_audio_deepfake():
             "success": true,
             "prediction": "real" or "ai_generated",
             "confidence": 95.5,
-            "ai_probability": 95.5,
-            "human_probability": 4.5,
-            "model": "MelodyMachine/Deepfake-audio-detection-V2",
+            "verdict": "likely_ai",
+            "ensemble_details": [...],
             "duration_seconds": 12.5
         }
     """
