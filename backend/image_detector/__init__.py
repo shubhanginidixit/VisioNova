@@ -55,6 +55,10 @@ try:
         SDXLDetector,
         DeepfakeDetector,
         FrequencyAnalyzer,
+        Bombek1SigLIPDINOv2Detector,
+        DeepfakeSigLIP2Detector,
+        ThreeClassSigLIP2Detector,
+        DINOv2DeepfakeDetector,
         create_ml_detectors
     )
     ML_DETECTORS_AVAILABLE = True
@@ -65,6 +69,10 @@ except ImportError:
     SDXLDetector = None
     DeepfakeDetector = None
     FrequencyAnalyzer = None
+    Bombek1SigLIPDINOv2Detector = None
+    DeepfakeSigLIP2Detector = None
+    ThreeClassSigLIP2Detector = None
+    DINOv2DeepfakeDetector = None
     create_ml_detectors = None
 
 __all__ = [
@@ -110,6 +118,10 @@ __all__ = [
     'SDXLDetector',
     'DeepfakeDetector',
     'FrequencyAnalyzer',
+    'Bombek1SigLIPDINOv2Detector',
+    'DeepfakeSigLIP2Detector',
+    'ThreeClassSigLIP2Detector',
+    'DINOv2DeepfakeDetector',
     'create_ml_detectors',
     'ML_DETECTORS_AVAILABLE'
 ]

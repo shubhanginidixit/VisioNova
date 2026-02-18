@@ -45,6 +45,11 @@ steganogan>=0.1.3  # Optional: For SteganoGAN steganographic watermark detection
 # Organika/sdxl-detector (Swin, 98.1% F1, diffusion specialist)
 # NYUAD-ComNets/NYUAD_AI-generated_images_detector (HuggingFace)
 # dima806/deepfake_vs_real_image_detection (for deepfakes)
+# Bombek1/ai-image-detector-siglip-dinov2 (SigLIP2+DINOv2, 99.97% AUC, 25+ generators)
+# prithivMLmods/Deepfake-Detect-Siglip2 (SigLIP2, binary deepfake)
+# prithivMLmods/AI-vs-Deepfake-vs-Real-Siglip2 (SigLIP2, 3-class)
+# WpythonW/dinoV2-deepfake-detector (DINOv2, degradation-resilient)
+peft>=0.7.0  # LoRA adapter support (Bombek1 SigLIP2+DINOv2 model)
 
 # Audio Detection Dependencies
 soundfile>=0.12.0  # Audio file reading (wav, flac, ogg)
