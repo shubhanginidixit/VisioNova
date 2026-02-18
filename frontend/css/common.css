@@ -1,6 +1,379 @@
 /* VisioNova - Common Styles */
 
 /* ============================================
+   GLOBAL VARIABLES
+   ============================================ */
+
+:root {
+    /* Colors - Dark Mode (Default) */
+    --color-primary: #3A8DFF;
+    --color-primary-rgb: 58, 141, 255;
+
+    --color-bg-main: #0F121A;
+    --color-bg-surface: #0D1B2A;
+    --color-bg-card: #1E2338;
+    --color-bg-panel: #161B2E;
+
+    --color-text-main: #ffffff;
+    --color-text-muted: #94A3B8;
+    --color-text-dim: #64748B;
+
+    --color-border: #1E2338;
+    --color-border-hover: #2A3450;
+
+    --color-accent-success: #00D991;
+    --color-accent-warning: #FFB74A;
+    --color-accent-danger: #FF4A4A;
+
+    /* UI Elements */
+    --header-bg: rgba(13, 27, 42, 0.9);
+    --sidebar-bg: #0D1B2A;
+
+    /* Shadows */
+    --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(58, 141, 255, 0.3);
+}
+
+/* Light Mode Overrides */
+:root.light {
+    /* Colors - Light Mode */
+    --color-bg-main: #f5f7fa;
+    --color-bg-surface: #ffffff;
+    --color-bg-card: #ffffff;
+    --color-bg-panel: #f8fafc;
+
+    --color-text-main: #1a202c;
+    --color-text-muted: #64748b;
+    --color-text-dim: #94a3b8;
+
+    --color-border: #e2e8f0;
+    --color-border-hover: #cbd5e1;
+
+    /* UI Elements */
+    --header-bg: rgba(255, 255, 255, 0.95);
+    --sidebar-bg: #ffffff;
+
+    /* Shadows */
+    --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px rgba(58, 141, 255, 0.15);
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-bg-main);
+    color: var(--color-text-main);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Smooth theme transitions */
+header,
+aside,
+main,
+section,
+div,
+nav,
+button,
+a {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ============================================
+   UTILITY CLASSES (Mapped to Variables)
+   ============================================ */
+
+/* Backgrounds */
+.bg-background-dark {
+    background-color: var(--color-bg-main);
+}
+
+.bg-surface-dark {
+    background-color: var(--color-bg-surface);
+}
+
+.bg-card-dark {
+    background-color: var(--color-bg-card);
+}
+
+.bg-panel-dark {
+    background-color: var(--color-bg-panel);
+}
+
+/* Specific HEX overrides mapped to variables for compatibility */
+.bg-\[\#0F121A\],
+.bg-\[\#0f121a\] {
+    background-color: var(--color-bg-main);
+}
+
+.bg-\[\#0D1B2A\],
+.bg-\[\#0d1b2a\] {
+    background-color: var(--color-bg-surface);
+}
+
+.bg-\[\#1E2338\],
+.bg-\[\#1e2338\] {
+    background-color: var(--color-bg-card);
+}
+
+.bg-\[\#161B2E\],
+.bg-\[\#161b2e\] {
+    background-color: var(--color-bg-panel);
+}
+
+/* Text Colors */
+.text-white {
+    color: var(--color-text-main);
+}
+
+.text-\[\#94A3B8\] {
+    color: var(--color-text-muted);
+}
+
+.text-slate-400 {
+    color: var(--color-text-muted);
+}
+
+/* Borders */
+.border-\[\#1E2338\] {
+    border-color: var(--color-border);
+}
+
+.border-white\/5 {
+    border-color: rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* Fallback */
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border-hover);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-hover) var(--color-bg-main);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+
+/* Glass Panel */
+.glass-panel {
+    background: rgba(13, 27, 42, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-panel-light {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+}
+
+/* Tabs */
+.tab-btn {
+    color: var(--color-text-muted);
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    color: var(--color-text-main);
+    background: rgba(58, 141, 255, 0.1);
+}
+
+.tab-btn.active {
+    color: #ffffff;
+    /* Always white on active button for contrast */
+    background: var(--color-primary);
+    box-shadow: var(--shadow-glow);
+}
+
+/* Feature Cards */
+.feature-card {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-card);
+    border-color: rgba(58, 141, 255, 0.3);
+}
+
+/* Result Visualization Buttons */
+.viz-btn {
+    color: var(--color-text-muted);
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.viz-btn:hover {
+    color: var(--color-text-main);
+    background: rgba(58, 141, 255, 0.1);
+}
+
+.viz-btn.active {
+    color: #ffffff;
+    background: var(--color-primary);
+    box-shadow: 0 2px 10px rgba(58, 141, 255, 0.3);
+}
+
+/* ============================================
+   SENTENCE HIGHLIGHTING
+   ============================================ */
+
+.sentence-highlight {
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: 0 -2px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+    position: relative;
+}
+
+.sentence-human {
+    background: rgba(0, 217, 145, 0.12);
+}
+
+.sentence-human:hover {
+    background: rgba(0, 217, 145, 0.25);
+    box-shadow: 0 0 0 1px rgba(0, 217, 145, 0.3);
+}
+
+.sentence-ai {
+    background: rgba(255, 74, 74, 0.15);
+}
+
+.sentence-ai:hover {
+    background: rgba(255, 74, 74, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 74, 74, 0.35);
+}
+
+.sentence-uncertain {
+    background: rgba(234, 179, 8, 0.12);
+}
+
+.sentence-uncertain:hover {
+    background: rgba(234, 179, 8, 0.25);
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.3);
+}
+
+/* Tooltips */
+.sentence-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    color: #fff;
+}
+
+.sentence-highlight:hover .sentence-tooltip {
+    opacity: 1;
+}
+
+.sentence-tooltip-human {
+    background: var(--color-accent-success);
+}
+
+.sentence-tooltip-ai {
+    background: var(--color-accent-danger);
+}
+
+.sentence-tooltip-uncertain {
+    background: var(--color-accent-warning);
+}
+
+/* Pattern Chips */
+.pattern-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.1);
+    border: 1px solid var(--color-border);
+    transition: background 0.2s ease;
+}
+
+.pattern-chip:hover {
+    background: rgba(128, 128, 128, 0.15);
+}
+
+.pattern-example {
+    font-size: 11px;
+    color: var(--color-text-dim);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+
+/* ============================================
    GLOBAL STYLES
    ============================================ */
 
@@ -10,7 +383,12 @@ body {
 }
 
 /* Smooth theme transitions for major elements */
-header, aside, main, section, div, nav {
+header,
+aside,
+main,
+section,
+div,
+nav {
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -444,10 +822,10 @@ body.light {
 }
 
 /* Specific hex backgrounds for panels (not accent elements) */
-.light > .bg-\[#0F121A\],
-.light > .bg-\[#0D1B2A\],
-.light > .bg-\[#161b2e\],
-.light > .bg-\[#1E2338\],
+.light>.bg-\[#0F121A\],
+.light>.bg-\[#0D1B2A\],
+.light>.bg-\[#161b2e\],
+.light>.bg-\[#1E2338\],
 .light main .bg-\[#0F121A\],
 .light main .bg-\[#0D1B2A\],
 .light main .bg-\[#161b2e\],
@@ -647,6 +1025,7 @@ body.light {
 .sentence-human {
     background: rgba(0, 217, 145, 0.12);
 }
+
 .sentence-human:hover {
     background: rgba(0, 217, 145, 0.25);
     box-shadow: 0 0 0 1px rgba(0, 217, 145, 0.3);
@@ -655,6 +1034,7 @@ body.light {
 .sentence-ai {
     background: rgba(255, 74, 74, 0.15);
 }
+
 .sentence-ai:hover {
     background: rgba(255, 74, 74, 0.28);
     box-shadow: 0 0 0 1px rgba(255, 74, 74, 0.35);
@@ -663,6 +1043,7 @@ body.light {
 .sentence-uncertain {
     background: rgba(234, 179, 8, 0.12);
 }
+
 .sentence-uncertain:hover {
     background: rgba(234, 179, 8, 0.25);
     box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.3);
@@ -684,7 +1065,7 @@ body.light {
     opacity: 0;
     transition: opacity 0.15s ease;
     z-index: 50;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .sentence-highlight:hover .sentence-tooltip {
@@ -695,22 +1076,47 @@ body.light {
     background: #00D991;
     color: #fff;
 }
+
 .sentence-tooltip-ai {
     background: #FF4A4A;
     color: #fff;
 }
+
 .sentence-tooltip-uncertain {
     background: #EAB308;
     color: #fff;
 }
 
 /* Document info header */
-.doc-format-pdf { background-color: #fef2f2; color: #dc2626; }
-.doc-format-docx { background-color: #eff6ff; color: #2563eb; }
-.doc-format-txt { background-color: #f0fdf4; color: #16a34a; }
-.doc-icon-pdf { background-color: #fef2f2; color: #dc2626; }
-.doc-icon-docx { background-color: #eff6ff; color: #2563eb; }
-.doc-icon-txt { background-color: #f0fdf4; color: #16a34a; }
+.doc-format-pdf {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.doc-format-docx {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.doc-format-txt {
+    background-color: #f0fdf4;
+    color: #16a34a;
+}
+
+.doc-icon-pdf {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.doc-icon-docx {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.doc-icon-txt {
+    background-color: #f0fdf4;
+    color: #16a34a;
+}
 
 /* Pattern category chips */
 .pattern-chip {
@@ -724,13 +1130,14 @@ body.light {
     border: 1px solid rgba(255, 255, 255, 0.08);
     transition: background 0.2s ease;
 }
+
 .pattern-chip:hover {
     background: rgba(255, 255, 255, 0.1);
 }
 
 .pattern-example {
     font-size: 11px;
-    color: rgba(255,255,255,0.4);
+    color: rgba(255, 255, 255, 0.4);
     font-style: italic;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -742,18 +1149,23 @@ body.light {
 .light .sentence-human {
     background: rgba(0, 217, 145, 0.15);
 }
+
 .light .sentence-human:hover {
     background: rgba(0, 217, 145, 0.3);
 }
+
 .light .sentence-ai {
     background: rgba(255, 74, 74, 0.18);
 }
+
 .light .sentence-ai:hover {
     background: rgba(255, 74, 74, 0.32);
 }
+
 .light .sentence-uncertain {
     background: rgba(234, 179, 8, 0.15);
 }
+
 .light .sentence-uncertain:hover {
     background: rgba(234, 179, 8, 0.3);
 }
@@ -763,9 +1175,11 @@ body.light {
     background: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.08);
 }
+
 .light .pattern-chip:hover {
     background: rgba(0, 0, 0, 0.08);
 }
+
 .light .pattern-example {
     color: rgba(0, 0, 0, 0.4);
 }

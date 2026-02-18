@@ -54,235 +54,12 @@ document.addEventListener('DOMContentLoaded', async function () {
  * Initialize tab system
  */
 function initTabs() {
-    // Tabs are initialized via onclick handlers in HTML
-    // Just ensure we highlight the default tab
-    switchTab('overview');
-}
-
-/**
- * Initialize button handlers
- */
-function initButtonHandlers() {
-    // Export PDF button
-    const exportPdfBtn = document.getElementById('exportPdfBtn');
-    if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', exportToPDF);
-    }
-
-    // Re-analyze button
-    const reanalyzeBtn = document.getElementById('reanalyzeBtn');
-    if (reanalyzeBtn) {
-        reanalyzeBtn.addEventListener('click', handleReanalyze);
-    }
-}
-
-/**
- * Process image analysis workflow
- */
-async function processImageAnalysis(imageData) {
-    try {
-        // Update page metadata
-        updatePageMetadata(imageData);
-
-        // Display the uploaded image
-        displayUploadedImage(imageData);
-
-        // Check for pre-fetched results from AnalysisDashboard
-        const prefetchedResult = sessionStorage.getItem('visioNova_image_result');
-
-        if (prefetchedResult) {
-            console.log('[ImageResult] Using pre-fetched analysis result from AnalysisDashboard');
-            try {
-                const analysisResult = JSON.parse(prefetchedResult);
-
-                // Clear the pre-fetched result
-                sessionStorage.removeItem('visioNova_image_result');
-
-                // Store result for tab switching
-                currentResult = analysisResult;
-
-                // Update status to completed
-                updateStatusBadge('COMPLETED', 'success');
-
-                // Render overview tab directly
-                renderTabContent(analysisResult, currentTab);
-
-                console.log('[ImageResult] Pre-fetched result displayed successfully');
-                return;
-            } catch (parseError) {
-                console.error('[ImageResult] Failed to parse pre-fetched result:', parseError);
-                // Fall through to API call
-            }
-        }
-
-        // No pre-fetched result - call API directly
-        console.log('[ImageResult] No pre-fetched result found, calling API...');
-
-        // Show loading state
-        showLoadingState();
-
-        // Call backend API for analysis
-        console.log('[ImageResult] Calling backend API...');
-        const analysisResult = await analyzeImage(imageData);
-        console.log('[ImageResult] API Response:', analysisResult);
-
-        // Update status to completed
-        updateStatusBadge('COMPLETED', 'success');
-
-        // Store result for tab switching
-        currentResult = analysisResult;
-
-        // Render overview tab by default
-        renderTabContent(analysisResult, currentTab);
-
-        // Hide loading, show success
-        hideLoadingState();
-
-    } catch (error) {
-        console.error('[ImageResult] Analysis failed:', error);
-        updateStatusBadge('FAILED', 'error');
-        displayError('API Error: ' + (error.message || 'Could not connect to backend. Ensure Flask server is running on port 5000.'));
-        displayFailedState();
-    }
-}
-
-/**
- * Update page metadata (title, timestamp, etc.)
- */
-function updatePageMetadata(imageData) {
-    const pageTitle = document.getElementById('pageTitle');
-    if (pageTitle) {
-        pageTitle.textContent = 'Analyzing: ' + imageData.fileName;
-    }
-
-    const analysisTime = document.getElementById('analysisTime');
-    if (analysisTime) {
-        const date = new Date(imageData.timestamp);
-        analysisTime.textContent = date.toLocaleDateString() + ' at ' + date.toLocaleTimeString();
-    }
-
-    const statusBadge = document.getElementById('statusBadge');
-    if (statusBadge) {
-        statusBadge.textContent = 'ANALYZING...';
-        statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20';
-    }
-}
-
-/**
- * Display the uploaded image
- */
-function displayUploadedImage(imageData) {
-    const uploadedImage = document.getElementById('uploadedImage');
-    const placeholder = document.getElementById('noImagePlaceholder');
-
-    if (uploadedImage && imageData.data) {
-        uploadedImage.src = imageData.data;
-        uploadedImage.classList.remove('hidden');
-
-        uploadedImage.onerror = function () {
-            console.error('[ImageResult] Failed to load image!');
-            displayError('Failed to display image. The image data may be corrupted.');
-        };
-
-        uploadedImage.onload = function () {
-            console.log('[ImageResult] Image loaded successfully!');
-            console.log('[ImageResult] Dimensions:', uploadedImage.naturalWidth, 'x', uploadedImage.naturalHeight);
-        };
-    }
-
-    if (placeholder) {
-        placeholder.classList.add('hidden');
-    }
-}
-
-/**
- * Call the backend API to analyze the image
- */
-async function analyzeImage(imageData) {
-    // Use ensemble endpoint for advanced detection
-    const apiUrl = `${API_BASE_URL}/api/detect-image/ensemble`;
-    console.log('[ImageResult] API URL:', apiUrl);
-
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                image: imageData.data,
-                filename: imageData.fileName,
-                load_ml_models: true // Enable advanced ML models
-            })
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[ImageResult] Error response:', errorText);
-
-            try {
-                const errorData = JSON.parse(errorText);
-                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-            } catch (parseError) {
-                throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
-            }
-        }
-
-        const result = await response.json();
-
-        // Normalize ensemble result structure to match frontend expectations
-        if (result.individual_results) {
-            // Map individual results to top-level keys if missing
-            if (!result.metadata && result.individual_results.metadata) result.metadata = result.individual_results.metadata;
-            if (!result.ela && result.individual_results.ela) result.ela = result.individual_results.ela;
-            if (!result.watermark && result.individual_results.watermark) result.watermark = result.individual_results.watermark;
-            if (!result.content_credentials && result.individual_results.c2pa) result.content_credentials = result.individual_results.c2pa;
-
-            // Map noise analysis
-            if (!result.noise_analysis && result.individual_results.noise_analysis) {
-                result.noise_analysis = result.individual_results.noise_analysis;
-            }
-        }
-
-        console.log('[ImageResult] Success! Response keys:', Object.keys(result));
-        return result;
-
-    } catch (error) {
-        console.error('[ImageResult] API call failed:', error);
-
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            throw new Error('Network error: Cannot reach backend server at ' + API_BASE_URL);
-        }
-
-        throw error;
-    }
-}
-
-// ============================================================================
-// Tab Switching System
-// ============================================================================
-
-/**
- * Switch between tabs
- */
-function switchTab(tabName) {
-    currentTab = tabName;
-
-    // Update tab button styles
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-        const btnTabName = btn.id.replace('tab-', '');
-        if (btnTabName === tabName) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
+    UI.initTabs('.tab-btn', (tabId) => {
+        currentTab = tabId;
+        if (currentResult) {
+            renderTabContent(currentResult, tabId);
         }
     });
-
-    // Re-render content for the selected tab
-    if (currentResult) {
-        renderTabContent(currentResult, tabName);
-    }
 }
 
 /**
@@ -1995,7 +1772,7 @@ function submitFeedback() {
     const feedbackDescription = document.getElementById('feedbackDescription')?.value;
 
     if (!feedbackDescription || feedbackDescription.trim() === '') {
-        alert('Please provide a description of the issue.');
+        UI.showNotification('Please provide a description of the issue.', 'warning');
         return;
     }
 
@@ -2003,7 +1780,7 @@ function submitFeedback() {
     console.log('[Feedback]', { type: feedbackType, description: feedbackDescription, result: currentResult });
 
     // Show success message
-    alert('Thank you for your feedback! It will help us improve our detection accuracy.');
+    UI.showNotification('Thank you for your feedback! It will help us improve our detection accuracy.', 'success');
 
     // Close modal and reset form
     closeFeedbackModal();
@@ -2033,12 +1810,12 @@ function attachEventListeners() {
  */
 function exportToPDF() {
     if (!currentResult) {
-        alert('No analysis result to export');
+        UI.showNotification('No analysis result to export', 'warning');
         return;
     }
 
     // Simple PDF export - could be enhanced with a library like jsPDF
-    alert('PDF export functionality would generate a comprehensive report with all analysis details, scores, and visualizations.');
+    UI.showNotification('PDF export functionality would generate a comprehensive report with all analysis details, scores, and visualizations.', 'info');
 
     // Placeholder for actual PDF generation
     console.log('[Export] Would generate PDF with:', currentResult);
@@ -2049,7 +1826,7 @@ function exportToPDF() {
  */
 async function handleReanalyze() {
     if (!imageData) {
-        alert('No image data available to re-analyze');
+        UI.showNotification('No image data available to re-analyze', 'error');
         return;
     }
 

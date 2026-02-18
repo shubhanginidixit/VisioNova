@@ -13,143 +13,13 @@ let resultsContainer = null;
 let currentResult = null; // Store current result for tab switching
 let currentTab = 'summary'; // Default tab
 
-// Request management
-let currentController = null;  // AbortController for cancelling requests
-let debounceTimer = null;      // Timer for debouncing
 
-// IndexedDB for history
-let historyDB = null;
-const DB_NAME = 'VisioNovaFactCheck';
-const DB_VERSION = 1;
-const HISTORY_STORE = 'checkHistory';
 
-/**
- * Initialize IndexedDB for persistent history
- */
-function initHistoryDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        
-        request.onerror = () => {
-            console.error('[History] Failed to open IndexedDB:', request.error);
-            reject(request.error);
-        };
-        
-        request.onsuccess = () => {
-            historyDB = request.result;
-            console.log('[History] IndexedDB initialized');
-            resolve(historyDB);
-        };
-        
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            
-            if (!db.objectStoreNames.contains(HISTORY_STORE)) {
-                const objectStore = db.createObjectStore(HISTORY_STORE, { keyPath: 'id', autoIncrement: true });
-                objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-                objectStore.createIndex('claim', 'claim', { unique: false });
-                objectStore.createIndex('verdict', 'verdict', { unique: false });
-                console.log('[History] Object store created');
-            }
-        };
-    });
-}
 
-/**
- * Save fact-check result to history
- */
-function saveToHistory(result) {
-    if (!historyDB) {
-        console.warn('[History] DB not initialized');
-        return;
-    }
-    
-    try {
-        const transaction = historyDB.transaction([HISTORY_STORE], 'readwrite');
-        const store = transaction.objectStore(HISTORY_STORE);
-        
-        const historyEntry = {
-            timestamp: Date.now(),
-            claim: result.claim || result.url || 'Unknown',
-            verdict: result.verdict,
-            confidence: result.confidence,
-            sourceCount: result.source_count || 0,
-            inputType: result.input_type,
-            summary: result.summary?.one_liner || '',
-            deepScan: result.deep_scan || false
-        };
-        
-        store.add(historyEntry);
-        
-        transaction.oncomplete = () => {
-            console.log('[History] Saved to history');
-        };
-        
-        transaction.onerror = () => {
-            console.error('[History] Failed to save:', transaction.error);
-        };
-    } catch (error) {
-        console.error('[History] Error saving to history:', error);
-    }
-}
 
-/**
- * Get history entries
- */
-function getHistory(limit = 20) {
-    return new Promise((resolve, reject) => {
-        if (!historyDB) {
-            reject('DB not initialized');
-            return;
-        }
-        
-        const transaction = historyDB.transaction([HISTORY_STORE], 'readonly');
-        const store = transaction.objectStore(HISTORY_STORE);
-        const index = store.index('timestamp');
-        
-        const request = index.openCursor(null, 'prev'); // Descending order
-        const results = [];
-        
-        request.onsuccess = (event) => {
-            const cursor = event.target.result;
-            if (cursor && results.length < limit) {
-                results.push(cursor.value);
-                cursor.continue();
-            } else {
-                resolve(results);
-            }
-        };
-        
-        request.onerror = () => {
-            reject(request.error);
-        };
-    });
-}
 
-/**
- * Clear all history
- */
-function clearHistory() {
-    return new Promise((resolve, reject) => {
-        if (!historyDB) {
-            reject('DB not initialized');
-            return;
-        }
-        
-        const transaction = historyDB.transaction([HISTORY_STORE], 'readwrite');
-        const store = transaction.objectStore(HISTORY_STORE);
-        const request = store.clear();
-        
-        request.onsuccess = () => {
-            console.log('[History] History cleared');
-            resolve();
-        };
-        
-        request.onerror = () => {
-            reject(request.error);
-        };
-    });
-}
+
+
 
 /**
  * Initialize the fact-check page
@@ -158,12 +28,7 @@ async function initFactCheck() {
     urlInput = document.getElementById('urlInput');
     console.log('[FactCheck] Initializing...');
 
-    // Initialize IndexedDB for history
-    try {
-        await initHistoryDB();
-    } catch (error) {
-        console.error('[FactCheck] Failed to initialize history DB:', error);
-    }
+
 
     // Initialize tabs
     initTabs();
@@ -214,7 +79,7 @@ async function initFactCheck() {
     if (storedError) {
         console.log('[FactCheck] Found analysis error:', storedError);
         sessionStorage.removeItem('visioNova_analysis_error');
-        showNotification('Analysis failed: ' + storedError, 'error');
+        UI.showNotification('Analysis failed: ' + storedError, 'error');
     }
 
     // Fallback: Check for stored URL data (legacy flow or if API failed)
@@ -262,7 +127,7 @@ function initFeedbackModal() {
 
     if (feedbackAgree) {
         feedbackAgree.addEventListener('click', () => {
-            showNotification('Thank you for your feedback!', 'success');
+            UI.showNotification('Thank you for your feedback!', 'success');
             // Optional: Send agreement feedback to backend
             sendFeedbackToBackend('agree');
         });
@@ -306,9 +171,9 @@ function initFeedbackModal() {
 function openFeedbackModal() {
     const feedbackModal = document.getElementById('feedbackModal');
     const feedbackSystemVerdict = document.getElementById('feedbackSystemVerdict');
-    
+
     if (!currentResult) {
-        showNotification('No analysis result to provide feedback on', 'warning');
+        UI.showNotification('No analysis result to provide feedback on', 'warning');
         return;
     }
 
@@ -331,7 +196,7 @@ async function handleFeedbackSubmission() {
     const submitBtn = document.getElementById('submitFeedback');
 
     if (!currentResult) {
-        showNotification('No analysis result to provide feedback on', 'error');
+        UI.showNotification('No analysis result to provide feedback on', 'error');
         return;
     }
 
@@ -364,8 +229,8 @@ async function handleFeedbackSubmission() {
 
         const result = await response.json();
 
-        showNotification('Feedback submitted successfully! Thank you for helping us improve.', 'success');
-        
+        UI.showNotification('Feedback submitted successfully! Thank you for helping us improve.', 'success');
+
         // Close modal and reset form
         document.getElementById('feedbackModal').classList.add('hidden');
         feedbackReason.value = '';
@@ -373,7 +238,7 @@ async function handleFeedbackSubmission() {
 
     } catch (error) {
         console.error('[Feedback] Submission error:', error);
-        showNotification('Failed to submit feedback. Please try again.', 'error');
+        UI.showNotification('Failed to submit feedback. Please try again.', 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
@@ -426,14 +291,14 @@ async function handleDeepScan() {
     const input = urlInput?.value?.trim();
     if (!input) {
         console.log('[FactCheck] Deep Scan: No input provided');
-        showNotification('Please enter a claim, question, or URL first', 'warning');
+        UI.showNotification('Please enter a claim, question, or URL first', 'warning');
         return;
     }
 
     // If no current result, run regular analysis first
     if (!currentResult) {
         console.log('[FactCheck] Deep Scan: No previous result exists - need to run regular analysis first');
-        showNotification('Please run a regular analysis first', 'warning');
+        UI.showNotification('Please run a regular analysis first', 'warning');
         return;
     }
 
@@ -560,13 +425,13 @@ async function handleDeepScan() {
             existingExplanation.innerHTML = deepScanSummary + existingExplanation.innerHTML;
         }
 
-        showNotification(`Deep scan complete! ${realQueriesUsed} queries executed, ${realUniqueSources} unique sources found.`, 'success');
+        UI.showNotification(`Deep scan complete! ${realQueriesUsed} queries executed, ${realUniqueSources} unique sources found.`, 'success');
 
     } catch (error) {
         clearInterval(progressInterval);
         console.error('[FactCheck] Deep scan error:', error);
         explanationBox.innerHTML = originalExplanation;
-        showNotification('Deep scan failed: ' + error.message, 'error');
+        UI.showNotification('Deep scan failed: ' + error.message, 'error');
     } finally {
         deepScanBtn.disabled = false;
         deepScanBtn.innerHTML = originalBtnText;
@@ -575,38 +440,15 @@ async function handleDeepScan() {
 
 
 /**
- * Initialize tab functionality
+ * Initialize tab system
  */
 function initTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabName = btn.dataset.tab;
-            switchTab(tabName);
-        });
-    });
-}
-
-/**
- * Switch between tabs
- */
-function switchTab(tabName) {
-    currentTab = tabName;
-
-    // Update tab button styles
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(btn => {
-        if (btn.dataset.tab === tabName) {
-            btn.className = 'tab-btn px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm';
-        } else {
-            btn.className = 'tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors';
+    UI.initTabs('.tab-btn', (tabId) => {
+        currentTab = tabId;
+        if (currentResult) {
+            renderTabContent(currentResult, tabId);
         }
     });
-
-    // Re-render content for the selected tab
-    if (currentResult) {
-        renderTabContent(currentResult, tabName);
-    }
 }
 
 /**
@@ -633,13 +475,13 @@ async function handleVerifyClick() {
 
     // Validate empty input
     if (!input) {
-        showNotification('Please enter a claim, question, or URL to verify.', 'warning');
+        UI.showNotification('Please enter a claim, question, or URL to verify.', 'warning');
         return;
     }
 
     // Validate input length
     if (input.length > MAX_INPUT_LENGTH) {
-        showNotification(`Input too long. Maximum ${MAX_INPUT_LENGTH} characters allowed.`, 'warning');
+        UI.showNotification(`Input too long. Maximum ${MAX_INPUT_LENGTH} characters allowed.`, 'warning');
         return;
     }
 
@@ -669,7 +511,7 @@ async function handleVerifyClick() {
             console.log('Request cancelled');
         } else {
             console.error('Fact-check error:', error);
-            showNotification('Failed to connect to the fact-check service. Make sure the backend is running on port 5000.', 'error');
+            UI.showNotification('Failed to connect to the fact-check service. Make sure the backend is running on port 5000.', 'error');
         }
     } finally {
         showLoading(false);
@@ -718,15 +560,14 @@ async function checkFact(input, signal) {
  */
 function displayResults(result) {
     if (!result.success) {
-        showNotification(result.explanation || 'Could not verify this claim.', 'error');
+        UI.showNotification(result.explanation || 'Could not verify this claim.', 'error');
         return;
     }
 
     // Store result for tab switching
     currentResult = result;
 
-    // Save to history
-    saveToHistory(result);
+
 
     // Update trust score display
     updateTrustScore(result.confidence, result.verdict);
@@ -1142,7 +983,7 @@ function getClaimStatusConfig(status) {
 function buildReasoningHTML(result) {
     const sourceAnalysis = result.source_analysis || [];
     const confidenceBreakdown = result.confidence_breakdown || {};
-    
+
     // Build confidence breakdown visualization
     const confidenceHTML = `
         <div class="space-y-3">
@@ -1167,7 +1008,7 @@ function buildReasoningHTML(result) {
             </div>
         </div>
     `;
-    
+
     // Build source stance analysis
     const sourceStancesHTML = sourceAnalysis.length > 0 ? `
         <div class="space-y-3 mt-6">
@@ -1179,8 +1020,8 @@ function buildReasoningHTML(result) {
             
             <div class="space-y-3">
                 ${sourceAnalysis.map(source => {
-                    const stanceConfig = getStanceConfig(source.stance);
-                    return `
+        const stanceConfig = getStanceConfig(source.stance);
+        return `
                         <div class="bg-background-dark/50 rounded-lg p-4 border border-white/5">
                             <div class="flex items-start justify-between gap-3 mb-2">
                                 <h5 class="text-white font-medium text-sm flex-1">${escapeHTML(source.source_title || 'Unknown Source')}</h5>
@@ -1203,7 +1044,7 @@ function buildReasoningHTML(result) {
                             ` : ''}
                         </div>
                     `;
-                }).join('')}
+    }).join('')}
             </div>
         </div>
     ` : `
@@ -1215,7 +1056,7 @@ function buildReasoningHTML(result) {
             <p class="text-slate-400 text-sm">Detailed source stance analysis was not generated for this check.</p>
         </div>
     `;
-    
+
     // Contradictions found section
     const contradictionsHTML = result.contradictions_found ? `
         <div class="mt-6 p-4 rounded-lg bg-warning/10 border border-warning/20">
@@ -1226,7 +1067,7 @@ function buildReasoningHTML(result) {
             <p class="text-sm text-slate-300">Our analysis found conflicting information between sources. Review the source stances above to understand different perspectives.</p>
         </div>
     ` : '';
-    
+
     return `
         <div class="space-y-6">
             ${confidenceHTML}
@@ -1479,54 +1320,31 @@ function showLoading(loading) {
     });
 }
 
-/**
- * Show notification message
- */
-function showNotification(message, type = 'info') {
-    let notification = document.getElementById('factCheckNotification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'factCheckNotification';
-        document.body.appendChild(notification);
-    }
-
-    const colors = {
-        'info': 'bg-primary',
-        'warning': 'bg-warning',
-        'error': 'bg-danger',
-        'success': 'bg-success'
-    };
-
-    notification.className = `fixed top-20 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-medium ${colors[type]} shadow-lg`;
-    notification.textContent = message;
-
-    setTimeout(() => notification.remove(), 5000);
-}
 
 /**
  * Export the current fact-check result as PDF
  */
 function exportToPDF() {
     if (!currentResult) {
-        showNotification('No fact-check result to export', 'warning');
+        UI.showNotification('No fact-check result to export', 'warning');
         return;
     }
 
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
+
         let yPos = 20;
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 20;
         const maxWidth = pageWidth - 2 * margin;
-        
+
         // Title
         doc.setFontSize(20);
         doc.setFont(undefined, 'bold');
         doc.text('VisioNova Fact-Check Report', margin, yPos);
         yPos += 10;
-        
+
         // Verdict Badge
         doc.setFontSize(16);
         const verdictColor = {
@@ -1536,59 +1354,59 @@ function exportToPDF() {
             'MISLEADING': [255, 183, 74],
             'UNVERIFIABLE': [148, 163, 184]
         }[currentResult.verdict] || [148, 163, 184];
-        
+
         doc.setTextColor(...verdictColor);
         doc.text(currentResult.verdict || 'UNKNOWN', margin, yPos);
         doc.setTextColor(0, 0, 0);
         yPos += 8;
-        
+
         // Confidence Score
         doc.setFontSize(12);
         doc.text(`Confidence: ${currentResult.confidence}%`, margin, yPos);
         yPos += 10;
-        
+
         // Separator
         doc.setDrawColor(200, 200, 200);
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 10;
-        
+
         // Claim
         doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
         doc.text('Claim:', margin, yPos);
         yPos += 7;
-        
+
         doc.setFont(undefined, 'normal');
         doc.setFontSize(11);
         const claimText = currentResult.claim || currentResult.url || 'N/A';
         const splitClaim = doc.splitTextToSize(claimText, maxWidth);
         doc.text(splitClaim, margin, yPos);
         yPos += (splitClaim.length * 6) + 8;
-        
+
         // Summary
         if (currentResult.summary && currentResult.summary.one_liner) {
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.text('Summary:', margin, yPos);
             yPos += 7;
-            
+
             doc.setFont(undefined, 'normal');
             doc.setFontSize(11);
             const summaryText = doc.splitTextToSize(currentResult.summary.one_liner, maxWidth);
             doc.text(summaryText, margin, yPos);
             yPos += (summaryText.length * 6) + 8;
         }
-        
+
         // Key Points
         if (currentResult.summary && currentResult.summary.key_points && currentResult.summary.key_points.length > 0) {
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.text('Key Points:', margin, yPos);
             yPos += 7;
-            
+
             doc.setFont(undefined, 'normal');
             doc.setFontSize(10);
-            
+
             currentResult.summary.key_points.forEach((point, index) => {
                 if (yPos > 270) {
                     doc.addPage();
@@ -1601,45 +1419,45 @@ function exportToPDF() {
             });
             yPos += 5;
         }
-        
+
         // Sources
         if (currentResult.sources && currentResult.sources.length > 0) {
             if (yPos > 240) {
                 doc.addPage();
                 yPos = 20;
             }
-            
+
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.text(`Sources (${currentResult.sources.length}):`, margin, yPos);
             yPos += 7;
-            
+
             doc.setFont(undefined, 'normal');
             doc.setFontSize(9);
-            
+
             currentResult.sources.slice(0, 10).forEach((source, index) => {
                 if (yPos > 270) {
                     doc.addPage();
                     yPos = 20;
                 }
-                
+
                 const sourceNum = `[${index + 1}] `;
                 const sourceTitle = source.title || source.domain || 'Source';
                 const trustLabel = source.is_factcheck ? 'Fact-Check' : source.trust_level;
-                
+
                 doc.setFont(undefined, 'bold');
                 doc.text(sourceNum, margin, yPos);
                 doc.setFont(undefined, 'normal');
-                
+
                 const titleSplit = doc.splitTextToSize(sourceTitle, maxWidth - 15);
                 doc.text(titleSplit, margin + 8, yPos);
                 yPos += (titleSplit.length * 4) + 2;
-                
+
                 doc.setTextColor(100, 100, 100);
                 doc.text(`${source.domain} • ${trustLabel}`, margin + 8, yPos);
                 doc.setTextColor(0, 0, 0);
                 yPos += 4;
-                
+
                 doc.setFontSize(8);
                 doc.setTextColor(50, 50, 200);
                 const urlSplit = doc.splitTextToSize(source.url, maxWidth - 8);
@@ -1649,26 +1467,26 @@ function exportToPDF() {
                 yPos += (urlSplit.length * 3) + 5;
             });
         }
-        
+
         // Footer
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
-            doc.text(`Generated by VisioNova | ${new Date().toLocaleDateString()} | Page ${i} of ${pageCount}`, 
+            doc.text(`Generated by VisioNova | ${new Date().toLocaleDateString()} | Page ${i} of ${pageCount}`,
                 margin, doc.internal.pageSize.getHeight() - 10);
         }
-        
+
         // Save PDF
         const filename = `VisioNova_FactCheck_${Date.now()}.pdf`;
         doc.save(filename);
-        
-        showNotification('PDF exported successfully!', 'success');
-        
+
+        UI.showNotification('PDF exported successfully!', 'success');
+
     } catch (error) {
         console.error('[PDF Export] Error:', error);
-        showNotification('Failed to export PDF. Please try again.', 'error');
+        UI.showNotification('Failed to export PDF. Please try again.', 'error');
     }
 }
 

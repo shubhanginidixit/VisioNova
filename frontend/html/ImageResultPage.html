@@ -18,6 +18,202 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3A8DFF",
+                        "accent-success": "#00D991",
+                        "accent-warning": "#FFB74A",
+                        "accent-danger": "#FF4A4A",
+                        "background-light": "#F5F7FA",
+                        "background-dark": "#0F121A",
+                        "surface-dark": "#0D1B2A",
+                        "panel-dark": "#161B2E",
+                        "card-dark": "#1E2338",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <link rel="stylesheet" href="../css/common.css">
+    <script src="../js/theme-toggle.js"></script>
+    <script src="../js/ui-utils.js"></script>
+    <script src="../js/layout.js"></script>
+</head>
+
+<body
+    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div
+            class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
+        </div>
+        <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
+    </div>
+    
+    <!-- Top Navigation (Injected by layout.js) -->
+    <header></header>
+    
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside></aside>
+        
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 lg:p-8">
+            <!-- Background Decorative Elements -->
+            <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                <div
+                    class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
+                </div>
+                <div
+                    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
+                </div>
+            </div>
+            <div class="max-w-[1600px] mx-auto flex flex-col gap-6 relative z-10">
+                <!-- Page Heading -->
+                <div class="flex flex-col gap-2 mb-6 border-b border-[#20324b] pb-6 relative z-10">
+                    <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
+                        <span>Analyze</span>
+                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                        <span>Image Analysis</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span id="statusBadge"
+                                    class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">ANALYZING...</span>
+                                <span id="analysisId" class="text-[#8da8ce] text-xs"></span>
+                            </div>
+                            <h1 id="pageTitle"
+                                class="text-white text-3xl md:text-3xl font-black leading-tight tracking-tight">Image
+                                Analysis</h1>
+                            <p id="pageSubtitle" class="text-[#8da8ce] text-sm">Source: Local Upload • <span
+                                    id="analysisTime"></span></p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="reanalyzeBtn"
+                                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-white text-sm font-medium transition-colors">
+                                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                                Re-analyze
+                            </button>
+                            <button id="exportPdfBtn"
+                                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-medium transition-colors shadow-lg shadow-blue-500/20">
+                                <span class="material-symbols-outlined text-[18px]">download</span>
+                                Export Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="flex items-center gap-2 bg-card-bg p-1.5 rounded-xl border border-[#20324b] overflow-x-auto custom-scrollbar mb-6">
+                    <button id="tab-overview" data-tab="overview"
+                        class="tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        <span class="material-symbols-outlined text-[18px]">dashboard</span>
+                        Overview
+                    </button>
+                    <button id="tab-technical" data-tab="technical"
+                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        <span class="material-symbols-outlined text-[18px]">analytics</span>
+                        Technical Analysis
+                    </button>
+                    <button id="tab-metadata" data-tab="metadata"
+                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        <span class="material-symbols-outlined text-[18px]">data_object</span>
+                        Metadata Deep-Dive
+                    </button>
+                    <button id="tab-ai-analysis" data-tab="ai-analysis"
+                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        <span class="material-symbols-outlined text-[18px]">psychology</span>
+                        AI Explanation
+                    </button>
+                </div>
+
+                <!-- Dynamic Tab Content Container -->
+                <div id="tab-content" class="relative">
+                    <!-- Content will be dynamically generated here -->
+                </div>
+
+                <!-- Modals -->
+                <!-- Feedback Modal -->
+                <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+                    <div class="bg-card-bg rounded-xl border border-[#20324b] p-6 max-w-md w-full shadow-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-white text-lg font-semibold">Report Analysis Issue</h3>
+                            <button onclick="closeFeedbackModal()" class="text-[#8da8ce] hover:text-white">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-[#8da8ce] mb-2">Issue Type</label>
+                                <select id="feedbackType" class="w-full bg-[#20324b] text-white rounded-lg px-3 py-2 border border-[#20324b] focus:border-primary">
+                                    <option value="false_positive">False Positive (Real marked as AI)</option>
+                                    <option value="false_negative">False Negative (AI marked as Real)</option>
+                                    <option value="analysis_error">Analysis Error</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-[#8da8ce] mb-2">Description</label>
+                                <textarea id="feedbackDescription" rows="4" class="w-full bg-[#20324b] text-white rounded-lg px-3 py-2 border border-[#20324b] focus:border-primary resize-none" placeholder="Describe the issue..."></textarea>
+                            </div>
+                            <button onclick="submitFeedback()" class="w-full bg-primary hover:bg-blue-600 text-white font-medium py-2 rounded-lg transition-colors">
+                                Submit Feedback
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fullscreen Viewer Modal -->
+                <div id="fullscreenModal" class="fixed inset-0 bg-black/95 z-50 hidden items-center justify-center p-4">
+                    <button onclick="closeFullscreenViewer()" class="absolute top-4 right-4 text-white hover:text-primary">
+                        <span class="material-symbols-outlined text-4xl">close</span>
+                    </button>
+                    <div class="w-full h-full flex items-center justify-center">
+                        <img id="fullscreenImage" src="" alt="Fullscreen view" class="max-w-full max-h-full object-contain" />
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Storage Utilities -->
+    <script src="../js/storage-utils.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
+    <script src="../js/image-result.js"></script>
+</body>
+
+</html>
+
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>VisioNova - Image Analysis</title>
+    <!-- Blocking theme script to prevent FOUC -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('visioNova_theme') || 'dark';
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
     <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />

@@ -8,15 +8,12 @@
     <title>VisioNova - Fact Check</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('visioNova_theme') || 'dark';
             document.documentElement.classList.add(theme);
         })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
     <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
@@ -49,6 +46,8 @@
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <script src="../js/theme-toggle.js"></script>
+    <script src="../js/ui-utils.js"></script>
+    <script src="../js/layout.js"></script>
 </head>
 
 <body
@@ -59,104 +58,14 @@
         </div>
         <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
     </div>
-    <!-- Top Navigation -->
-    <header
-        class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
-        <div class="flex items-center gap-4 text-white">
-            <div class="size-8 text-primary">
-                <span class="material-symbols-outlined !text-[32px]">hub</span>
-            </div>
-            <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
-        </div>
-        <div class="flex flex-1 justify-center hidden md:flex">
-            <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="homepage.html">Home</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="AnalysisDashboard.html">Analyze</a>
-                <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="FactCheckPage.html">Fact Check</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="ReportPage.html">Reports</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="#">API</a>
-            </nav>
-        </div>
-        <div class="flex items-center gap-3">
-            <button
-                class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
-                <span class="material-symbols-outlined !text-[20px]">notifications</span>
-                <span
-                    class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
-            </button>
-            <button id="themeToggle"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
-                title="Toggle Dark/Light Mode">
-                <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
-                <span
-                    class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
-            </button>
-        </div>
-    </header>
+
+    <!-- Top Navigation (Injected by layout.js) -->
+    <header></header>
+
     <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar Navigation -->
-        <aside
-            class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
-            <div class="flex flex-col gap-6 w-full px-3">
-                <div class="w-full flex flex-col gap-1">
-                    <a href="homepage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
-                        <span class="material-symbols-outlined shrink-0">add_circle</span>
-                        <span
-                            class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
-                            Scan</span>
-                    </a>
-                </div>
-                <div class="w-full h-px bg-[#1E2338]"></div>
-                <div class="flex flex-col gap-2 w-full">
-                    <a href="AnalysisDashboard.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">dashboard</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">history</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
-                            Scans</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">folder_open</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
-                    </a>
-                    <a href="FactCheckPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">shield</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
-                            Intel</span>
-                    </a>
-                </div>
-            </div>
-            <div class="flex flex-col gap-2 w-full px-3">
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">settings</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
-                </button>
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">help</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
-                </button>
-            </div>
-        </aside>
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside></aside>
+
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-6 lg:p-10">
             <!-- Background Decorative Elements -->
@@ -297,32 +206,34 @@
                     <div id="analysisTabs"
                         class="flex gap-1 bg-card-dark/50 p-1 rounded-xl w-fit border border-white/5">
                         <button id="tabSummary" data-tab="summary"
-                            class="tab-btn px-4 py-2 bg-card-dark rounded-lg text-white text-sm font-medium shadow-sm">Summary</button>
+                            class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium shadow-sm">Summary</button>
                         <button id="tabDetailed" data-tab="detailed"
                             class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Detailed
                             Analysis</button>
                         <button id="tabClaims" data-tab="claims"
                             class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Claims
-                            & Evidence</button>                        <button id="tabReasoning" data-tab="reasoning"
+                            & Evidence</button> <button id="tabReasoning" data-tab="reasoning"
                             class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">AI
-                            Reasoning</button>                    </div>
+                            Reasoning</button>
+                    </div>
 
                     <!-- Claim Preview & Sources List -->
                     <div id="claimsCard"
                         class="bg-card-dark rounded-2xl border border-white/5 shadow-xl overflow-hidden flex flex-col">
                         <div class="p-6 border-b border-white/5 bg-gradient-to-r from-card-dark to-surface-dark">
                             <div class="flex items-start justify-between">
-                                <h2 id="claimTitle" class="text-xl font-bold text-white leading-tight flex-1">Enter a claim to
+                                <h2 id="claimTitle" class="text-xl font-bold text-white leading-tight flex-1">Enter a
+                                    claim to
                                     verify</h2>
                                 <!-- Feedback Buttons -->
                                 <div id="feedbackButtons" class="hidden flex items-center gap-2 ml-4">
-                                    <button id="feedbackAgree" 
+                                    <button id="feedbackAgree"
                                         class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/10 hover:bg-success/20 border border-success/30 text-success transition-colors text-sm font-medium"
                                         title="Agree with verdict">
                                         <span class="material-symbols-outlined text-[18px]">thumb_up</span>
                                         <span>Agree</span>
                                     </button>
-                                    <button id="feedbackDisagree" 
+                                    <button id="feedbackDisagree"
                                         class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger transition-colors text-sm font-medium"
                                         title="Disagree with verdict">
                                         <span class="material-symbols-outlined text-[18px]">thumb_down</span>
@@ -349,7 +260,8 @@
     </div>
 
     <!-- Feedback Modal -->
-    <div id="feedbackModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div id="feedbackModal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
         <div class="bg-card-dark rounded-2xl border border-white/10 shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
             <!-- Modal Header -->
             <div class="p-6 border-b border-white/10 bg-gradient-to-r from-card-dark to-surface-dark">
@@ -358,25 +270,28 @@
                         <span class="material-symbols-outlined text-primary">feedback</span>
                         Submit Feedback
                     </h3>
-                    <button id="closeFeedbackModal" class="size-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                    <button id="closeFeedbackModal"
+                        class="size-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
             </div>
-            
+
             <!-- Modal Body -->
             <div class="p-6 space-y-4">
                 <div>
-                    <p class="text-slate-300 text-sm mb-3">Help us improve by sharing why you disagree with this verdict.</p>
+                    <p class="text-slate-300 text-sm mb-3">Help us improve by sharing why you disagree with this
+                        verdict.</p>
                     <div class="bg-background-dark/50 rounded-lg p-3 border border-white/5">
                         <p class="text-xs text-slate-400 mb-1">System Verdict</p>
                         <p id="feedbackSystemVerdict" class="text-white font-semibold">--</p>
                     </div>
                 </div>
-                
+
                 <div>
                     <label class="text-white text-sm font-medium mb-2 block">Your Verdict</label>
-                    <select id="feedbackUserVerdict" class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <select id="feedbackUserVerdict"
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
                         <option value="TRUE">TRUE - Claim is accurate</option>
                         <option value="FALSE">FALSE - Claim is false</option>
                         <option value="PARTIALLY TRUE">PARTIALLY TRUE - Mixed accuracy</option>
@@ -384,31 +299,31 @@
                         <option value="UNVERIFIABLE">UNVERIFIABLE - Cannot verify</option>
                     </select>
                 </div>
-                
+
                 <div>
                     <label class="text-white text-sm font-medium mb-2 block">Reason (Optional)</label>
-                    <textarea id="feedbackReason" 
-                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none" 
-                        rows="3"
-                        placeholder="Why do you disagree? What did we miss?"></textarea>
+                    <textarea id="feedbackReason"
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                        rows="3" placeholder="Why do you disagree? What did we miss?"></textarea>
                 </div>
-                
+
                 <div>
                     <label class="text-white text-sm font-medium mb-2 block">Additional Sources (Optional)</label>
-                    <input id="feedbackSources" 
-                        type="text" 
+                    <input id="feedbackSources" type="text"
                         class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                         placeholder="https://example.com/source1, https://example.com/source2">
                     <p class="text-xs text-slate-400 mt-1">Separate multiple URLs with commas</p>
                 </div>
             </div>
-            
+
             <!-- Modal Footer -->
             <div class="p-6 border-t border-white/10 bg-background-dark/30 flex gap-3">
-                <button id="cancelFeedback" class="flex-1 px-4 py-2 rounded-lg bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 font-medium transition-colors">
+                <button id="cancelFeedback"
+                    class="flex-1 px-4 py-2 rounded-lg bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 font-medium transition-colors">
                     Cancel
                 </button>
-                <button id="submitFeedback" class="flex-1 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold transition-colors flex items-center justify-center gap-2">
+                <button id="submitFeedback"
+                    class="flex-1 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold transition-colors flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">send</span>
                     Submit Feedback
                 </button>

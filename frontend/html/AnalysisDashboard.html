@@ -8,7 +8,7 @@
     <title>VisioNova - Analysis Dashboard</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('visioNova_theme') || 'dark';
             document.documentElement.classList.add(theme);
         })();
@@ -66,105 +66,14 @@
         </div>
         <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
     </div>
-    <!-- Top Navigation -->
-    <header
-        class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
-        <div class="flex items-center gap-4 text-white">
-            <div class="size-8 text-primary">
-                <span class="material-symbols-outlined !text-[32px]">hub</span>
-            </div>
-            <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
-        </div>
-        <div class="flex flex-1 justify-center hidden md:flex">
-            <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="homepage.html">Home</a>
-                <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="AnalysisDashboard.html">Analyze</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="FactCheckPage.html">Fact Check</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="ReportPage.html">Reports</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="#">API</a>
-            </nav>
-        </div>
-        <div class="flex items-center gap-3">
-            <button
-                class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
-                <span class="material-symbols-outlined !text-[20px]">notifications</span>
-                <span
-                    class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
-            </button>
-            <button id="themeToggle"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
-                title="Toggle Dark/Light Mode">
-                <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
-                <span
-                    class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
-            </button>
-        </div>
-    </header>
+    <!-- Top Navigation (Injected by layout.js) -->
+    <header></header>
+
     <!-- Main Layout -->
     <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar Navigation -->
-        <aside
-            class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
-            <div class="flex flex-col gap-6 w-full px-3">
-                <div class="w-full flex flex-col gap-1">
-                    <a href="homepage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
-                        <span class="material-symbols-outlined shrink-0">add_circle</span>
-                        <span
-                            class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
-                            Scan</span>
-                    </a>
-                </div>
-                <div class="w-full h-px bg-[#1E2338]"></div>
-                <div class="flex flex-col gap-2 w-full">
-                    <a href="AnalysisDashboard.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">dashboard</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">history</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
-                            Scans</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">folder_open</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
-                    </a>
-                    <a href="FactCheckPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">shield</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
-                            Intel</span>
-                    </a>
-                </div>
-            </div>
-            <div class="flex flex-col gap-2 w-full px-3">
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">settings</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
-                </button>
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">help</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
-                </button>
-            </div>
-        </aside>
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside></aside>
+
         <!-- Content Area -->
         <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient">
             <!-- Background Decorative Elements -->

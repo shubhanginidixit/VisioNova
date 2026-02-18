@@ -1,6 +1,92 @@
 /* VisioNova - Analysis Dashboard Styles */
 
 .scanning-radar {
+    background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.2) 0%, rgba(13, 27, 42, 0) 70%);
+}
+
+.light .scanning-radar {
+    background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.15) 0%, rgba(245, 247, 250, 0) 70%) !important;
+}
+
+/* Scanning line animation */
+@keyframes scan {
+    0% {
+        left: 10%;
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        left: 90%;
+        opacity: 0.7;
+    }
+}
+
+.scan-line {
+    animation: scan 2s linear infinite alternate;
+    background-color: var(--color-accent-success) !important;
+    box-shadow: 0 0 20px var(--color-accent-success), 0 0 40px rgba(0, 217, 145, 0.5) !important;
+}
+
+/* Progress bar glow effects */
+.bg-accent-green {
+    background-color: var(--color-accent-success) !important;
+}
+
+.bg-accent-blue {
+    background-color: var(--color-primary) !important;
+}
+
+/* Step bar styles */
+.step-bar {
+    min-height: 8px;
+}
+
+.step-bar.bg-accent-green {
+    background-color: var(--color-accent-success) !important;
+    box-shadow: 0 0 10px rgba(0, 217, 145, 0.6) !important;
+}
+
+.step-bar.bg-accent-blue {
+    background-color: var(--color-primary) !important;
+    box-shadow: 0 0 10px rgba(58, 141, 255, 0.6) !important;
+}
+
+/* Progress bar track */
+.bg-\[\#1E293B\] {
+    background-color: #1E293B;
+}
+
+.light .bg-\[\#1E293B\] {
+    background-color: #cbd5e1 !important;
+}
+
+/* Visualizer Box */
+.visualizer-box {
+    background-color: #080b12 !important;
+    /* Keep dark regardless of theme for contrast */
+    border-color: var(--color-border) !important;
+}
+
+.light .visualizer-box {
+    background-color: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Text Colors */
+.text-accent-green {
+    color: var(--color-accent-success) !important;
+}
+
+.text-accent-blue {
+    color: var(--color-primary) !important;
+}
+
+
+.scanning-radar {
     background: radial-gradient(circle, rgba(58, 141, 255, 0.2) 0%, rgba(13, 27, 42, 0) 70%);
 }
 

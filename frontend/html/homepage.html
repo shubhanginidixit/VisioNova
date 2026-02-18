@@ -8,7 +8,7 @@
     <title>VisioNova - AI Credibility Verification</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('visioNova_theme') || 'dark';
             document.documentElement.classList.add(theme);
         })();
@@ -58,108 +58,17 @@
     </script>
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/layout.js"></script>
 </head>
 
 <body
     class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
-    <!-- Top Navigation Bar -->
-    <header
-        class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
-        <div class="flex items-center gap-4 text-white">
-            <div class="size-8 text-primary">
-                <span class="material-symbols-outlined !text-[32px]">hub</span>
-            </div>
-            <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
-        </div>
-        <div class="flex flex-1 justify-center hidden md:flex">
-            <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
-                <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="homepage.html">Home</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="AnalysisDashboard.html">Analyze</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="FactCheckPage.html">Fact Check</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="ReportPage.html">Reports</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="#">API</a>
-            </nav>
-        </div>
-        <div class="flex items-center gap-3">
-            <button
-                class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
-                <span class="material-symbols-outlined !text-[20px]">notifications</span>
-                <span
-                    class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
-            </button>
-            <button id="themeToggle"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
-                title="Toggle Dark/Light Mode">
-                <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
-                <span
-                    class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
-            </button>
-        </div>
-    </header>
+    <!-- Top Navigation Bar (Injected by layout.js) -->
+    <header></header>
     <div class="flex flex-1 overflow-hidden">
         <!-- Sidebar Navigation -->
-        <aside
-            class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
-            <div class="flex flex-col gap-6 w-full px-3">
-                <div class="w-full flex flex-col gap-1">
-                    <a href="AnalysisDashboard.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
-                        <span class="material-symbols-outlined shrink-0">add_circle</span>
-                        <span
-                            class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
-                            Scan</span>
-                    </a>
-                </div>
-                <div class="w-full h-px bg-[#1E2338]"></div>
-                <div class="flex flex-col gap-2 w-full">
-                    <a href="AnalysisDashboard.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">dashboard</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">history</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
-                            Scans</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">folder_open</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
-                    </a>
-                    <a href="FactCheckPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">shield</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
-                            Intel</span>
-                    </a>
-                </div>
-            </div>
-            <div class="flex flex-col gap-2 w-full px-3">
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">settings</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
-                </button>
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">help</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
-                </button>
-            </div>
-        </aside>
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside></aside>
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient">
             <!-- Background Decorative Elements -->
@@ -175,15 +84,6 @@
             <div class="relative max-w-7xl mx-auto px-6 py-10 flex flex-col gap-10">
                 <!-- Hero Section -->
                 <div class="flex flex-col items-center text-center gap-2 mb-4 animate-fade-in-up">
-                    <div
-                        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold tracking-wide uppercase mb-4">
-                        <span class="relative flex h-2 w-2">
-                            <span
-                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                        </span>
-                        System v3.0 Online
-                    </div>
                     <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-2">
                         Verify Reality. <span
                             class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">Detect
@@ -232,21 +132,25 @@
                             <!-- Image Upload -->
                             <div id="image-upload"
                                 class="upload-content p-6 md:p-8 flex flex-col items-center justify-center bg-[#0F121A]/50 bg-surface-dark relative">
-                                
+
                                 <!-- Drop Zone Container -->
                                 <div id="image-drop-zone"
                                     class="border-2 border-dashed border-[#2A3450] hover:border-primary/50 transition-all duration-300 rounded-2xl w-full min-h-[300px] flex items-center justify-center bg-[#0D1B2A]/80 cursor-pointer relative overflow-hidden"
                                     tabindex="0">
-                                    
+
                                     <!-- DEFAULT STATE -->
-                                    <div id="image-upload-default" class="flex flex-col items-center justify-center gap-4 p-8 transition-opacity duration-300">
-                                        <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-primary border border-primary/20">
+                                    <div id="image-upload-default"
+                                        class="flex flex-col items-center justify-center gap-4 p-8 transition-opacity duration-300">
+                                        <div
+                                            class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-primary border border-primary/20">
                                             <span class="material-symbols-outlined !text-4xl">cloud_upload</span>
                                         </div>
                                         <div class="text-center">
-                                            <p class="text-xl font-semibold text-white mb-2">Drag &amp; Drop image here</p>
+                                            <p class="text-xl font-semibold text-white mb-2">Drag &amp; Drop image here
+                                            </p>
                                             <p class="text-sm text-[#94A3B8]">or <span
-                                                    class="text-primary cursor-pointer hover:underline font-medium" id="imageBrowseLink">browse files</span>
+                                                    class="text-primary cursor-pointer hover:underline font-medium"
+                                                    id="imageBrowseLink">browse files</span>
                                                 from your computer</p>
                                         </div>
                                         <div class="flex flex-wrap items-center justify-center gap-3 mt-2">
@@ -255,24 +159,31 @@
                                                 <span class="material-symbols-outlined text-lg">content_paste</span>
                                                 Paste from Clipboard
                                             </button>
-                                            <span class="text-xs text-[#64748B]">or press <kbd class="px-2 py-1 bg-[#1E2338] rounded-md text-[#94A3B8] font-mono text-[11px] border border-[#2A3450]">Ctrl+V</kbd></span>
+                                            <span class="text-xs text-[#64748B]">or press <kbd
+                                                    class="px-2 py-1 bg-[#1E2338] rounded-md text-[#94A3B8] font-mono text-[11px] border border-[#2A3450]">Ctrl+V</kbd></span>
                                         </div>
                                         <p class="text-xs text-[#64748B] mt-2">Supports JPG, PNG, WEBP up to 50MB</p>
                                     </div>
 
                                     <!-- PREVIEW STATE (hidden by default) -->
-                                    <div id="image-preview-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 bg-[#0D1B2A] transition-opacity duration-300">
+                                    <div id="image-preview-state"
+                                        class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 bg-[#0D1B2A] transition-opacity duration-300">
                                         <!-- Preview Image Container -->
                                         <div class="relative flex items-center justify-center mb-4 max-h-[180px]">
-                                            <img id="image-preview-img" class="max-h-[180px] max-w-full rounded-xl object-contain shadow-2xl ring-1 ring-white/10" alt="Preview" />
+                                            <img id="image-preview-img"
+                                                class="max-h-[180px] max-w-full rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
+                                                alt="Preview" />
                                         </div>
                                         <!-- File Info & Actions -->
                                         <div class="flex items-center gap-3">
-                                            <div class="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-green-500/30 rounded-full">
-                                                <span class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
-                                                <span id="image-file-name" class="text-green-400 text-sm font-medium truncate max-w-[180px]">image.png</span>
+                                            <div
+                                                class="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-green-500/30 rounded-full">
+                                                <span
+                                                    class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
+                                                <span id="image-file-name"
+                                                    class="text-green-400 text-sm font-medium truncate max-w-[180px]">image.png</span>
                                             </div>
-                                            <button id="clearImageBtn" type="button" 
+                                            <button id="clearImageBtn" type="button"
                                                 class="flex items-center gap-1.5 px-4 py-2 bg-[#1E2338] hover:bg-red-500/20 border border-[#2A3450] hover:border-red-500/40 rounded-full text-sm text-[#94A3B8] hover:text-red-400 transition-all duration-200">
                                                 <span class="material-symbols-outlined text-lg">close</span>
                                                 Clear
@@ -284,7 +195,8 @@
                                 <!-- URL Input & Analyze Button -->
                                 <div class="w-full mt-5 flex flex-col md:flex-row items-center gap-3">
                                     <div class="flex-1 w-full">
-                                        <div class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-xl focus-within:border-primary/50 transition-colors duration-200">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-xl focus-within:border-primary/50 transition-colors duration-200">
                                             <span class="material-symbols-outlined text-[#64748B]">link</span>
                                             <input id="imageUrlInput"
                                                 class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
@@ -293,7 +205,8 @@
                                     </div>
                                     <button id="analyzeBtn" onclick="navigateToResult()"
                                         class="w-full md:w-auto px-7 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-xl shadow-glow hover:shadow-glow-hover transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap group/btn">
-                                        <span class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
                                         Analyze Credibility
                                     </button>
                                 </div>
@@ -405,37 +318,52 @@
                                 <div class="w-full mt-6">
                                     <div class="flex items-center gap-3 mb-3">
                                         <div class="h-px flex-1 bg-[#2A3450]"></div>
-                                        <span class="text-xs text-[#64748B] font-medium uppercase tracking-wider">or upload a document</span>
+                                        <span class="text-xs text-[#64748B] font-medium uppercase tracking-wider">or
+                                            upload a document</span>
                                         <div class="h-px flex-1 bg-[#2A3450]"></div>
                                     </div>
                                     <div id="docUploadZone"
                                         class="flex items-center gap-4 px-5 py-4 bg-[#0D1B2A] border border-[#2A3450] hover:border-amber-500/40 rounded-xl transition-all cursor-pointer"
                                         onclick="document.getElementById('textFileInput').click()">
                                         <div class="flex gap-2 shrink-0">
-                                            <div class="size-9 rounded-lg bg-red-500/10 flex items-center justify-center" title="PDF">
-                                                <span class="material-symbols-outlined text-red-400 !text-[20px]">picture_as_pdf</span>
+                                            <div class="size-9 rounded-lg bg-red-500/10 flex items-center justify-center"
+                                                title="PDF">
+                                                <span
+                                                    class="material-symbols-outlined text-red-400 !text-[20px]">picture_as_pdf</span>
                                             </div>
-                                            <div class="size-9 rounded-lg bg-blue-500/10 flex items-center justify-center" title="DOCX">
-                                                <span class="material-symbols-outlined text-blue-400 !text-[20px]">description</span>
+                                            <div class="size-9 rounded-lg bg-blue-500/10 flex items-center justify-center"
+                                                title="DOCX">
+                                                <span
+                                                    class="material-symbols-outlined text-blue-400 !text-[20px]">description</span>
                                             </div>
-                                            <div class="size-9 rounded-lg bg-green-500/10 flex items-center justify-center" title="TXT">
-                                                <span class="material-symbols-outlined text-green-400 !text-[20px]">text_snippet</span>
+                                            <div class="size-9 rounded-lg bg-green-500/10 flex items-center justify-center"
+                                                title="TXT">
+                                                <span
+                                                    class="material-symbols-outlined text-green-400 !text-[20px]">text_snippet</span>
                                             </div>
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <p id="docUploadLabel" class="text-sm text-white font-medium">Click to upload a document</p>
-                                            <p id="docUploadHint" class="text-xs text-[#64748B] mt-0.5">Supports PDF, DOCX, DOC, TXT — up to 10MB</p>
+                                            <p id="docUploadLabel" class="text-sm text-white font-medium">Click to
+                                                upload a document</p>
+                                            <p id="docUploadHint" class="text-xs text-[#64748B] mt-0.5">Supports PDF,
+                                                DOCX, DOC, TXT — up to 10MB</p>
                                         </div>
-                                        <span class="material-symbols-outlined text-[#64748B] shrink-0">upload_file</span>
+                                        <span
+                                            class="material-symbols-outlined text-[#64748B] shrink-0">upload_file</span>
                                     </div>
                                     <!-- Uploaded file indicator (hidden by default) -->
-                                    <div id="docFileIndicator" class="hidden mt-3 items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                    <div id="docFileIndicator"
+                                        class="hidden mt-3 items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                         <span class="material-symbols-outlined text-amber-400">check_circle</span>
                                         <div class="flex-1 min-w-0">
-                                            <p id="docFileNameDisplay" class="text-sm text-white font-medium truncate">file.pdf</p>
-                                            <p id="docFileSizeDisplay" class="text-xs text-amber-400/70">Ready for analysis</p>
+                                            <p id="docFileNameDisplay" class="text-sm text-white font-medium truncate">
+                                                file.pdf</p>
+                                            <p id="docFileSizeDisplay" class="text-xs text-amber-400/70">Ready for
+                                                analysis</p>
                                         </div>
-                                        <button id="docRemoveBtn" class="text-[#64748B] hover:text-red-400 transition-colors" title="Remove file">
+                                        <button id="docRemoveBtn"
+                                            class="text-[#64748B] hover:text-red-400 transition-colors"
+                                            title="Remove file">
                                             <span class="material-symbols-outlined !text-[20px]">close</span>
                                         </button>
                                     </div>
@@ -560,35 +488,6 @@
                                 global news sources.</p>
                         </div>
                     </a>
-                </div>
-                <!-- Unified Scorecard Preview (Compact) -->
-                <div
-                    class="w-full bg-[#161b2e]/50 border border-[#1E2338] rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
-                    <div class="flex items-center gap-4">
-                        <div class="p-3 bg-primary/10 rounded-full text-primary">
-                            <span class="material-symbols-outlined">analytics</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <h3 class="text-white font-bold text-lg">Unified Credibility Scorecard</h3>
-                            <p class="text-[#94A3B8] text-sm">Real-time monitoring of your content stream.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-8">
-                        <div class="flex flex-col items-center">
-                            <span class="text-2xl font-bold text-white">98%</span>
-                            <span class="text-xs text-[#94A3B8] uppercase tracking-wider">Accuracy</span>
-                        </div>
-                        <div class="h-8 w-px bg-[#2A3450]"></div>
-                        <div class="flex flex-col items-center">
-                            <span class="text-2xl font-bold text-white">1.2s</span>
-                            <span class="text-xs text-[#94A3B8] uppercase tracking-wider">Latency</span>
-                        </div>
-                        <div class="h-8 w-px bg-[#2A3450]"></div>
-                        <div class="flex flex-col items-center">
-                            <span class="text-2xl font-bold text-accent-success">Safe</span>
-                            <span class="text-xs text-[#94A3B8] uppercase tracking-wider">Status</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
