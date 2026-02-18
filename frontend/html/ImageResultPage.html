@@ -8,15 +8,14 @@
     <title>VisioNova - Image Analysis</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
-        (function() {
+        (function () {
             const theme = localStorage.getItem('visioNova_theme') || 'dark';
             document.documentElement.classList.add(theme);
         })();
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
         rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
@@ -34,205 +33,7 @@
                         "surface-dark": "#0D1B2A",
                         "panel-dark": "#161B2E",
                         "card-dark": "#1E2338",
-                    },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"]
-                    },
-                    borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
-                },
-            },
-        }
-    </script>
-    <link rel="stylesheet" href="../css/common.css">
-    <script src="../js/theme-toggle.js"></script>
-    <script src="../js/ui-utils.js"></script>
-    <script src="../js/layout.js"></script>
-</head>
-
-<body
-    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
-    <div class="fixed inset-0 z-0 pointer-events-none">
-        <div
-            class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
-        </div>
-        <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
-    </div>
-    
-    <!-- Top Navigation (Injected by layout.js) -->
-    <header></header>
-    
-    <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar Navigation (Injected by layout.js) -->
-        <aside></aside>
-        
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 lg:p-8">
-            <!-- Background Decorative Elements -->
-            <div class="absolute inset-0 pointer-events-none overflow-hidden">
-                <div
-                    class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
-                </div>
-                <div
-                    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
-                </div>
-            </div>
-            <div class="max-w-[1600px] mx-auto flex flex-col gap-6 relative z-10">
-                <!-- Page Heading -->
-                <div class="flex flex-col gap-2 mb-6 border-b border-[#20324b] pb-6 relative z-10">
-                    <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
-                        <span>Analyze</span>
-                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                        <span>Image Analysis</span>
-                    </div>
-                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span id="statusBadge"
-                                    class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">ANALYZING...</span>
-                                <span id="analysisId" class="text-[#8da8ce] text-xs"></span>
-                            </div>
-                            <h1 id="pageTitle"
-                                class="text-white text-3xl md:text-3xl font-black leading-tight tracking-tight">Image
-                                Analysis</h1>
-                            <p id="pageSubtitle" class="text-[#8da8ce] text-sm">Source: Local Upload • <span
-                                    id="analysisTime"></span></p>
-                        </div>
-                        <div class="flex gap-3">
-                            <button id="reanalyzeBtn"
-                                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-white text-sm font-medium transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">refresh</span>
-                                Re-analyze
-                            </button>
-                            <button id="exportPdfBtn"
-                                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-medium transition-colors shadow-lg shadow-blue-500/20">
-                                <span class="material-symbols-outlined text-[18px]">download</span>
-                                Export Report
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab Navigation -->
-                <div class="flex items-center gap-2 bg-card-bg p-1.5 rounded-xl border border-[#20324b] overflow-x-auto custom-scrollbar mb-6">
-                    <button id="tab-overview" data-tab="overview"
-                        class="tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">dashboard</span>
-                        Overview
-                    </button>
-                    <button id="tab-technical" data-tab="technical"
-                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">analytics</span>
-                        Technical Analysis
-                    </button>
-                    <button id="tab-metadata" data-tab="metadata"
-                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">data_object</span>
-                        Metadata Deep-Dive
-                    </button>
-                    <button id="tab-ai-analysis" data-tab="ai-analysis"
-                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">psychology</span>
-                        AI Explanation
-                    </button>
-                </div>
-
-                <!-- Dynamic Tab Content Container -->
-                <div id="tab-content" class="relative">
-                    <!-- Content will be dynamically generated here -->
-                </div>
-
-                <!-- Modals -->
-                <!-- Feedback Modal -->
-                <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-                    <div class="bg-card-bg rounded-xl border border-[#20324b] p-6 max-w-md w-full shadow-2xl">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-white text-lg font-semibold">Report Analysis Issue</h3>
-                            <button onclick="closeFeedbackModal()" class="text-[#8da8ce] hover:text-white">
-                                <span class="material-symbols-outlined">close</span>
-                            </button>
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-[#8da8ce] mb-2">Issue Type</label>
-                                <select id="feedbackType" class="w-full bg-[#20324b] text-white rounded-lg px-3 py-2 border border-[#20324b] focus:border-primary">
-                                    <option value="false_positive">False Positive (Real marked as AI)</option>
-                                    <option value="false_negative">False Negative (AI marked as Real)</option>
-                                    <option value="analysis_error">Analysis Error</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm text-[#8da8ce] mb-2">Description</label>
-                                <textarea id="feedbackDescription" rows="4" class="w-full bg-[#20324b] text-white rounded-lg px-3 py-2 border border-[#20324b] focus:border-primary resize-none" placeholder="Describe the issue..."></textarea>
-                            </div>
-                            <button onclick="submitFeedback()" class="w-full bg-primary hover:bg-blue-600 text-white font-medium py-2 rounded-lg transition-colors">
-                                Submit Feedback
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Fullscreen Viewer Modal -->
-                <div id="fullscreenModal" class="fixed inset-0 bg-black/95 z-50 hidden items-center justify-center p-4">
-                    <button onclick="closeFullscreenViewer()" class="absolute top-4 right-4 text-white hover:text-primary">
-                        <span class="material-symbols-outlined text-4xl">close</span>
-                    </button>
-                    <div class="w-full h-full flex items-center justify-center">
-                        <img id="fullscreenImage" src="" alt="Fullscreen view" class="max-w-full max-h-full object-contain" />
-                    </div>
-                </div>
-
-            </div>
-        </main>
-    </div>
-
-    <!-- Storage Utilities -->
-    <script src="../js/storage-utils.js"></script>
-
-    <!-- Dynamic Content Loading Script -->
-    <script src="../js/image-result.js"></script>
-</body>
-
-</html>
-
-
-<html lang="en">
-
-<head>
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova - Image Analysis</title>
-    <!-- Blocking theme script to prevent FOUC -->
-    <script>
-        (function() {
-            const theme = localStorage.getItem('visioNova_theme') || 'dark';
-            document.documentElement.classList.add(theme);
-        })();
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#3A8DFF",
-                        "accent-success": "#00D991",
-                        "accent-warning": "#FFB74A",
-                        "accent-danger": "#FF4A4A",
-                        "background-light": "#F5F7FA",
-                        "background-dark": "#0F121A",
-                        "surface-dark": "#0D1B2A",
-                        "panel-dark": "#161B2E",
-                        "card-dark": "#1E2338",
+                        "card-bg": "#1E2338",
                     },
                     fontFamily: {
                         "display": ["Inter", "sans-serif"]
@@ -353,7 +154,7 @@
             </div>
         </aside>
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 lg:p-8">
+        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 md:p-8 lg:px-12">
             <!-- Background Decorative Elements -->
             <div class="absolute inset-0 pointer-events-none overflow-hidden">
                 <div
@@ -363,143 +164,263 @@
                     class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
                 </div>
             </div>
-            <div class="max-w-[1600px] mx-auto flex flex-col gap-6 relative z-10">
+            <div class="max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
                 <!-- Page Heading -->
-                <div class="flex flex-col gap-2 mb-6 border-b border-[#20324b] pb-6 relative z-10">
-                    <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
-                        <span>Analyze</span>
-                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                        <span>Image Analysis</span>
+                <div class="flex flex-wrap justify-between items-end gap-4 border-b border-white/10 pb-6">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
+                            <span>Analyze</span>
+                            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                            <span>Image Analysis</span>
+                        </div>
+                        <h1 id="pageTitle"
+                            class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Image
+                            Analysis</h1>
+                        <p class="text-[#8da8ce] text-sm font-normal flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                            <span id="analysisDate">Analyzed just now</span>
+                        </p>
                     </div>
-                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span id="statusBadge"
-                                    class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">ANALYZING...</span>
-                                <span id="analysisId" class="text-[#8da8ce] text-xs"></span>
-                            </div>
-                            <h1 id="pageTitle"
-                                class="text-white text-3xl md:text-3xl font-black leading-tight tracking-tight">Image
-                                Analysis</h1>
-                            <p id="pageSubtitle" class="text-[#8da8ce] text-sm">Source: Local Upload • <span
-                                    id="analysisTime"></span></p>
-                        </div>
-                        <div class="flex gap-3">
-                            <button id="reanalyzeBtn"
-                                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#20324b] hover:bg-[#2a4060] text-white text-sm font-medium transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">refresh</span>
-                                Re-analyze
-                            </button>
-                            <button id="exportPdfBtn"
-                                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-medium transition-colors shadow-lg shadow-blue-500/20">
-                                <span class="material-symbols-outlined text-[18px]">download</span>
-                                Export Report
-                            </button>
-                        </div>
+                    <div class="flex gap-3">
+                        <button id="reanalyzeBtn"
+                            class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all">
+                            <span class="material-symbols-outlined text-[20px] mr-2">refresh</span>
+                            Re-analyze
+                        </button>
+                        <button id="exportPdfBtn"
+                            class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-lg shadow-primary/20 transition-all">
+                            <span class="material-symbols-outlined text-[20px] mr-2">download</span>
+                            Export Report
+                        </button>
                     </div>
                 </div>
 
-                <!-- Tab Navigation -->
-                <div class="flex items-center gap-2 bg-card-bg p-1.5 rounded-xl border border-[#20324b] overflow-x-auto custom-scrollbar mb-6">
-                    <button onclick="switchTab('overview')" id="tab-overview"
-                        class="tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">dashboard</span>
-                        Overview
-                    </button>
-                    <button onclick="switchTab('technical')" id="tab-technical"
-                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">analytics</span>
-                        Technical Analysis
-                    </button>
-                    <button onclick="switchTab('metadata')" id="tab-metadata"
-                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">data_object</span>
-                        Metadata Deep-Dive
-                    </button>
-                    <button onclick="switchTab('ai-analysis')" id="tab-ai-analysis"
-                        class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <span class="material-symbols-outlined text-[18px]">psychology</span>
-                        AI Explanation
-                    </button>
-                </div>
-
-                <!-- Dynamic Tab Content Container -->
-                <div id="tab-content" class="relative">
-                    <!-- Content will be dynamically generated here -->
-                </div>
-
-                <!-- Modals -->
-                <!-- Feedback Modal -->
-                <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-                    <div class="bg-card-bg rounded-xl border border-[#20324b] p-6 max-w-md w-full shadow-2xl">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-white text-lg font-semibold">Report Analysis Issue</h3>
-                            <button onclick="closeFeedbackModal()" class="text-[#8da8ce] hover:text-white">
-                                <span class="material-symbols-outlined">close</span>
-                            </button>
+                <!-- Scorecard Section (2 cards) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Probability Card -->
+                    <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-white/70 text-sm font-medium">Human vs. AI Probability</h3>
+                            <span class="material-symbols-outlined text-white/30">psychology</span>
                         </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm text-[#8da8ce] mb-2">Issue Type</label>
-                                <select id="feedbackType" class="w-full bg-[#20324b] text-white rounded-lg px-3 py-2 border border-[#20324b] focus:border-primary">
-                                    <option value="false_positive">False Positive (Real marked as AI)</option>
-                                    <option value="false_negative">False Negative (AI marked as Real)</option>
-                                    <option value="analysis_error">Analysis Error</option>
-                                    <option value="other">Other</option>
-                                </select>
+                        <div class="flex gap-4 items-end mt-4">
+                            <div class="flex flex-col gap-1 w-1/2">
+                                <span class="text-xs text-white/50">Human</span>
+                                <div class="h-16 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                                    <div id="humanBar" class="w-full transition-all duration-1000"
+                                        style="height: 0%; background: #3A8DFF; opacity: 0.9"></div>
+                                    <span id="humanPercent"
+                                        class="absolute bottom-1 w-full text-center text-xs font-bold text-white drop-shadow-md">--%</span>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm text-[#8da8ce] mb-2">Description</label>
-                                <textarea id="feedbackDescription" rows="4" class="w-full bg-[#20324b] text-white rounded-lg px-3 py-2 border border-[#20324b] focus:border-primary resize-none" placeholder="Describe the issue..."></textarea>
+                            <div class="flex flex-col gap-1 w-1/2">
+                                <span class="text-xs text-white/50">AI-Gen</span>
+                                <div class="h-16 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                                    <div id="aiBar" class="w-full transition-all duration-1000"
+                                        style="height: 0%; background: #FF4A4A; opacity: 0.85"></div>
+                                    <span id="aiPercent"
+                                        class="absolute bottom-1 w-full text-center text-xs font-bold text-white/60">--%</span>
+                                </div>
                             </div>
-                            <button onclick="submitFeedback()" class="w-full bg-primary hover:bg-blue-600 text-white font-medium py-2 rounded-lg transition-colors">
-                                Submit Feedback
-                            </button>
+                        </div>
+                        <p id="probabilityNote" class="text-xs text-primary mt-2 font-medium flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">trending_up</span>
+                            <span id="probabilityText">Analyzing patterns...</span>
+                        </p>
+                    </div>
+                    <!-- Analysis Mode Card -->
+                    <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-white/70 text-sm font-medium">Analysis Mode</h3>
+                            <span class="material-symbols-outlined text-white/30">memory</span>
+                        </div>
+                        <div class="mt-2">
+                            <span id="analysisMode" class="text-2xl font-bold text-white block">Loading...</span>
+                            <span id="analysisModeInfo" class="text-sm text-white/60 block mt-1">Initializing
+                                detectors...</span>
+                        </div>
+                        <div id="modelsUsedTags" class="flex gap-2 mt-4 flex-wrap">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Section: Image Preview + Key Findings -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[400px]">
+                    <!-- Image Preview -->
+                    <div
+                        class="lg:col-span-7 flex flex-col bg-[#0D1B2A] rounded-2xl overflow-hidden shadow-xl border border-white/5">
+                        <div
+                            class="bg-surface-dark px-6 py-3 border-b border-white/10 flex justify-between items-center">
+                            <div class="flex gap-2 items-center">
+                                <span class="material-symbols-outlined text-white/40">image</span>
+                                <span class="text-white/70 font-bold text-sm">Analyzed Image</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <span id="imageDimensions"
+                                    class="flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
+                                    <span class="material-symbols-outlined !text-[14px]">aspect_ratio</span>
+                                    --
+                                </span>
+                                <span id="imageSize"
+                                    class="flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
+                                    <span class="material-symbols-outlined !text-[14px]">data_usage</span>
+                                    --
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-1 flex items-center justify-center min-h-[300px] relative">
+                            <div id="imagePreviewPlaceholder" class="flex flex-col items-center gap-4 text-white/40">
+                                <span class="material-symbols-outlined text-6xl opacity-50">image</span>
+                                <p class="text-sm">Loading image...</p>
+                            </div>
+                            <img id="previewImage" src="" alt="Analyzed image"
+                                class="hidden max-w-full max-h-[500px] object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                onclick="openFullscreenViewer()" />
+                        </div>
+                    </div>
+                    <!-- Key Findings + Watermark Column -->
+                    <div class="lg:col-span-5 flex flex-col gap-4">
+                        <!-- Key Findings -->
+                        <div class="bg-surface-dark/40 border border-white/5 rounded-2xl p-5 flex-1 flex flex-col">
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="flex gap-2 items-center">
+                                    <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                                        <span class="material-symbols-outlined !text-[20px]">lightbulb</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-sm">Key Findings</h4>
+                                        <p id="findingsCount" class="text-white/40 text-xs">Analyzing...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="keyFindings" class="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar">
+                                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl animate-pulse">
+                                    <div class="w-3 h-3 rounded-full bg-white/10"></div>
+                                    <div class="h-4 bg-white/10 rounded w-3/4"></div>
+                                </div>
+                                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl animate-pulse">
+                                    <div class="w-3 h-3 rounded-full bg-white/10"></div>
+                                    <div class="h-4 bg-white/10 rounded w-2/3"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- AI Watermark Detection -->
+                        <div class="bg-surface-dark/40 border border-white/5 rounded-2xl p-5">
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="flex gap-2 items-center">
+                                    <div class="p-1.5 rounded-lg bg-accent-success/10 text-accent-success">
+                                        <span class="material-symbols-outlined !text-[20px]">verified</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-sm">AI Watermark Detection</h4>
+                                        <p class="text-white/40 text-xs">Invisible watermark scan</p>
+                                    </div>
+                                </div>
+                                <span id="watermarkStatusBadge"
+                                    class="px-2.5 py-1 rounded-full text-xs font-bold bg-white/5 text-white/50 border border-white/10">Scanning...</span>
+                            </div>
+                            <div id="watermarkResult" class="text-white/60 text-sm">
+                                <div class="flex items-center gap-2 p-3 bg-white/5 rounded-xl animate-pulse">
+                                    <div class="h-4 bg-white/10 rounded w-full"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Explanation Panel (collapsible) -->
+                <div id="explanationPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+                    <button id="explanationToggle"
+                        class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+                        <div class="flex gap-2 items-center">
+                            <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                                <span class="material-symbols-outlined !text-[20px]">smart_toy</span>
+                            </div>
+                            <div class="text-left">
+                                <h4 class="text-white font-bold text-sm">AI Explanation</h4>
+                                <p class="text-white/40 text-xs">Detailed reasoning from Groq Vision analysis</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-white/40 transition-transform"
+                            id="explanationChevron">expand_more</span>
+                    </button>
+                    <div id="explanationContent" class="hidden px-5 pb-5">
+                        <div id="explanationText"
+                            class="text-white/70 text-sm leading-relaxed whitespace-pre-line border-t border-white/5 pt-4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection Models Used Panel (collapsible) -->
+                <div id="modelsPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+                    <button id="modelsToggle"
+                        class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+                        <div class="flex gap-2 items-center">
+                            <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
+                                <span class="material-symbols-outlined !text-[20px]">hub</span>
+                            </div>
+                            <div class="text-left">
+                                <h4 class="text-white font-bold text-sm">Detection Models</h4>
+                                <p id="modelsSubtitle" class="text-white/40 text-xs">Models that contributed to this
+                                    analysis</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-white/40 transition-transform"
+                            id="modelsChevron">expand_more</span>
+                    </button>
+                    <div id="modelsContent" class="hidden px-5 pb-5">
+                        <div id="modelsList" class="flex flex-col gap-3 border-t border-white/5 pt-4">
                         </div>
                     </div>
                 </div>
 
                 <!-- Fullscreen Viewer Modal -->
                 <div id="fullscreenModal" class="fixed inset-0 bg-black/95 z-50 hidden items-center justify-center p-4">
-                    <button onclick="closeFullscreenViewer()" class="absolute top-4 right-4 text-white hover:text-primary">
+                    <button onclick="closeFullscreenViewer()"
+                        class="absolute top-4 right-4 text-white hover:text-primary">
                         <span class="material-symbols-outlined text-4xl">close</span>
                     </button>
                     <div class="w-full h-full flex items-center justify-center">
-                        <img id="fullscreenImage" src="" alt="Fullscreen view" class="max-w-full max-h-full object-contain" />
+                        <img id="fullscreenImage" src="" alt="Fullscreen view"
+                            class="max-w-full max-h-full object-contain" />
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
 
     <style>
-        .tab-btn {
-            color: #8da8ce;
-            background: transparent;
-        }
-        .tab-btn:hover {
-            color: white;
-            background: rgba(58, 141, 255, 0.1);
-        }
-        .tab-btn.active {
-            color: white;
-            background: #3A8DFF;
-            box-shadow: 0 4px 20px rgba(58, 141, 255, 0.3);
-        }
         .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
             height: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #20324b;
+            background: #1E2338;
             border-radius: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #3A8DFF;
             border-radius: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #5ba3ff;
+            background: #5AA0FF;
+        }
+
+        .bg-hero-gradient {
+            background: radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.08) 0%, transparent 60%);
+        }
+
+        .shadow-glow {
+            box-shadow: 0 0 20px rgba(58, 141, 255, 0.15);
+        }
+
+        #explanationChevron.rotated,
+        #modelsChevron.rotated {
+            transform: rotate(180deg);
         }
     </style>
 
