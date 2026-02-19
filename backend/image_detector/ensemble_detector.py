@@ -574,14 +574,23 @@ class EnsembleDetector:
         for detector, score in scores.items():
             if detector in self.weights and score is not None:
                 weight = self.weights[detector]
+                # Skip zero-weighted detectors entirely — they should not
+                # influence the final score under any circumstance.
+                if weight <= 0:
+                    continue
                 weighted_sum += score * weight
                 total_weight += weight
         
         if total_weight > 0:
             return weighted_sum / total_weight
         else:
-            # Fallback: simple average of available scores
-            valid_scores = [s for s in scores.values() if s is not None]
+            # Fallback: only average scores from detectors with non-zero weight.
+            # This prevents zero-weighted heuristic detectors from biasing the
+            # result when they're the only ones that loaded.
+            valid_scores = [
+                s for det, s in scores.items()
+                if s is not None and self.weights.get(det, 0) > 0
+            ]
             return sum(valid_scores) / len(valid_scores) if valid_scores else 50.0
     
     def _calculate_agreement(self, scores: Dict[str, float]) -> Dict[str, Any]:
