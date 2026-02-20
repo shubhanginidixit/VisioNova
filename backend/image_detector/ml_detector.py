@@ -769,12 +769,14 @@ class UmmMaybeDetector:
     """
     Umm-Maybe AI Image Detector
     
-    A highly popular community model (280k+ downloads) for general AI image detection.
-    Effective against various generators including Midjourney, Stable Diffusion, 
-    and anime-style models.
+    *** OUTDATED (October 2022) — does not cover SDXL, DALL-E 3, Midjourney v5+,
+    Flux, or GPT-Image-1.  The creator recommends Organika/sdxl-detector instead.
+    Kept for backward compatibility but should receive ZERO weight. ***
     
     Model: umm-maybe/AI-image-detector
-    Architecture: ResNet-50 / ViT based
+    Architecture: ViT (AutoTrain, 85.8M params)
+    Accuracy: 94.2% on its era's data, but concept-drifted for 2025-2026 generators
+    Labels: {0: 'artificial', 1: 'human'}
     """
     
     MODEL_ID = "umm-maybe/AI-image-detector"
@@ -871,11 +873,13 @@ class UmmMaybeDetector:
             }
     
     def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
+        """Extract AI probability from model output.
+        
+        umm-maybe labels: {0: 'artificial', 1: 'human'}
+        """
         ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
         real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine']
         
-        # Check specific label first
         for idx, label in self.id2label.items():
             label_lower = label.lower()
             if any(kw in label_lower for kw in ai_keywords):
@@ -883,8 +887,8 @@ class UmmMaybeDetector:
             elif any(kw in label_lower for kw in real_keywords):
                 return float((1 - probs[idx]) * 100)
         
-        if len(probs) >= 2:
-            return float(probs[0] * 100)
+        # Fallback: log labels and return neutral (don't guess)
+        logger.warning(f"UmmMaybe: Unknown labels {self.id2label}, returning 50%")
         return 50.0
 
 def create_ml_detectors(device: str = "auto", load_all: bool = False) -> Dict[str, Any]:
@@ -1925,14 +1929,16 @@ class DistilledDetector:
     """
     Distilled AI Image Detector (Lightweight Generalization Specialist)
     
+    *** LOW ACCURACY (~74%) — should receive minimal weight. ***
+    
     A small, distilled ViT model trained on diverse generators.
-    Despite only 11.8M parameters, it generalizes well across different
+    Despite only 11.8M parameters, it generalizes across different
     AI generators because of knowledge distillation from larger models.
     
     Model: jacoballessio/ai-image-detect-distilled
     Architecture: ViT (distilled, 11.8M params)
     Accuracy: ~74% in real-world evaluation
-    Strengths: Fast, diverse training (MJ + SD + fine-tuned SD), good generalization
+    Strengths: Fast, diverse training (MJ + SD + fine-tuned SD)
     """
     
     MODEL_ID = "jacoballessio/ai-image-detect-distilled"
@@ -2038,9 +2044,120 @@ class DistilledDetector:
             elif any(kw in label_lower for kw in real_keywords):
                 return float((1 - probs[idx]) * 100)
         
-        if len(probs) >= 2:
-            return float(probs[0] * 100)
+        # Don't guess — return neutral
+        logger.warning(f"Distilled: Unknown labels {self.id2label}, returning 50%")
         return 50.0
+
+
+class AteeqqDetector:
+    """
+    Ateeqq AI vs Human Image Detector (Top Tier — Dec 2025)
+    
+    Fine-tuned SigLIP2 model trained on 120K images (60K AI + 60K human).
+    One of the most popular and accurate detectors on HuggingFace.
+    
+    Model: Ateeqq/ai-vs-human-image-detector
+    Architecture: SigLIP2 (google/siglip2-base, 92.9M params)
+    Accuracy: 99.23% test accuracy, F1: 0.9923
+    Downloads: 46K+/month, 27 Spaces using it
+    Labels: {0: 'ai', 1: 'hum'}
+    Updated: December 2025
+    """
+    
+    MODEL_ID = "Ateeqq/ai-vs-human-image-detector"
+    # Hardcoded label mapping — verified from model card
+    LABEL_AI = 0    # label 'ai'
+    LABEL_REAL = 1  # label 'hum'
+    
+    def __init__(self, device: str = "auto"):
+        """Initialize the Ateeqq detector."""
+        self.model = None
+        self.processor = None
+        self.device = device
+        self.model_loaded = False
+        self.load_error = None
+        self.id2label = {}
+        
+        self._load_model()
+    
+    def _load_model(self):
+        """Load the Ateeqq SigLIP2 model from HuggingFace."""
+        try:
+            import torch
+            from transformers import AutoImageProcessor, SiglipForImageClassification
+            
+            if self.device == "auto":
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            
+            logger.info(f"Loading Ateeqq AI-vs-Human detector on {self.device}...")
+            
+            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
+            self.model = SiglipForImageClassification.from_pretrained(self.MODEL_ID)
+            self.model.to(self.device)
+            self.model.eval()
+            
+            self.id2label = self.model.config.id2label
+            self.model_loaded = True
+            logger.info(f"Ateeqq detector loaded. Labels: {self.id2label}")
+            
+        except ImportError as e:
+            self.load_error = f"Missing dependencies: {e}. Install: pip install transformers torch"
+            logger.warning(self.load_error)
+        except Exception as e:
+            self.load_error = f"Failed to load Ateeqq model: {e}"
+            logger.warning(self.load_error)
+    
+    def predict(self, image: Image.Image) -> Dict[str, Any]:
+        """Predict whether an image is AI-generated or human-created."""
+        if not self.model_loaded:
+            return {
+                'success': False,
+                'error': self.load_error or "Model not loaded",
+                'ai_probability': 50.0,
+                'prediction': 'unknown'
+            }
+        
+        try:
+            import torch
+            
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            inputs = self.processor(images=image, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            
+            probs = probs[0].cpu().numpy()
+            predicted_idx = int(np.argmax(probs))
+            predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
+            
+            # Hardcoded: label 0 = 'ai', label 1 = 'hum'
+            ai_prob = float(probs[self.LABEL_AI] * 100)
+            
+            return {
+                'success': True,
+                'prediction': predicted_label,
+                'confidence': float(probs[predicted_idx] * 100),
+                'ai_probability': ai_prob,
+                'all_probabilities': {
+                    self.id2label.get(i, f"class_{i}"): float(p * 100)
+                    for i, p in enumerate(probs)
+                },
+                'model': 'Ateeqq-SigLIP2',
+                'specialization': 'AI vs Human (SigLIP2, 99.23% accuracy, Dec 2025)'
+            }
+            
+        except Exception as e:
+            logger.error(f"Ateeqq prediction error: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'ai_probability': 50.0,
+                'prediction': 'error'
+            }
 
 
 class AIorNotDetector:
@@ -2160,8 +2277,8 @@ class AIorNotDetector:
             elif any(kw in label_lower for kw in real_keywords):
                 return float((1 - probs[idx]) * 100)
         
-        if len(probs) >= 2:
-            return float(probs[1] * 100)
+        # Don't guess — return neutral
+        logger.warning(f"AIorNot: Unknown labels {self.id2label}, returning 50%")
         return 50.0
 
 
