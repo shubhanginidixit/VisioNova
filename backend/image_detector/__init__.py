@@ -11,19 +11,21 @@ Components:
 - WatermarkDetector: Invisible watermark detection (Stable Diffusion, Meta, etc.)
 - ContentCredentialsDetector: C2PA/Content Credentials detection (DALL-E 3, etc.)
 - ImageExplainer: Groq Vision API for AI-powered image analysis (Llama 4 Scout)
-- SBIDetector: Synthetic Basis Index for diffusion detection (99.95% AUC)
-- CopyMoveForgeryDetector: A-KAZE based manipulation detection (98.98% accuracy)
-- ConfidenceCalibrator: Temperature scaling for calibrated predictions
-- DIREDetector: Diffusion Reconstruction Error detector (99.7% accuracy)
-- NPRDetector: Neighboring Pixel Relationships detector (99.1% accuracy)
-- FaceConsistencyDetector: Eye reflections, symmetry, lighting analysis
-- EdgeCoherenceAnalyzer: Edge quality and artifact detection
 
-ML Models (loaded on demand):
-- NYUADDetector: Vision Transformer (97.36% accuracy) - HuggingFace
-- UniversalFakeDetect: CLIP-based detector (generalizes across generators)
-- DeepfakeDetector: Face manipulation detection
+ML Models (loaded on demand, 2025-2026 models prioritized):
+- AteeqqDetector: SigLIP2 (99.23% accuracy, Dec 2025) — NEW TOP MODEL
+- SigLIPDINOv2Detector: Bombek1 SigLIP2+DINOv2 (99.97% AUC, Jan 2026)
+- DeepfakeDetector: dima806 ViT (98.25% accuracy, Jan 2025)
+- SDXLDetector: Organika/sdxl-detector (98.1% for Flux/SDXL)
+- DINOv2DeepfakeDetector: WpythonW DINOv2 (degradation-resilient)
+- DeepFakeV2Detector: prithivMLmods V2 (Feb 2025 dataset)
+- SigLIPDeepfakeDetector: prithivMLmods SigLIP V1
+- NYUADDetector: Vision Transformer (97.36% accuracy)
 - FrequencyAnalyzer: FFT/DCT GAN fingerprint analysis
+
+Heuristic/Legacy (weight=0 by default, NOT loaded):
+- SBIDetector, DIREDetector, NPRDetector, FaceConsistencyDetector, EdgeCoherenceAnalyzer
+- UmmMaybeDetector (outdated Oct 2022), DistilledDetector (74%), AIorNotDetector (64.74%)
 """
 
 from .detector import ImageDetector
@@ -57,6 +59,10 @@ try:
         FrequencyAnalyzer,
         UmmMaybeDetector,
         DINOv2DeepfakeDetector,
+        AteeqqDetector,
+        SigLIPDINOv2Detector,
+        DeepFakeV2Detector,
+        SigLIPDeepfakeDetector,
         create_ml_detectors
     )
     ML_DETECTORS_AVAILABLE = True
@@ -67,10 +73,12 @@ except ImportError:
     SDXLDetector = None
     DeepfakeDetector = None
     FrequencyAnalyzer = None
-    Bombek1SigLIPDINOv2Detector = None
-    DeepfakeSigLIP2Detector = None
-    ThreeClassSigLIP2Detector = None
+    UmmMaybeDetector = None
     DINOv2DeepfakeDetector = None
+    AteeqqDetector = None
+    SigLIPDINOv2Detector = None
+    DeepFakeV2Detector = None
+    SigLIPDeepfakeDetector = None
     create_ml_detectors = None
 
 __all__ = [
@@ -116,10 +124,12 @@ __all__ = [
     'SDXLDetector',
     'DeepfakeDetector',
     'FrequencyAnalyzer',
-    'Bombek1SigLIPDINOv2Detector',
-    'DeepfakeSigLIP2Detector',
-    'ThreeClassSigLIP2Detector',
+    'UmmMaybeDetector',
     'DINOv2DeepfakeDetector',
+    'AteeqqDetector',
+    'SigLIPDINOv2Detector',
+    'DeepFakeV2Detector',
+    'SigLIPDeepfakeDetector',
     'create_ml_detectors',
     'ML_DETECTORS_AVAILABLE'
 ]
