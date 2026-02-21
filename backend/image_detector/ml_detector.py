@@ -3,7 +3,7 @@ VisioNova ML-based Image Detectors
 State-of-the-art deep learning models for AI-generated image detection.
 
 Models:
-1. NYUAD ViT Detector - Vision Transformer (97.36% accuracy)
+1. Ateeqq ViT Detector - Vision Transformer (99.23% accuracy)
 2. UniversalFakeDetect - CLIP-based detector (generalizes across generators)
 3. Deepfake Detector - Face manipulation detection
 """
@@ -19,288 +19,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class NYUADDetector:
-    """
-    NYUAD AI-Generated Image Detector
-    
-    Uses Vision Transformer (ViT) fine-tuned on AI-generated images.
-    Model: NYUAD-ComNets/NYUAD_AI-generated_images_detector
-    
-    Accuracy: 97.36% on benchmark datasets
-    Parameters: 85.8M
-    Supports: CPU and GPU inference
-    """
-    
-    MODEL_ID = "NYUAD-ComNets/NYUAD_AI-generated_images_detector"
-    
-    def __init__(self, device: str = "auto"):
-        """
-        Initialize the NYUAD detector.
-        
-        Args:
-            device: "auto", "cpu", or "cuda"
-        """
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load the model and processor from HuggingFace."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            # Determine device
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading NYUAD detector on {self.device}...")
-            
-            # Load processor and model
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            # Get label mapping
-            self.id2label = self.model.config.id2label
-            
-            self.model_loaded = True
-            logger.info(f"NYUAD detector loaded successfully. Labels: {self.id2label}")
-            
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}. Install with: pip install torch transformers"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load NYUAD model: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Predict whether an image is AI-generated.
-        
-        Args:
-            image: PIL Image object
-            
-        Returns:
-            dict with prediction, confidence, and probabilities
-        """
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            # Ensure RGB
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            # Process image
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            # Inference
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs))
-            predicted_label = self.id2label[predicted_idx]
-            
-            # Determine AI probability based on label
-            # Labels are typically: 0 = "Real", 1 = "AI" or similar
-            ai_prob = self._get_ai_probability(probs, predicted_label)
-            
-            return {
-                'success': True,
-                'prediction': predicted_label,
-                'predicted_index': predicted_idx,
-                'confidence': float(probs[predicted_idx] * 100),
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    self.id2label[i]: float(p * 100) for i, p in enumerate(probs)
-                },
-                'model': 'NYUAD-ViT'
-            }
-            
-        except Exception as e:
-            logger.error(f"NYUAD prediction error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        # Common label patterns
-        ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
-        real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine']
-        
-        ai_prob = 50.0
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                ai_prob = float(probs[idx] * 100)
-                break
-            elif any(kw in label_lower for kw in real_keywords):
-                ai_prob = float((1 - probs[idx]) * 100)
-                break
-        
-        return ai_prob
 
 
-class UniversalFakeDetector:
-    """
-    Universal AI Image Detector (Pretrained SwinV2)
-    
-    Uses haywoodsloan/ai-image-detector-dev-deploy — the most downloaded
-    AI image detector on HuggingFace (148K+ downloads/month).
-    
-    Architecture: SwinV2 (197M params)
-    Accuracy: 98.1% F1 on validation set
-    Training: Broad dataset covering modern diffusion generators
-    
-    Replaces the old CLIP + untrained linear head approach.
-    """
-    
-    MODEL_ID = "haywoodsloan/ai-image-detector-dev-deploy"
-    
-    def __init__(self, device: str = "auto", classifier_path: Optional[str] = None):
-        """
-        Initialize Universal AI Image Detector.
-        
-        Args:
-            device: "auto", "cpu", or "cuda"
-            classifier_path: Ignored (kept for backward compatibility)
-        """
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load pretrained SwinV2 model from HuggingFace."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            # Determine device
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading Universal AI Image Detector (SwinV2) on {self.device}...")
-            
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.id2label = self.model.config.id2label
-            self.model_loaded = True
-            logger.info(f"Universal AI Image Detector loaded. Labels: {self.id2label}")
-            
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}. Install with: pip install torch transformers"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load Universal AI Image Detector: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Predict whether an image is AI-generated.
-        
-        Args:
-            image: PIL Image object
-            
-        Returns:
-            dict with prediction and confidence
-        """
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            # Ensure RGB
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs_np = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs_np))
-            predicted_label = self.id2label[predicted_idx]
-            
-            # Determine AI probability based on label keywords
-            ai_prob = self._get_ai_probability(probs_np, predicted_label)
-            
-            prediction = 'ai_generated' if ai_prob >= 50 else 'real'
-            confidence = ai_prob if ai_prob >= 50 else (100 - ai_prob)
-            
-            return {
-                'success': True,
-                'prediction': prediction,
-                'confidence': confidence,
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    self.id2label[i]: float(p * 100) for i, p in enumerate(probs_np)
-                },
-                'model': 'SwinV2-AI-Detector'
-            }
-            
-        except Exception as e:
-            logger.error(f"Universal AI Image Detector error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
-        real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine']
-        
-        ai_prob = 50.0
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                ai_prob = float(probs[idx] * 100)
-                break
-            elif any(kw in label_lower for kw in real_keywords):
-                ai_prob = float((1 - probs[idx]) * 100)
-                break
-        
-        return ai_prob
 
 
 class SDXLDetector:
@@ -765,131 +485,6 @@ class FrequencyAnalyzer:
 
 
 
-class UmmMaybeDetector:
-    """
-    Umm-Maybe AI Image Detector
-    
-    *** OUTDATED (October 2022) — does not cover SDXL, DALL-E 3, Midjourney v5+,
-    Flux, or GPT-Image-1.  The creator recommends Organika/sdxl-detector instead.
-    Kept for backward compatibility but should receive ZERO weight. ***
-    
-    Model: umm-maybe/AI-image-detector
-    Architecture: ViT (AutoTrain, 85.8M params)
-    Accuracy: 94.2% on its era's data, but concept-drifted for 2025-2026 generators
-    Labels: {0: 'artificial', 1: 'human'}
-    """
-    
-    MODEL_ID = "umm-maybe/AI-image-detector"
-    
-    def __init__(self, device: str = "auto"):
-        """Initialize the Umm-Maybe detector."""
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        self.id2label = {}
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load the Umm-Maybe model from HuggingFace."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading Umm-Maybe detector on {self.device}...")
-            
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.id2label = self.model.config.id2label
-            self.model_loaded = True
-            logger.info(f"Umm-Maybe detector loaded. Labels: {self.id2label}")
-            
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load Umm-Maybe model: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Predict whether an image is AI-generated.
-        """
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs))
-            predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
-            
-            ai_prob = self._get_ai_probability(probs, predicted_label)
-            
-            return {
-                'success': True,
-                'prediction': predicted_label,
-                'confidence': float(probs[predicted_idx] * 100),
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    self.id2label.get(i, f"class_{i}"): float(p * 100)
-                    for i, p in enumerate(probs)
-                },
-                'model': 'Umm-Maybe-Detector',
-                'specialization': 'General AI Art / Anime / Digital Art'
-            }
-            
-        except Exception as e:
-            logger.error(f"Umm-Maybe prediction error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output.
-        
-        umm-maybe labels: {0: 'artificial', 1: 'human'}
-        """
-        ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
-        real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine']
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                return float(probs[idx] * 100)
-            elif any(kw in label_lower for kw in real_keywords):
-                return float((1 - probs[idx]) * 100)
-        
-        # Fallback: log labels and return neutral (don't guess)
-        logger.warning(f"UmmMaybe: Unknown labels {self.id2label}, returning 50%")
-        return 50.0
 
 def create_ml_detectors(device: str = "auto", load_all: bool = False) -> Dict[str, Any]:
     """
@@ -902,284 +497,51 @@ def create_ml_detectors(device: str = "auto", load_all: bool = False) -> Dict[st
     Returns:
         dict with detector instances
     """
-    detectors = {
+    detectors: Dict[str, Any] = {
         'frequency_analyzer': FrequencyAnalyzer()
     }
     
-    # DIRE is the primary detector for latest generators (2024-2026)
+    # 1. Ateeqq SigLIP2 (99.23%)
     try:
-        from .dire_detector import DIREDetector
-        detectors['dire'] = DIREDetector()
+        detectors['ateeqq'] = AteeqqDetector(device=device)
     except Exception as e:
-        logger.warning(f"Could not load DIRE detector: {e}")
-        detectors['dire'] = None
-    
-    # NYUAD is backup (best accuracy/speed tradeoff)
+        logger.warning(f"Could not load Ateeqq detector: {e}")
+        detectors['ateeqq'] = None
+        
+    # 2. SigLIP DINOv2 (99.97%)
     try:
-        detectors['nyuad'] = NYUADDetector(device=device)
+        detectors['siglip_dinov2'] = SigLIPDINOv2Detector(device=device)
     except Exception as e:
-        logger.warning(f"Could not load NYUAD detector: {e}")
-        detectors['nyuad'] = None
-    
-    # NEW 2026: Umm-Maybe Detector (Community Choice - 280k+ downloads)
+        logger.warning(f"Could not load SigLIP DINOv2 detector: {e}")
+        detectors['siglip_dinov2'] = None
+        
+    # 3. SDXL Detector (98.1%)
     try:
-        # Class is defined above
-        detectors['umm_maybe'] = UmmMaybeDetector(device=device)
+        detectors['sdxl'] = SDXLDetector(device=device)
     except Exception as e:
-        logger.warning(f"Could not load Umm-Maybe detector: {e}")
-        detectors['umm_maybe'] = None
-    
-    # NEW 2026: DINOv2 deepfake detector (degradation-resilient)
+        logger.warning(f"Could not load SDXL detector: {e}")
+        detectors['sdxl'] = None
+        
+    # 4. Deepfake ViT (98.25%)
+    try:
+        detectors['deepfake'] = DeepfakeDetector(device=device)
+    except Exception as e:
+        logger.warning(f"Could not load Deepfake detector: {e}")
+        detectors['deepfake'] = None
+        
+    # 5. DINOv2 Deepfake
     try:
         detectors['dinov2'] = DINOv2DeepfakeDetector(device=device)
     except Exception as e:
-        logger.warning(f"Could not load DINOv2 deepfake detector: {e}")
+        logger.warning(f"Could not load DINOv2 detector: {e}")
         detectors['dinov2'] = None
-    
+        
     return detectors
 
 
 
-class FluxDetector:
-    """
-    Flux Image Detector
-    
-    Specialized detector for Flux.1 (Schnell/Dev/Pro) generated images.
-    Model: LukasT9/flux-detector
-    Architecture: EfficientNet-B2
-    Accuracy: ~90% on Flux datasets
-    """
-    
-    MODEL_ID = "LukasT9/flux-detector"
-    
-    def __init__(self, device: str = "auto"):
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        
-        self._load_model()
-        
-    def _load_model(self):
-        """Load the Flux detection model."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-                
-            logger.info(f"Loading Flux detector on {self.device}...")
-            
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.id2label = self.model.config.id2label
-            self.model_loaded = True
-            logger.info("Flux detector loaded successfully")
-            
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}. Install transformers torch"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load Flux detector: {e}"
-            logger.warning(self.load_error)
-            
-    def predict(self, image: Any) -> Dict[str, Any]:
-        """Predict if image is generated by Flux."""
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error,
-                'ai_probability': 50.0
-            }
-            
-        try:
-            import torch
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-                
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-                
-            probs = probs[0].cpu().numpy()
-            
-            # Label 0 is usually Real, 1 is Flux (check model card if unsure, usually 'flux' label exists)
-            # For LukasT9/flux-detector: labels are typically 'real', 'flux'
-            
-            ai_prob = 0.0
-            prediction = 'unknown'
-            
-            for i, label in self.id2label.items():
-                if 'flux' in label.lower() or 'ai' in label.lower():
-                    ai_prob = float(probs[i] * 100)
-                    if probs[i] > 0.5:
-                        prediction = 'flux'
-                elif 'real' in label.lower():
-                    if probs[i] > 0.5:
-                        prediction = 'real'
-            
-            return {
-                'success': True,
-                'prediction': prediction,
-                'ai_probability': ai_prob,
-                'confidence': float(max(probs) * 100),
-                'model': 'FluxDetector',
-                'is_flux': prediction == 'flux'
-            }
-            
-        except Exception as e:
-            logger.error(f"Flux detection error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0
-            }
 
 
-class DIREDetector:
-    """
-    DIRE (Diffusion Reconstruction Error) Detector
-    
-    Specifically designed for diffusion models (2024-2026):
-    - Stable Diffusion (all versions including XL)
-    - DALL-E 2/3
-    - Midjourney v5/v6
-    - Imagen, Firefly, Flux
-    
-    Accuracy: 94.7% on latest generators
-    Paper: CVPR 2024
-    """
-    
-    MODEL_PATH = "models/dire_model.pth"
-    
-    def __init__(self, device: str = "auto"):
-        """
-        Initialize DIRE detector.
-        
-        Args:
-            device: "auto", "cpu", or "cuda"
-        """
-        self.model = None
-        self.device = self._determine_device(device)
-        self.model_loaded = False
-        
-        # Load model
-        self._load_model()
-    
-    def _determine_device(self, device: str) -> str:
-        """Determine which device to use."""
-        if device == "auto":
-            try:
-                import torch
-                return "cuda" if torch.cuda.is_available() else "cpu"
-            except:
-                return "cpu"
-        return device
-    
-    def _load_model(self):
-        """Load DIRE model from disk."""
-        try:
-            import torch
-            import torch.nn as nn
-            from torchvision import models
-            from pathlib import Path
-            
-            model_path = Path(__file__).parent / self.MODEL_PATH
-            
-            if not model_path.exists():
-                logger.warning(f"DIRE model not found at {model_path}. Run download_models.py to download.")
-                return
-            
-            # DIRE uses ResNet-50 backbone
-            self.model = models.resnet50(pretrained=False)
-            self.model.fc = nn.Linear(self.model.fc.in_features, 1)
-            
-            # Load weights
-            state_dict = torch.load(model_path, map_location=self.device)
-            self.model.load_state_dict(state_dict, strict=False)
-            
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.model_loaded = True
-            logger.info(f"✓ DIRE detector loaded on {self.device}")
-            
-        except Exception as e:
-            logger.error(f"Failed to load DIRE model: {e}")
-            self.model = None
-            self.model_loaded = False
-    
-    def detect(self, image_data: bytes) -> Dict[str, Any]:
-        """
-        Detect if image is AI-generated using DIRE.
-        
-        Args:
-            image_data: Raw image bytes
-            
-        Returns:
-            dict with detection results
-        """
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': 'DIRE model not loaded. Run download_models.py',
-                'ai_probability': 50.0
-            }
-        
-        try:
-            import torch
-            from torchvision import transforms
-            
-            # Load image
-            image = Image.open(io.BytesIO(image_data))
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            # Preprocess
-            transform = transforms.Compose([
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406],
-                    std=[0.229, 0.224, 0.225]
-                )
-            ])
-            
-            img_tensor = transform(image).unsqueeze(0).to(self.device)
-            
-            # Inference
-            with torch.no_grad():
-                output = self.model(img_tensor)
-                probability = torch.sigmoid(output).item()
-            
-            # DIRE outputs probability of being REAL, invert for AI probability
-            ai_probability = (1 - probability) * 100
-            
-            return {
-                'success': True,
-                'ai_probability': round(ai_probability, 2),
-                'confidence': round(abs(probability - 0.5) * 200, 2),
-                'model': 'DIRE',
-                'model_version': 'CVPR 2024',
-                'specialization': 'Diffusion models (SD, DALL-E 3, Midjourney v6)',
-                'recommended_for': ['stable_diffusion', 'dalle3', 'midjourney', 'flux']
-            }
-            
-        except Exception as e:
-            logger.error(f"DIRE detection failed: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0
-            }
 
 
 
@@ -1313,155 +675,6 @@ class DINOv2DeepfakeDetector:
         return 50.0
 
 
-class SigLIPDetector:
-    """
-    SigLIP-based AI vs Human Image Detector
-    
-    Uses SigLIP (Sigmoid Loss for Language Image Pre-training) model
-    fine-tuned to distinguish between AI-generated and human-created images.
-    
-    Accuracy: ~92% on benchmark datasets
-    Strengths: Generalizes well across different AI generators
-    
-    Model: Ateeqq/ai-vs-human-image-detector
-    """
-    
-    MODEL_ID = "google/siglip-base-patch16-224"  # Base model, we apply our classifier
-    CLASSIFIER_REPO = "Ateeqq/ai-vs-human-image-detector"
-    
-    def __init__(self, device: str = "auto"):
-        """Initialize the SigLIP detector."""
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load the SigLIP model."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading SigLIP detector on {self.device}...")
-            
-            # Try to load from the classifier repo first
-            try:
-                self.processor = AutoImageProcessor.from_pretrained(self.CLASSIFIER_REPO)
-                self.model = AutoModelForImageClassification.from_pretrained(self.CLASSIFIER_REPO)
-            except Exception:
-                # Fallback to base SigLIP with heuristic detection
-                logger.info("Using SigLIP base model with heuristic classifier")
-                self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-                self.model = AutoModelForImageClassification.from_pretrained(
-                    self.MODEL_ID,
-                    ignore_mismatched_sizes=True
-                )
-            
-            self.model.to(self.device)
-            self.model.eval()
-            
-            # Get label mapping if available
-            self.id2label = getattr(self.model.config, 'id2label', {0: 'real', 1: 'ai_generated'})
-            
-            self.model_loaded = True
-            logger.info(f"SigLIP detector loaded. Labels: {self.id2label}")
-            
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load SigLIP model: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Predict whether an image is AI-generated or human-created.
-        
-        Uses SigLIP's strong visual understanding for classification.
-        """
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs))
-            
-            # Get label
-            if isinstance(self.id2label, dict):
-                predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
-            else:
-                predicted_label = "ai_generated" if predicted_idx == 1 else "real"
-            
-            # Calculate AI probability
-            ai_prob = self._get_ai_probability(probs, predicted_label)
-            
-            return {
-                'success': True,
-                'prediction': predicted_label,
-                'confidence': float(probs[predicted_idx] * 100),
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    str(self.id2label.get(i, f"class_{i}")): float(p * 100) 
-                    for i, p in enumerate(probs)
-                },
-                'model': 'SigLIP-Classifier',
-                'specialization': 'Human vs AI image classification'
-            }
-            
-        except Exception as e:
-            logger.error(f"SigLIP prediction error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
-        real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine']
-        
-        ai_prob = 50.0
-        
-        # Check the label to determine which probability to use
-        label_lower = predicted_label.lower()
-        
-        if any(kw in label_lower for kw in ai_keywords):
-            # If predicted as AI, use that probability
-            ai_prob = float(probs[np.argmax(probs)] * 100)
-        elif any(kw in label_lower for kw in real_keywords):
-            # If predicted as real, AI prob is 1 - real_prob
-            ai_prob = float((1 - probs[np.argmax(probs)]) * 100)
-        else:
-            # Fallback: assume index 1 is AI
-            if len(probs) >= 2:
-                ai_prob = float(probs[1] * 100)
-        
-        return ai_prob
 
 
 # ============================================================================
@@ -1682,24 +895,21 @@ class SigLIPDINOv2Detector:
                 'prediction': 'error'
             }
 
-
-class DeepFakeV2Detector:
+class SigLIPDINOv2Detector:
     """
-    Deepfake Detector V2 (prithivMLmods, Updated 2025)
+    SigLIP2 + DINOv2 Deepfake Detector (Top Tier — Jan 2026)
     
-    Vision Transformer fine-tuned on a large, diverse deepfake dataset.
-    Updated in February 2025 with more training data for better generalization.
+    BEST OVERALL: Extremely robust across 25+ different AI generators
+    including Flux, Midjourney v6, DALL-E 3, SD3, and GPT-Image-1.
     
-    Model: prithivMLmods/Deep-Fake-Detector-v2-Model
-    Architecture: ViT (fine-tuned)
-    Accuracy: High F1 on validation & test (exact % not published)
-    Strengths: Latest 2025 training data, broad deepfake coverage
+    Model: Bombek1/SigLIP2-DINOv2-DeepfakeDetection
+    Architecture: SigLIP2 + DINOv2 fusion
+    Accuracy: 97.15% internal, 99.97% AUC
     """
     
-    MODEL_ID = "prithivMLmods/Deep-Fake-Detector-v2-Model"
+    MODEL_ID = "Bombek1/SigLIP2-DINOv2-DeepfakeDetection"
     
     def __init__(self, device: str = "auto"):
-        """Initialize the DeepFake V2 detector."""
         self.model = None
         self.processor = None
         self.device = device
@@ -1710,7 +920,6 @@ class DeepFakeV2Detector:
         self._load_model()
     
     def _load_model(self):
-        """Load the DeepFake V2 model from HuggingFace."""
         try:
             import torch
             from transformers import AutoImageProcessor, AutoModelForImageClassification
@@ -1718,7 +927,7 @@ class DeepFakeV2Detector:
             if self.device == "auto":
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
             
-            logger.info(f"Loading DeepFake V2 detector on {self.device}...")
+            logger.info(f"Loading SigLIP DINOv2 detector on {self.device}...")
             
             self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
             self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
@@ -1727,17 +936,16 @@ class DeepFakeV2Detector:
             
             self.id2label = self.model.config.id2label
             self.model_loaded = True
-            logger.info(f"DeepFake V2 detector loaded. Labels: {self.id2label}")
-        
+            logger.info(f"SigLIP DINOv2 detector loaded. Labels: {self.id2label}")
+            
         except ImportError as e:
             self.load_error = f"Missing dependencies: {e}"
             logger.warning(self.load_error)
         except Exception as e:
-            self.load_error = f"Failed to load DeepFake V2 model: {e}"
+            self.load_error = f"Failed to load SigLIP DINOv2 model: {e}"
             logger.warning(self.load_error)
     
     def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """Predict whether an image is a deepfake (2025 dataset)."""
         if not self.model_loaded:
             return {
                 'success': False,
@@ -1763,7 +971,19 @@ class DeepFakeV2Detector:
             predicted_idx = int(np.argmax(probs))
             predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
             
-            ai_prob = self._get_ai_probability(probs, predicted_label)
+            # Label heuristic: look for 'fake', 'ai' etc vs 'real'
+            ai_keywords = ['fake', 'ai', 'synthetic', 'generated']
+            real_keywords = ['real', 'authentic', 'human', 'original']
+            ai_prob = 50.0
+            
+            for idx, label in self.id2label.items():
+                lbl = str(label).lower()
+                if any(k in lbl for k in ai_keywords):
+                    ai_prob = float(probs[idx] * 100)
+                    break
+                elif any(k in lbl for k in real_keywords):
+                    ai_prob = float((1.0 - probs[idx]) * 100)
+                    break
             
             return {
                 'success': True,
@@ -1774,281 +994,18 @@ class DeepFakeV2Detector:
                     self.id2label.get(i, f"class_{i}"): float(p * 100)
                     for i, p in enumerate(probs)
                 },
-                'model': 'DeepFake-V2',
-                'specialization': 'Deepfake detection (2025 dataset, ViT)'
+                'model': 'SigLIP2-DINOv2-Ensemble',
+                'specialization': 'Quality-agnostic, 25+ generators'
             }
-        
+            
         except Exception as e:
-            logger.error(f"DeepFake V2 prediction error: {e}")
+            logger.error(f"SigLIP2+DINOv2 prediction error: {e}")
             return {
                 'success': False,
                 'error': str(e),
                 'ai_probability': 50.0,
                 'prediction': 'error'
             }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        ai_keywords = ['deepfake', 'fake', 'ai', 'generated', 'synthetic']
-        real_keywords = ['realism', 'real', 'authentic', 'human', 'genuine']
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                return float(probs[idx] * 100)
-            elif any(kw in label_lower for kw in real_keywords):
-                return float((1 - probs[idx]) * 100)
-        
-        if len(probs) >= 2:
-            return float(probs[1] * 100)
-        return 50.0
-
-
-class SigLIPDeepfakeDetector:
-    """
-    SigLIP-based Deepfake Detector (prithivMLmods V1)
-    
-    Fine-tuned from Google's SigLIP base model for binary deepfake classification.
-    SigLIP's strong visual-semantic understanding makes it effective for face images.
-    
-    Model: prithivMLmods/deepfake-detector-model-v1
-    Architecture: SigLIP (google/siglip-base-patch16-512, fine-tuned)
-    Accuracy: High (unspecified), specializes in face deepfakes
-    Strengths: SigLIP backbone, good for portrait/face images
-    """
-    
-    MODEL_ID = "prithivMLmods/deepfake-detector-model-v1"
-    
-    def __init__(self, device: str = "auto"):
-        """Initialize the SigLIP Deepfake detector."""
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        self.id2label = {}
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load the SigLIP deepfake model from HuggingFace."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading SigLIP Deepfake detector on {self.device}...")
-            
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.id2label = self.model.config.id2label
-            self.model_loaded = True
-            logger.info(f"SigLIP Deepfake detector loaded. Labels: {self.id2label}")
-        
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load SigLIP Deepfake model: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """Predict whether an image is a deepfake using SigLIP features."""
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs))
-            predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
-            
-            ai_prob = self._get_ai_probability(probs, predicted_label)
-            
-            return {
-                'success': True,
-                'prediction': predicted_label,
-                'confidence': float(probs[predicted_idx] * 100),
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    self.id2label.get(i, f"class_{i}"): float(p * 100)
-                    for i, p in enumerate(probs)
-                },
-                'model': 'SigLIP-Deepfake-V1',
-                'specialization': 'Face deepfake detection (SigLIP backbone)'
-            }
-        
-        except Exception as e:
-            logger.error(f"SigLIP Deepfake prediction error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        ai_keywords = ['deepfake', 'fake', 'ai', 'generated', 'synthetic']
-        real_keywords = ['real', 'authentic', 'human', 'genuine', 'realism']
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                return float(probs[idx] * 100)
-            elif any(kw in label_lower for kw in real_keywords):
-                return float((1 - probs[idx]) * 100)
-        
-        if len(probs) >= 2:
-            return float(probs[1] * 100)
-        return 50.0
-
-
-class DistilledDetector:
-    """
-    Distilled AI Image Detector (Lightweight Generalization Specialist)
-    
-    *** LOW ACCURACY (~74%) — should receive minimal weight. ***
-    
-    A small, distilled ViT model trained on diverse generators.
-    Despite only 11.8M parameters, it generalizes across different
-    AI generators because of knowledge distillation from larger models.
-    
-    Model: jacoballessio/ai-image-detect-distilled
-    Architecture: ViT (distilled, 11.8M params)
-    Accuracy: ~74% in real-world evaluation
-    Strengths: Fast, diverse training (MJ + SD + fine-tuned SD)
-    """
-    
-    MODEL_ID = "jacoballessio/ai-image-detect-distilled"
-    
-    def __init__(self, device: str = "auto"):
-        """Initialize the Distilled detector."""
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        self.id2label = {}
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load the distilled model from HuggingFace."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading Distilled AI detector on {self.device}...")
-            
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.id2label = self.model.config.id2label
-            self.model_loaded = True
-            logger.info(f"Distilled detector loaded. Labels: {self.id2label}")
-        
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load Distilled model: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """Predict whether an image is AI-generated using distilled ViT."""
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs))
-            predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
-            
-            ai_prob = self._get_ai_probability(probs, predicted_label)
-            
-            return {
-                'success': True,
-                'prediction': predicted_label,
-                'confidence': float(probs[predicted_idx] * 100),
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    self.id2label.get(i, f"class_{i}"): float(p * 100)
-                    for i, p in enumerate(probs)
-                },
-                'model': 'Distilled-ViT',
-                'specialization': 'Generalization (MJ + SD + fine-tuned SD, distilled)'
-            }
-        
-        except Exception as e:
-            logger.error(f"Distilled prediction error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
-        real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine']
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                return float(probs[idx] * 100)
-            elif any(kw in label_lower for kw in real_keywords):
-                return float((1 - probs[idx]) * 100)
-        
-        # Don't guess — return neutral
-        logger.warning(f"Distilled: Unknown labels {self.id2label}, returning 50%")
-        return 50.0
-
-
 class AteeqqDetector:
     """
     Ateeqq AI vs Human Image Detector (Top Tier — Dec 2025)
@@ -2160,262 +1117,7 @@ class AteeqqDetector:
             }
 
 
-class AIorNotDetector:
-    """
-    AIorNot Detector (Diversity Signal)
-    
-    Community model for AI image classification. Added as an additional
-    voting signal to increase ensemble diversity — different models
-    catch different artifacts.
-    
-    Model: Nahrawy/AIorNot
-    Architecture: Unknown (image classification)
-    Accuracy: ~64.74% on anime benchmarks (better on general images)
-    Role: Diversity signal in ensemble — catches different artifacts than other models
-    """
-    
-    MODEL_ID = "Nahrawy/AIorNot"
-    
-    def __init__(self, device: str = "auto"):
-        """Initialize the AIorNot detector."""
-        self.model = None
-        self.processor = None
-        self.device = device
-        self.model_loaded = False
-        self.load_error = None
-        self.id2label = {}
-        
-        self._load_model()
-    
-    def _load_model(self):
-        """Load the AIorNot model from HuggingFace."""
-        try:
-            import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
-            
-            if self.device == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            
-            logger.info(f"Loading AIorNot detector on {self.device}...")
-            
-            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            
-            self.id2label = self.model.config.id2label
-            self.model_loaded = True
-            logger.info(f"AIorNot detector loaded. Labels: {self.id2label}")
-        
-        except ImportError as e:
-            self.load_error = f"Missing dependencies: {e}"
-            logger.warning(self.load_error)
-        except Exception as e:
-            self.load_error = f"Failed to load AIorNot model: {e}"
-            logger.warning(self.load_error)
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """Predict whether an image is AI-generated or not."""
-        if not self.model_loaded:
-            return {
-                'success': False,
-                'error': self.load_error or "Model not loaded",
-                'ai_probability': 50.0,
-                'prediction': 'unknown'
-            }
-        
-        try:
-            import torch
-            
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            
-            inputs = self.processor(images=image, return_tensors="pt")
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            probs = probs[0].cpu().numpy()
-            predicted_idx = int(np.argmax(probs))
-            predicted_label = self.id2label.get(predicted_idx, f"class_{predicted_idx}")
-            
-            ai_prob = self._get_ai_probability(probs, predicted_label)
-            
-            return {
-                'success': True,
-                'prediction': predicted_label,
-                'confidence': float(probs[predicted_idx] * 100),
-                'ai_probability': ai_prob,
-                'all_probabilities': {
-                    self.id2label.get(i, f"class_{i}"): float(p * 100)
-                    for i, p in enumerate(probs)
-                },
-                'model': 'AIorNot',
-                'specialization': 'General AI vs Real classification (diversity signal)'
-            }
-        
-        except Exception as e:
-            logger.error(f"AIorNot prediction error: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'ai_probability': 50.0,
-                'prediction': 'error'
-            }
-    
-    def _get_ai_probability(self, probs: np.ndarray, predicted_label: str) -> float:
-        """Extract AI probability from model output."""
-        ai_keywords = ['ai', 'fake', 'generated', 'synthetic', 'artificial']
-        real_keywords = ['real', 'authentic', 'human', 'natural', 'genuine', 'not']
-        
-        for idx, label in self.id2label.items():
-            label_lower = label.lower()
-            if any(kw in label_lower for kw in ai_keywords):
-                return float(probs[idx] * 100)
-            elif any(kw in label_lower for kw in real_keywords):
-                return float((1 - probs[idx]) * 100)
-        
-        # Don't guess — return neutral
-        logger.warning(f"AIorNot: Unknown labels {self.id2label}, returning 50%")
-        return 50.0
 
 
-class EnsembleDetector:
-    """
-    Ensemble AI Image Detector
-    
-    Combines multiple detection models with weighted voting for maximum accuracy.
-    
-    Models and weights (updated Feb 2026):
-    - Bombek1 SigLIP2+DINOv2: 25% (99.97% AUC, 25+ generators)
-    - NYUAD ViT: 10% (97% accuracy, general detection)
-    - SwinV2 Universal: 10% (98.1% accuracy, broad modern coverage)
-    - SDXL Detector: 10% (98.1% accuracy, SDXL/SD3/modern diffusion)
-    - Deepfake SigLIP2: 15% (SigLIP2 binary deepfake detection)
-    - DINOv2 Deepfake: 10% (degradation-resilient detection)
-    - 3-Class SigLIP2: 5% (AI/Deepfake/Real classification)
-    - SMOGY: 10% (90% DALL-E, 87% SD, specialized for 2024 models)
-    - SigLIP: 5% (92% human vs AI classification)
-    
-    Expected accuracy: 97-99% across all major AI generators
-    """
-    
-    WEIGHTS = {
-        'nyuad': 0.15,
-        'clip': 0.15,              # SwinV2 (via UniversalFakeDetector)
-        'sdxl': 0.15,              # Organika/sdxl-detector
-        'dinov2': 0.15,            # DINOv2 degradation-resilient
-        'umm_maybe': 0.25,         # Umm-Maybe (General purpose)
-        'siglip': 0.15             # SigLIP (Human vs AI)
-    }
-    
-    def __init__(self, device: str = "auto", load_all: bool = True):
-        """
-        Initialize the ensemble detector.
-        
-        Args:
-            device: "auto", "cpu", or "cuda"
-            load_all: If True, load all models. If False, load on demand.
-        """
-        self.device = device
-        self.detectors = {}
-        self.load_errors = {}
-        
-        if load_all:
-            self._load_all_models()
-    
-    def _load_all_models(self):
-        """Load all detection models."""
-        logger.info("Loading ensemble models...")
-        
-        # Load NYUAD
-        try:
-            self.detectors['nyuad'] = NYUADDetector(self.device)
-            if not self.detectors['nyuad'].model_loaded:
-                self.load_errors['nyuad'] = self.detectors['nyuad'].load_error
-        except Exception as e:
-            self.load_errors['nyuad'] = str(e)
-        
-
-        # NEW 2026: DINOv2 Deepfake (degradation-resilient)
-        try:
-            self.detectors['dinov2'] = DINOv2DeepfakeDetector(self.device)
-            if not self.detectors['dinov2'].model_loaded:
-                self.load_errors['dinov2'] = self.detectors['dinov2'].load_error
-        except Exception as e:
-            self.load_errors['dinov2'] = str(e)
-
-        # NEW 2026: Umm-Maybe Detector (Community Choice)
-        try:
-            self.detectors['umm_maybe'] = UmmMaybeDetector(self.device)
-            if not self.detectors['umm_maybe'].model_loaded:
-                self.load_errors['umm_maybe'] = self.detectors['umm_maybe'].load_error
-        except Exception as e:
-            self.load_errors['umm_maybe'] = str(e)
-        
-        loaded = [k for k, v in self.detectors.items() if v.model_loaded]
-        logger.info(f"Ensemble loaded: {len(loaded)}/{len(self.WEIGHTS)} models ({', '.join(loaded)})")
-    
-    def predict(self, image: Image.Image) -> Dict[str, Any]:
-        """
-        Run ensemble prediction on an image.
-        
-        All loaded models vote with their weighted confidence.
-        Final score is weighted average of all successful predictions.
-        """
-        results = {}
-        weighted_sum = 0.0
-        total_weight = 0.0
-        
-        for name, detector in self.detectors.items():
-            if not detector.model_loaded:
-                continue
-            
-            try:
-                result = detector.predict(image)
-                results[name] = result
-                
-                if result.get('success', False):
-                    ai_prob = result.get('ai_probability', 50.0)
-                    weight = self.WEIGHTS.get(name, 0.2)
-                    weighted_sum += ai_prob * weight
-                    total_weight += weight
-                    
-            except Exception as e:
-                results[name] = {'success': False, 'error': str(e)}
-        
-        # Calculate final weighted score
-        if total_weight > 0:
-            final_ai_probability = weighted_sum / total_weight
-        else:
-            final_ai_probability = 50.0
-        
-        # Determine verdict based on ensemble
-        if final_ai_probability >= 70:
-            verdict = 'AI_GENERATED'
-        elif final_ai_probability >= 50:
-            verdict = 'LIKELY_AI'
-        elif final_ai_probability >= 30:
-            verdict = 'LIKELY_REAL'
-        else:
-            verdict = 'REAL'
-        
-        # Count votes
-        ai_votes = sum(1 for r in results.values() if r.get('ai_probability', 50) > 50)
-        total_votes = len([r for r in results.values() if r.get('success', False)])
-        
-        return {
-            'success': True,
-            'ai_probability': round(final_ai_probability, 2),
-            'verdict': verdict,
-            'confidence': round(abs(final_ai_probability - 50) * 2, 2),
-            'ensemble_votes': f"{ai_votes}/{total_votes} models voted AI",
-            'model_results': results,
-            'weights_used': {k: v for k, v in self.WEIGHTS.items() if k in self.detectors and self.detectors[k].model_loaded},
-            'models_loaded': list(self.detectors.keys()),
-            'load_errors': self.load_errors
-        }
 
 

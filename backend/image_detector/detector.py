@@ -50,7 +50,7 @@ class ImageDetector:
         self.c2pa_detector = None
         self.semantic_detector = None
         
-        # Try to load ML models (DIRE + NYUAD + Flux)
+        # Try to load ML models (DIRE + Ateeqq + Flux)
         try:
             from .ml_detector import create_ml_detectors
             self.ml_detectors = create_ml_detectors(
@@ -64,8 +64,8 @@ class ImageDetector:
                 loaded_models.append("Flux")
             if self.ml_detectors.get('dire') and self.ml_detectors['dire'].model_loaded:
                 loaded_models.append("DIRE")
-            if self.ml_detectors.get('nyuad') and self.ml_detectors['nyuad'].model_loaded:
-                loaded_models.append("NYUAD")
+            if self.ml_detectors.get('ateeqq') and self.ml_detectors['ateeqq'].model_loaded:
+                loaded_models.append("Ateeqq")
             if self.ml_detectors.get('smogy') and self.ml_detectors['smogy'].model_loaded:
                 loaded_models.append("SMOGY")
             if self.ml_detectors.get('siglip') and self.ml_detectors['siglip'].model_loaded:
@@ -617,7 +617,7 @@ class ImageDetector:
         Run ML model prediction using weighted ensemble voting.
         
         Uses all available models with weighted voting for best accuracy:
-        - NYUAD: 30% (97% accuracy, proven general detector)
+        - Ateeqq: 30% (99% accuracy, proven general detector)
         - SMOGY: 25% (specialized for 2024 generators)
         - SigLIP: 20% (human vs AI classification)
         - DIRE: 15% (diffusion model detection)
@@ -635,7 +635,7 @@ class ImageDetector:
         
         # Model weights for ensemble voting
         WEIGHTS = {
-            'nyuad': 0.30,
+            'ateeqq': 0.30,
             'smogy': 0.25,
             'siglip': 0.20,
             'dire': 0.15,
@@ -653,17 +653,17 @@ class ImageDetector:
             img_bytes = img_buffer.getvalue()
             
             # Run all available detectors
-            # NYUAD detector
-            if self.ml_detectors.get('nyuad') and self.ml_detectors['nyuad'].model_loaded:
+            # Ateeqq detector
+            if self.ml_detectors.get('ateeqq') and self.ml_detectors['ateeqq'].model_loaded:
                 try:
-                    result = self.ml_detectors['nyuad'].predict(image)
+                    result = self.ml_detectors['ateeqq'].predict(image)
                     if result.get('success'):
                         ai_prob = result.get('ai_probability', 50.0)
-                        results['nyuad'] = {'ai_probability': ai_prob, 'model': 'NYUAD-ViT'}
-                        weighted_sum += ai_prob * WEIGHTS['nyuad']
-                        total_weight += WEIGHTS['nyuad']
+                        results['ateeqq'] = {'ai_probability': ai_prob, 'model': 'Ateeqq-ViT'}
+                        weighted_sum += ai_prob * WEIGHTS['ateeqq']
+                        total_weight += WEIGHTS['ateeqq']
                 except Exception as e:
-                    logger.debug(f"NYUAD failed: {e}")
+                    logger.debug(f"Ateeqq failed: {e}")
             
             # SMOGY detector (2024 models)
             if self.ml_detectors.get('smogy') and self.ml_detectors['smogy'].model_loaded:
@@ -742,7 +742,7 @@ class ImageDetector:
                 'model_count': total_models,
                 'ensemble_votes': f"{ai_votes}/{total_models} voted AI",
                 'individual_results': results,
-                'specialization': 'Weighted ensemble (NYUAD+SMOGY+SigLIP+DIRE+Flux)'
+                'specialization': 'Weighted ensemble (Ateeqq+SMOGY+SigLIP+DIRE+Flux)'
             }
             
         except Exception as e:
@@ -797,8 +797,8 @@ class ImageDetector:
             active_detector = None
             if self.ml_detectors.get('dire') and self.ml_detectors['dire'].model_loaded:
                 active_detector = self.ml_detectors['dire']
-            elif self.ml_detectors.get('nyuad') and self.ml_detectors['nyuad'].model_loaded:
-                active_detector = self.ml_detectors['nyuad']
+            elif self.ml_detectors.get('ateeqq') and self.ml_detectors['ateeqq'].model_loaded:
+                active_detector = self.ml_detectors['ateeqq']
             
             if not active_detector:
                 return None

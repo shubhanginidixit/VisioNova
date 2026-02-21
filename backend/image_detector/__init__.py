@@ -20,7 +20,7 @@ ML Models (loaded on demand, 2025-2026 models prioritized):
 - DINOv2DeepfakeDetector: WpythonW DINOv2 (degradation-resilient)
 - DeepFakeV2Detector: prithivMLmods V2 (Feb 2025 dataset)
 - SigLIPDeepfakeDetector: prithivMLmods SigLIP V1
-- NYUADDetector: Vision Transformer (97.36% accuracy)
+- AteeqqDetector: Vision Transformer (99.23% accuracy)
 - FrequencyAnalyzer: FFT/DCT GAN fingerprint analysis
 
 Heuristic/Legacy (weight=0 by default, NOT loaded):
@@ -52,7 +52,7 @@ from .edge_coherence_analyzer import EdgeCoherenceAnalyzer, create_edge_analyzer
 # ML detectors (may require additional dependencies)
 try:
     from .ml_detector import (
-        NYUADDetector,
+        AteeqqDetector,
         UniversalFakeDetector,
         SDXLDetector,
         DeepfakeDetector,
@@ -68,7 +68,7 @@ try:
     ML_DETECTORS_AVAILABLE = True
 except ImportError:
     ML_DETECTORS_AVAILABLE = False
-    NYUADDetector = None
+    AteeqqDetector = None
     UniversalFakeDetector = None
     SDXLDetector = None
     DeepfakeDetector = None
@@ -119,7 +119,7 @@ __all__ = [
     'create_image_explainer',
     
     # ML Detectors
-    'NYUADDetector',
+    'AteeqqDetector',
     'UniversalFakeDetector',
     'SDXLDetector',
     'DeepfakeDetector',

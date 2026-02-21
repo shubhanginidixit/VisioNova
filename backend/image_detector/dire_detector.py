@@ -46,6 +46,7 @@ class DIREDetector:
     
     def __init__(self):
         """Initialize DIRE detector."""
+        self.model_loaded = True
         logger.info("DIRE Detector initialized (lightweight approximation)")
     
     def detect(self, image_data: bytes) -> Dict[str, Any]:
