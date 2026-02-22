@@ -82,7 +82,7 @@ except Exception as e:
 audio_detector = None
 if AUDIO_DETECTOR_AVAILABLE:
     try:
-        audio_detector = AudioDeepfakeDetector(use_gpu=False)
+        audio_detector = AudioDeepfakeDetector(use_gpu=True)
         print("✓ Audio deepfake detector initialized (model loads on first use)")
     except Exception as e:
         print(f"⚠ Audio detector not available: {e}")
