@@ -29,7 +29,7 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 ### Audio Forensics
 *   **Voice Cloning Detection:** Identifies synthetic vocal patterns and indicators of text-to-speech generation.
 *   **Spectral Analysis:** Examines frequency distribution for anomalies typical of AI audio.
-*   See [Audio Detection Strategy](docs/Audio_Detection_Strategy.md) for technical details.
+*   See [Audio Detection Strategy](docs/Audio_Detection.md) for technical details.
 
 ### Text Analysis
 *   **AI Text Detection:** Distinguishes between human-written and AI-generated text using hybrid analysis (Neural Models + Stylometry).
@@ -37,14 +37,14 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 *   **Document Support:** Upload PDF, DOCX, or TXT files for full text extraction and AI detection with sentence-level analysis.
 *   **Sentence Highlighting:** Color-coded sentence-by-sentence AI probability (green=human, yellow=uncertain, red=AI) with hover tooltips.
 *   **AI Explanation:** Groq/Llama-powered detailed breakdown of detection results with key indicators, pattern analysis, and improvement suggestions.
-*   See [Text Detection Strategy](docs/Text_Detection_Strategy.md) for technical details.
+*   See [Text Detection Strategy](docs/Text_Detection.md) for technical details.
 
 ### Fact Checking
 *   **Atomic Claim Verification:** Decomposes complex multi-part rumors into individual atomic facts for precise verification.
 *   **Claim Verification:** Cross-references claims against trusted news sources and fact-checking databases.
 *   **Temporal Analysis:** Contextualizes claims within their correct time period (historical vs. current).
 *   **Source Credibility:** Scores the reliability of sources based on a curated database of domain trust ratings.
-*   See [Fact Check Documentation](docs/FactCheck_Documentation.md) for technical details.
+*   See [Fact Check Documentation](docs/Fact_Check.md) for technical details.
 
 ## Technology Stack
 
@@ -122,11 +122,11 @@ VisioNova/
 ├── docs/                      # Documentation
 │   ├── ML_SETUP_COMPLETE.md   # ML models setup guide
 │   ├── QUICKSTART_ML.md       # Quick start for ML features
-│   ├── Image_Detection_Strategy.md
-│   ├── Text_Detection_Strategy.md
-│   ├── Audio_Detection_Strategy.md
-│   ├── Video_Deepfake_Strategy.md
-│   ├── FactCheck_Documentation.md
+│   ├── Image_Detection.md
+│   ├── Text_Detection.md
+│   ├── Audio_Detection.md
+│   ├── Video_Detection.md
+│   ├── Fact_Check.md
 │   └── SystemArchitecture.md
 ├── frontend/                  # Web interface
 │   ├── html/                  # HTML pages

@@ -106,22 +106,17 @@ Human speech contains involuntary biological markers that AI struggles to replic
 
 ## 4. Models and Performance
 
-### Primary: Wav2Vec2 Fine-tuned
+### Primary: Weighted Ensemble (Wav2Vec2 + WavLM)
 
-| Property | Value |
-|----------|-------|
-| Base Model | `facebook/wav2vec2-base` |
-| Fine-tuning Data | ASVspoof 2021, WaveFake |
-| EER (Equal Error Rate) | ~3-5% |
-| Inference Time | ~200-500ms per clip |
+VisioNova uses a 3-model weighted ensemble combining state-of-the-art 2025-2026 detectors designed to catch cutting-edge synthetic voices across multiple languages and architectures:
 
-### Planned: Ensemble with WavLM + HuBERT
+| Model | Architecture | Role & Strength | Weight |
+|-------|-------------|-----------------|--------|
+| **NII Yamagishi Anti-Deepfake** (`nii-yamagishilab/wav2vec-large-anti-deepfake`) | Wav2Vec2 Large | Zero-shot detection across unseen datasets, robust payload handling. | 40% |
+| **WavLM Deepfake V2** (`DavidCombei/wavLM-base-Deepfake_V2`) | WavLM Base | Masked Speech Prediction base; excels against TTS artifacts in noisy environments. | 40% |
+| **Deepfake Pattern Fallback** (`mo-thecreator/Deepfake-audio-detection`) | Wav2Vec2 | Standard baseline checking to catch simpler VC anomalies. | 20% |
 
-| Model | Architecture | Strength |
-|-------|-------------|----------|
-| **Wav2Vec2** | Self-supervised | General speech understanding |
-| **WavLM** | Multi-task pre-training | Robust to noise |
-| **HuBERT** | Iterative clustering | Better phoneme capture, 2.89% EER |
+> **Note:** Models are dynamically loaded (lazy-loading) during inference to manage GPU VRAM. If a model fails to load, the ensemble automatically adjusts remaining weights to ensure completion.
 
 ---
 

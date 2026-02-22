@@ -24,19 +24,25 @@ logger = logging.getLogger(__name__)
 TARGET_SAMPLE_RATE = 16000
 MAX_AUDIO_LENGTH_SEC = 30
 
-# Model Registry
+# Model Registry (Top 2025-2026 Models)
 ENSEMBLE_MODELS = [
     {
-        "id": "MelodyMachine/Deepfake-audio-detection-V2",
+        "id": "nii-yamagishilab/wav2vec-large-anti-deepfake",
         "type": "wav2vec2",
-        "weight": 0.60,
-        "name": "Wav2Vec2 Expert"
+        "weight": 0.40,
+        "name": "NII Anti-Deepfake Specialist"
     },
     {
         "id": "DavidCombei/wavLM-base-Deepfake_V2",
         "type": "wavlm",
         "weight": 0.40,
-        "name": "WavLM Specialist"
+        "name": "WavLM Deepfake Expert"
+    },
+    {
+        "id": "mo-thecreator/Deepfake-audio-detection",
+        "type": "wav2vec2",
+        "weight": 0.20,
+        "name": "Deepfake Pattern Fallback"
     }
 ]
 
@@ -66,8 +72,12 @@ class AudioEnsembleDetector:
                 try:
                     print(f"Loading {config['name']} ({model_id})...")
                     
-                    # Load feature extractor
-                    processor = AutoFeatureExtractor.from_pretrained(model_id)
+                    # Load feature extractor (fallback to base wav2vec2 if missing)
+                    try:
+                        processor = AutoFeatureExtractor.from_pretrained(model_id)
+                    except Exception:
+                        logger.warning(f"Feature extractor missing for {model_id}, using base wav2vec2")
+                        processor = AutoFeatureExtractor.from_pretrained("facebook/wav2vec2-base")
                     
                     # Load model
                     model = AutoModelForAudioClassification.from_pretrained(model_id)
