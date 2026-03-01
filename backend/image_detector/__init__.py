@@ -12,13 +12,15 @@ Components:
 - ContentCredentialsDetector: C2PA/Content Credentials detection (DALL-E 3, etc.)
 - ImageExplainer: Groq Vision API for AI-powered image analysis (Llama 4 Scout)
 
-Top 5 ML Models (loaded on demand, 2025-2026):
+Top 4 ML Models (loaded on demand, 2025-2026):
 1. SigLIPDINOv2Detector: Bombek1 SigLIP2+DINOv2 (99.97% AUC, Jan 2026)
 2. AteeqqDetector: SigLIP2 (99.23% accuracy, Dec 2025)
 3. DeepfakeDetector: dima806 ViT (98.25% accuracy, Jan 2025)
 4. SDXLDetector: Organika/sdxl-detector (98.1% for Flux/SDXL)
-5. DINOv2DeepfakeDetector: WpythonW DINOv2 (degradation-resilient)
-- FrequencyAnalyzer: FFT/DCT GAN fingerprint analysis (supporting signal)
+
+Removed (low performance / redundant):
+- DINOv2DeepfakeDetector: WpythonW DINOv2 (redundant with SigLIPDINOv2)
+- FrequencyAnalyzer: FFT/DCT GAN fingerprint analysis (only detects old GANs)
 
 Heuristic/Legacy (weight=0 by default, NOT loaded):
 - SBIDetector, DIREDetector, NPRDetector, FaceConsistencyDetector, EdgeCoherenceAnalyzer
@@ -45,8 +47,6 @@ try:
         AteeqqDetector,
         SDXLDetector,
         DeepfakeDetector,
-        FrequencyAnalyzer,
-        DINOv2DeepfakeDetector,
         SigLIPDINOv2Detector,
         create_ml_detectors
     )
@@ -56,8 +56,6 @@ except ImportError:
     AteeqqDetector = None
     SDXLDetector = None
     DeepfakeDetector = None
-    FrequencyAnalyzer = None
-    DINOv2DeepfakeDetector = None
     SigLIPDINOv2Detector = None
     create_ml_detectors = None
 
@@ -85,12 +83,10 @@ __all__ = [
     'ImageExplainer',
     'create_image_explainer',
     
-    # Top 5 ML Detectors
+    # Top 4 ML Detectors
     'AteeqqDetector',
     'SDXLDetector',
     'DeepfakeDetector',
-    'FrequencyAnalyzer',
-    'DINOv2DeepfakeDetector',
     'SigLIPDINOv2Detector',
     'create_ml_detectors',
     'ML_DETECTORS_AVAILABLE'

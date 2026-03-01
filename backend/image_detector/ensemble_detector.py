@@ -73,16 +73,15 @@ class EnsembleDetector:
     # GPT-Image-1, SDXL) are given weight. Outdated and broken models zeroed.
     DEFAULT_WEIGHTS: Dict[str, float] = {
         # ═══ Tier 1: Best recent models (2025-2026, verified accuracy) ═══
-        'ateeqq': 0.27,             # Ateeqq SigLIP2 (99.23% acc, 46K downloads, Dec 2025)
-        'siglip_dinov2': 0.27,      # Bombek1 SigLIP2+DINOv2 (99.97% AUC, 25+ generators, Jan 2026)
+        'ateeqq': 0.31,             # Ateeqq SigLIP2 (99.23% acc, 46K downloads, Dec 2025)
+        'siglip_dinov2': 0.31,      # Bombek1 SigLIP2+DINOv2 (99.97% AUC, 25+ generators, Jan 2026)
         
         # ═══ Tier 2: Strong recent models ═══
-        'deepfake': 0.16,           # dima806 ViT (98.25% acc, 50K downloads, Jan 2025)
-        'sdxl': 0.16,               # Organika/sdxl-detector (98.1% acc, SDXL/Flux specialist)
-        'dinov2': 0.10,             # WpythonW DINOv2 (degradation-resilient, social media)
+        'deepfake': 0.19,           # dima806 ViT (98.25% acc, 50K downloads, Jan 2025)
+        'sdxl': 0.19,               # Organika/sdxl-detector (98.1% acc, SDXL/Flux specialist)
         
-        # ═══ Tier 3: Supporting signals ═══
-        'frequency': 0.04,          # FFT/DCT analysis (GAN fingerprints)
+        # REMOVED: dinov2 (0.10) — redundant with siglip_dinov2 which uses DINOv2 backbone
+        # REMOVED: frequency (0.04) — FFT heuristic, only detects old GAN artifacts, not modern diffusion
     }
     
     # Override weights when certain signals are strong
@@ -111,8 +110,7 @@ class EnsembleDetector:
         self.sdxl_detector = None         # Organika/sdxl-detector (98.1% for modern diffusion)
         
         # 2025-2026 high-accuracy detectors
-        self.ateeqq_detector = None        # Ateeqq SigLIP2 (99.23% acc, Dec 2025) — NEW
-        self.dinov2_detector = None         # WpythonW DINOv2 deepfake detector
+        self.ateeqq_detector = None        # Ateeqq SigLIP2 (99.23% acc, Dec 2025)
         self.siglip_dinov2_detector = None  # Bombek1 SigLIP2+DINOv2 (97.15% cross-dataset)
         
         # Load detectors
@@ -179,12 +177,6 @@ class EnsembleDetector:
                 from .ml_detector import create_ml_detectors
                 ml_models = create_ml_detectors(device=self.device, load_all=True)
                 
-                # ── Frequency analyzer ──
-                if _should_load('frequency'):
-                    self.frequency_analyzer = ml_models.get('frequency_analyzer')
-                    if self.frequency_analyzer:
-                        logger.info("Frequency analyzer loaded via factory")
-                        
                 # ── Tier 1: Best recent detectors (2025-2026) ──
                 if _should_load('ateeqq'):
                     self.ateeqq_detector = ml_models.get('ateeqq')
@@ -207,11 +199,6 @@ class EnsembleDetector:
                     if self.sdxl_detector and getattr(self.sdxl_detector, 'model_loaded', False):
                         logger.info("SDXL detector loaded (Organika/sdxl-detector)")
                         
-                if _should_load('dinov2'):
-                    self.dinov2_detector = ml_models.get('dinov2')
-                    if self.dinov2_detector and getattr(self.dinov2_detector, 'model_loaded', False):
-                        logger.info("DINOv2 deepfake detector loaded")
-                    
             except ImportError as e:
                 logger.warning(f"ML detectors not available: {e}")
             except Exception as e:
@@ -232,8 +219,7 @@ class EnsembleDetector:
         ml_active = (getattr(self, 'ateeqq_detector', None) and self.ateeqq_detector.model_loaded) or \
                     (getattr(self, 'deepfake_detector', None) and self.deepfake_detector.model_loaded) or \
                     (getattr(self, 'sdxl_detector', None) and self.sdxl_detector.model_loaded) or \
-                    (getattr(self, 'siglip_dinov2_detector', None) and self.siglip_dinov2_detector.model_loaded) or \
-                    (getattr(self, 'dinov2_detector', None) and self.dinov2_detector.model_loaded)
+                    (getattr(self, 'siglip_dinov2_detector', None) and self.siglip_dinov2_detector.model_loaded)
 
         result: Dict[str, Any] = {
             'success': True,
@@ -290,13 +276,7 @@ class EnsembleDetector:
                 if sdxl_result.get('success', False):
                     scores['sdxl'] = sdxl_result.get('ai_probability', 50)
             
-            # 5. Frequency analysis
-            if getattr(self, 'frequency_analyzer', None):
-                freq_result = self.frequency_analyzer.analyze(image)
-                result['individual_results']['frequency'] = freq_result
-                scores['frequency'] = freq_result.get('ai_probability_contribution', 0)
-            
-            # 6. Watermark detection
+            # 5. Watermark detection
             watermark_boost = 0
             if getattr(self, 'watermark_detector', None):
                 wm_result = self.watermark_detector.analyze(image_data)
@@ -338,21 +318,6 @@ class EnsembleDetector:
                 result['individual_results']['ela'] = ela_result
             
             # 14. Bombek1 SigLIP2+DINOv2 (best overall - 99.97% AUC, 25+ generators)
-            # 15. DINOv2 Deepfake (degradation-resilient, best for social media)
-            if self.dinov2_detector and self.dinov2_detector.model_loaded:
-                try:
-                    dinov2_result = self.dinov2_detector.predict(image)
-                    result['individual_results']['dinov2'] = dinov2_result
-                    if dinov2_result.get('success', False):
-                        scores['dinov2'] = dinov2_result.get('ai_probability', 50)
-                except Exception as e:
-                    logger.warning(f"DINOv2 deepfake error: {e}")
-            
-            # ============================================================
-            # NEW 2026 Phase 2: Five additional pre-trained ML detectors
-            # ============================================================
-            
-            # 18. Bombek1 SigLIP2+DINOv2 (BEST OVERALL — 97.15% cross-dataset, 99.97% AUC)
             if self.siglip_dinov2_detector and self.siglip_dinov2_detector.model_loaded:
                 try:
                     siglip_dinov2_result = self.siglip_dinov2_detector.predict(image)

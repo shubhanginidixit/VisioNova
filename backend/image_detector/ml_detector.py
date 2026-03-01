@@ -497,9 +497,7 @@ def create_ml_detectors(device: str = "auto", load_all: bool = False) -> Dict[st
     Returns:
         dict with detector instances
     """
-    detectors: Dict[str, Any] = {
-        'frequency_analyzer': FrequencyAnalyzer()
-    }
+    detectors: Dict[str, Any] = {}
     
     # 1. Ateeqq SigLIP2 (99.23%)
     try:
@@ -528,13 +526,6 @@ def create_ml_detectors(device: str = "auto", load_all: bool = False) -> Dict[st
     except Exception as e:
         logger.warning(f"Could not load Deepfake detector: {e}")
         detectors['deepfake'] = None
-        
-    # 5. DINOv2 Deepfake
-    try:
-        detectors['dinov2'] = DINOv2DeepfakeDetector(device=device)
-    except Exception as e:
-        logger.warning(f"Could not load DINOv2 detector: {e}")
-        detectors['dinov2'] = None
         
     return detectors
 
