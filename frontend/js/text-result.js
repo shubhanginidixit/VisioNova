@@ -345,7 +345,8 @@ function renderPatterns(detectedPatterns) {
 }
 
 /**
- * Render AI explanation in the explanation panel
+ * Render AI explanation in the explanation panel.
+ * Auto-expands the panel and positions it at the top of the metrics column.
  * @param {string|object} explanation - Explanation text or structured object
  */
 function renderExplanation(explanation) {
@@ -357,7 +358,6 @@ function renderExplanation(explanation) {
     if (typeof explanation === 'string') {
         htmlContent = `<p class="text-white/70 text-sm leading-relaxed">${escapeHtml(explanation)}</p>`;
     } else if (typeof explanation === 'object') {
-        // Structured explanation from Groq/Llama
         htmlContent = buildExplanationHTML(explanation);
     }
 
@@ -368,11 +368,14 @@ function renderExplanation(explanation) {
     const textEl = document.getElementById('explanationText');
     if (textEl) textEl.innerHTML = htmlContent;
 
-    // Toggle collapse/expand
-    const toggleBtn = document.getElementById('explanationToggle');
+    // Auto-expand the content (no longer hidden by default)
     const content = document.getElementById('explanationContent');
     const chevron = document.getElementById('explanationChevron');
+    if (content) content.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
 
+    // Toggle collapse/expand on click
+    const toggleBtn = document.getElementById('explanationToggle');
     if (toggleBtn && content && chevron) {
         toggleBtn.addEventListener('click', () => {
             const isHidden = content.classList.contains('hidden');
@@ -384,75 +387,117 @@ function renderExplanation(explanation) {
 
 /**
  * Build formatted HTML from a structured explanation object.
- * Shows: verdict box → why bullets → pattern breakdown → suggestions.
+ * Compact, easy-to-read layout: verdict → clues → writing style → tips → note.
  */
 function buildExplanationHTML(expl) {
     let html = '';
-
-    // Determine if AI or human for styling
     const isAI = (expl.verdict_explanation || '').toLowerCase().includes('ai-generated');
-    const accentColor = isAI ? 'accent-danger' : 'accent-success';
-    const accentIcon = isAI ? 'smart_toy' : 'verified_user';
+    const accent = isAI ? 'accent-danger' : 'accent-success';
+    const icon = isAI ? 'smart_toy' : 'verified_user';
 
-    // ── 1. Verdict Summary Box ──────────────────────────────────────────
+    // ── Verdict ─────────────────────────────────────────────────────────
     if (expl.summary) {
-        html += `
-        <div class="flex items-start gap-3 mb-4 p-3.5 rounded-xl border bg-${accentColor}/5 border-${accentColor}/20">
-            <span class="material-symbols-outlined text-${accentColor} !text-[20px] shrink-0 mt-0.5">${accentIcon}</span>
-            <p class="text-white font-semibold text-sm leading-relaxed">${escapeHtml(expl.summary)}</p>
+        html += `<div class="flex items-start gap-2.5 p-3 rounded-xl border mb-2.5 bg-${accent}/5 border-${accent}/20">
+            <span class="material-symbols-outlined text-${accent} !text-[18px] shrink-0 mt-px">${icon}</span>
+            <p class="text-white font-semibold text-[13px] leading-snug">${escapeHtml(expl.summary)}</p>
         </div>`;
     }
 
-    // ── 2. Key Indicators ("Why we think this") ─────────────────────────
+    // ── Key Clues ───────────────────────────────────────────────────────
     if (expl.key_indicators && expl.key_indicators.length > 0) {
-        html += `<div class="mb-3">
-            <h5 class="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">Why we think this</h5>
-            <ul class="space-y-1.5">
-                ${expl.key_indicators.map(indicator => `
-                <li class="flex items-start gap-2.5 text-[13px] text-white/75 leading-relaxed">
-                    <span class="text-${accentColor} shrink-0 mt-0.5">●</span>
-                    <span>${escapeHtml(indicator)}</span>
+        html += `<div class="mb-2">
+            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Key clues</h5>
+            <ul class="space-y-0.5">
+                ${expl.key_indicators.map(ind => `<li class="flex items-start gap-2 text-[12px] text-white/70 leading-snug">
+                    <span class="text-${accent} shrink-0">•</span><span>${escapeHtml(ind)}</span>
                 </li>`).join('')}
             </ul>
         </div>`;
     }
 
-    // ── 3. Pattern Breakdown ────────────────────────────────────────────
-    if (expl.pattern_breakdown) {
-        html += `<div class="mb-3 p-2.5 bg-white/[0.03] rounded-lg">
-            <h5 class="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                <span class="material-symbols-outlined !text-[14px] text-accent-warning">pattern</span>
-                Pattern Analysis
-            </h5>
-            <p class="text-white/60 text-[13px] leading-relaxed">${escapeHtml(expl.pattern_breakdown)}</p>
-        </div>`;
-    }
-
-    // ── 4. Suggestions ─────────────────────────────────────────────────
-    if (expl.suggestions && expl.suggestions.length > 0) {
-        html += `<div class="mb-3">
-            <h5 class="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <span class="material-symbols-outlined !text-[14px] text-accent-success">lightbulb</span>
-                ${isAI ? 'How to improve' : 'What\'s working'}
-            </h5>
-            <ul class="space-y-1.5">
-                ${expl.suggestions.map(s => `
-                <li class="flex items-start gap-2.5 text-[13px] text-white/60 leading-relaxed">
-                    <span class="text-accent-success shrink-0 mt-0.5">›</span>
-                    <span>${escapeHtml(s)}</span>
-                </li>`).join('')}
-            </ul>
-        </div>`;
-    }
-
-    // ── 5. Confidence Note ──────────────────────────────────────────────
-    if (expl.confidence_note) {
-        html += `
-        <div class="mt-3 pt-2.5 border-t border-white/10">
-            <div class="flex items-start gap-2">
-                <span class="material-symbols-outlined text-white/30 !text-[14px] shrink-0 mt-0.5">info</span>
-                <p class="text-white/40 text-xs leading-relaxed">${escapeHtml(expl.confidence_note)}</p>
+    // ── Writing Style Check (linguistic fingerprint — simplified) ────────
+    const fp = expl.linguistic_fingerprint || [];
+    if (fp.length > 0) {
+        html += `<div class="mb-2">
+            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Writing style check</h5>
+            <div class="grid gap-1">
+                ${fp.map(m => {
+                    const col = m.status === 'human_like' ? 'accent-success' : (m.status === 'ai_like' ? 'accent-danger' : 'accent-warning');
+                    const tag = m.status === 'human_like' ? 'Human-like' : (m.status === 'ai_like' ? 'AI-like' : 'Unclear');
+                    return `<div class="flex items-center gap-2 px-2.5 py-1.5 bg-white/[0.03] rounded-lg">
+                    <span class="w-1.5 h-1.5 rounded-full bg-${col} shrink-0"></span>
+                    <span class="text-white/60 text-[11px] flex-1">${escapeHtml(m.description || m.metric)}</span>
+                    <span class="text-${col} text-[10px] font-bold shrink-0">${tag}</span>
+                </div>`;
+                }).join('')}
             </div>
+        </div>`;
+    }
+
+    // ── Sentence Breakdown (dynamic per-sentence evidence) ────────────
+    const ev = expl.sentence_evidence;
+    if (ev && ev.sentences && ev.sentences.length > 0) {
+        html += `<div class="mb-2">
+            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">
+                Sentence breakdown <span class="text-white/30 font-normal">${escapeHtml(ev.summary)}</span>
+            </h5>
+            <div class="space-y-0.5">
+                ${ev.sentences.slice(0, 5).map(s => {
+                    const scoreColor = s.score > 80 ? 'accent-danger' : (s.score > 60 ? 'accent-warning' : 'accent-success');
+                    const numLabel = s.num > 0 ? `#${s.num}` : '';
+                    return `<div class="flex items-start gap-2 px-2.5 py-1.5 bg-${scoreColor}/5 rounded-lg border-l-2 border-${scoreColor}/40">
+                    <div class="shrink-0 flex items-center gap-1.5">
+                        ${numLabel ? `<span class="text-white/30 text-[10px] font-mono">${numLabel}</span>` : ''}
+                        <span class="text-[10px] font-bold text-${scoreColor}">${Math.round(s.score)}%</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-white/55 text-[11px] leading-snug italic line-clamp-2">"${escapeHtml(s.text)}"</p>
+                        ${s.reason ? `<p class="text-${scoreColor}/70 text-[10px] mt-0.5">${escapeHtml(s.reason)}</p>` : ''}
+                    </div>
+                </div>`;
+                }).join('')}
+            </div>
+            ${ev.human_sentences && ev.human_sentences.length > 0 ? `
+            <div class="mt-1">
+                <p class="text-white/30 text-[10px] mb-0.5">In contrast, these look human-written:</p>
+                ${ev.human_sentences.map(s => {
+                    const numLabel = s.num > 0 ? `#${s.num}` : '';
+                    return `<div class="flex items-start gap-2 px-2.5 py-1 bg-accent-success/5 rounded-lg border-l-2 border-accent-success/30">
+                    <div class="shrink-0 flex items-center gap-1.5">
+                        ${numLabel ? `<span class="text-white/30 text-[10px] font-mono">${numLabel}</span>` : ''}
+                        <span class="text-[10px] font-bold text-accent-success">${Math.round(s.score)}%</span>
+                    </div>
+                    <p class="text-white/45 text-[11px] leading-snug italic line-clamp-1 flex-1">"${escapeHtml(s.text)}"</p>
+                </div>`;
+                }).join('')}
+            </div>` : ''}
+        </div>`;
+    }
+
+    // ── Pattern Analysis (one-liner) ────────────────────────────────────
+    if (expl.pattern_breakdown) {
+        html += `<div class="mb-2 px-2.5 py-2 bg-white/[0.03] rounded-lg">
+            <p class="text-white/55 text-[11px] leading-snug"><span class="text-accent-warning font-bold">Patterns:</span> ${escapeHtml(expl.pattern_breakdown)}</p>
+        </div>`;
+    }
+
+    // ── Tips ─────────────────────────────────────────────────────────────
+    if (expl.suggestions && expl.suggestions.length > 0) {
+        html += `<div class="mb-2">
+            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">${isAI ? 'Tips to sound more human' : 'What makes this human'}</h5>
+            <ul class="space-y-0.5">
+                ${expl.suggestions.map(s => `<li class="flex items-start gap-2 text-[11px] text-white/55 leading-snug">
+                    <span class="text-accent-success shrink-0">›</span><span>${escapeHtml(s)}</span>
+                </li>`).join('')}
+            </ul>
+        </div>`;
+    }
+
+    // ── Confidence footer ───────────────────────────────────────────────
+    if (expl.confidence_note) {
+        html += `<div class="flex items-start gap-1.5 pt-2 border-t border-white/5">
+            <span class="material-symbols-outlined text-white/25 !text-[12px] shrink-0 mt-px">info</span>
+            <p class="text-white/35 text-[10px] leading-snug">${escapeHtml(expl.confidence_note)}</p>
         </div>`;
     }
 
