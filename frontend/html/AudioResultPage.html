@@ -1,25 +1,19 @@
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
   <meta charset="utf-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
   <title>VisioNova - Audio Analysis</title>
-  <!-- Blocking theme script to prevent FOUC -->
   <script>
     (function () {
       const theme = localStorage.getItem('visioNova_theme') || 'dark';
       document.documentElement.classList.add(theme);
     })();
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
     rel="stylesheet" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-    rel="stylesheet" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
     rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script id="tailwind-config">
@@ -38,20 +32,107 @@
             "panel-dark": "#161B2E",
             "card-dark": "#1E2338",
           },
-          fontFamily: {
-            "display": ["Inter", "sans-serif"]
-          },
-          borderRadius: { "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "2xl": "1.5rem", "full": "9999px" },
-          boxShadow: {
-            'glow': '0 0 20px -5px rgba(58, 141, 255, 0.15)',
-            'glow-red': '0 0 20px -5px rgba(255, 74, 74, 0.15)',
-          }
+          fontFamily: { "display": ["Inter", "sans-serif"] },
+          borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
         },
       },
     }
   </script>
   <link rel="stylesheet" href="../css/common.css">
   <script src="../js/theme-toggle.js"></script>
+  <!-- WaveSurfer.js for cool waveform visualizations -->
+  <script src="https://unpkg.com/wavesurfer.js@7"></script>
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+  <style>
+    .bg-hero-gradient {
+      background: radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.08) 0%, transparent 60%);
+    }
+
+    .shadow-glow {
+      box-shadow: 0 0 20px rgba(58, 141, 255, 0.15);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1E2338;
+      border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3A8DFF;
+      border-radius: 4px;
+    }
+
+    #explanationChevron.rotated,
+    #modelsChevron.rotated {
+      transform: rotate(180deg);
+    }
+
+    /* Segment timeline bar */
+    .seg-block {
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .seg-block:hover {
+      filter: brightness(1.3);
+      transform: scaleY(1.15);
+    }
+
+    .seg-block.active {
+      outline: 2px solid white;
+      outline-offset: 1px;
+      z-index: 2;
+    }
+
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* Custom Slider & Waveform Glow */
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(58, 141, 255, 0.5);
+    }
+
+    #waveform {
+      filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.4));
+    }
+
+    #waveform::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      z-index: -1;
+    }
+  </style>
 </head>
 
 <body
@@ -62,7 +143,8 @@
     </div>
     <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
   </div>
-  <!-- Top Navigation -->
+
+  <!-- Header -->
   <header
     class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
     <div class="flex items-center gap-4 text-white">
@@ -99,8 +181,9 @@
       </button>
     </div>
   </header>
+
   <div class="flex flex-1 overflow-hidden">
-    <!-- Sidebar Navigation -->
+    <!-- Sidebar -->
     <aside
       class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
       <div class="flex flex-col gap-6 w-full px-3">
@@ -158,9 +241,9 @@
         </button>
       </div>
     </aside>
+
     <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-6 md:p-8 lg:p-10">
-      <!-- Background Decorative Elements -->
+    <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 md:p-8 lg:px-12">
       <div class="absolute inset-0 pointer-events-none overflow-hidden">
         <div
           class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
@@ -169,317 +252,299 @@
           class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
         </div>
       </div>
-      <div class="flex flex-col gap-2 mb-6 border-b border-white/10 pb-6 relative z-10">
-        <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
-          <span>Analyze</span>
-          <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span>Audio Analysis</span>
-        </div>
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div class="flex flex-col gap-1">
-            <h1 id="pageTitle" class="text-white text-3xl md:text-3xl font-black leading-tight tracking-tight">Audio
-              Analysis</h1>
-            <div class="flex items-center gap-4 text-gray-400 text-sm">
-              <span class="flex items-center gap-1"><span
-                  class="material-symbols-outlined text-[16px]">calendar_today</span> Oct 24, 2023</span>
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span>
-                14:02 PM</span>
-              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">timer</span>
-                03:45</span>
-              <span
-                class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 border border-gray-700 uppercase tracking-wide">MP3
-                / 320kbps</span>
+
+      <div class="max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
+
+        <!-- Page Heading -->
+        <div class="flex flex-wrap justify-between items-end gap-4 border-b border-white/10 pb-6">
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
+              <span>Analyze</span>
+              <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+              <span>Audio Analysis</span>
             </div>
+            <h1 id="pageTitle" class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Audio
+              Analysis</h1>
+            <p class="text-[#8da8ce] text-sm font-normal flex items-center gap-3 flex-wrap">
+              <span class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                <span id="analysisDate">Analyzed just now</span>
+              </span>
+              <span id="fileBadge"
+                class="hidden px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 border border-white/10 uppercase tracking-wide"></span>
+              <span id="durationBadge" class="hidden flex items-center gap-1 text-xs">
+                <span class="material-symbols-outlined text-[16px]">timer</span>
+                <span id="durationText">--</span>
+              </span>
+              <span id="sampleRateBadge" class="hidden flex items-center gap-1 text-xs">
+                <span class="material-symbols-outlined text-[16px]">graphic_eq</span>
+                <span id="sampleRateText">--</span>
+              </span>
+            </p>
           </div>
           <div class="flex gap-3">
-            <button
-              class="h-10 px-4 rounded-lg bg-[#20324b] text-white text-sm font-medium hover:bg-[#2a4060] transition-colors border border-[#2f496d]">Compare</button>
-            <button
-              class="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-glow flex items-center gap-2">
-              <span class="material-symbols-outlined text-[18px]">verified_user</span>
-              Generate Report
+            <button id="reanalyzeBtn"
+              class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all">
+              <span class="material-symbols-outlined text-[20px] mr-2">refresh</span>
+              Re-analyze
+            </button>
+            <button id="exportPdfBtn"
+              class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-lg shadow-primary/20 transition-all">
+              <span class="material-symbols-outlined text-[20px] mr-2">download</span>
+              Export Report
             </button>
           </div>
         </div>
-      </div>
-      <!-- Dashboard Grid -->
-      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
-        <!-- Verdict Scorecard (Left Column) -->
-        <div class="xl:col-span-4 flex flex-col gap-6">
-          <div
-            class="bg-surface-dark border border-accent-red/30 rounded-2xl p-6 relative overflow-hidden shadow-glow-red">
-            <div class="absolute top-0 right-0 p-4 opacity-10">
-              <span class="material-symbols-outlined text-9xl text-accent-red">warning</span>
+
+        <!-- Scorecard Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Probability Card -->
+          <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+              <h3 class="text-white/70 text-sm font-medium">Human vs. AI Probability</h3>
+              <span class="material-symbols-outlined text-white/30">mic</span>
             </div>
-            <div class="relative z-10">
-              <h3 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-1">Unified Credibility Score
-              </h3>
-              <div class="flex items-baseline gap-2 mb-6">
-                <span class="text-5xl font-black text-white"><span id="authenticityScore">--</span><span
-                    class="text-2xl text-gray-500">%</span></span>
-                <span class="text-gray-400 font-bold text-lg" id="scoreLabel">Authenticity</span>
+            <div class="flex gap-4 items-end mt-4">
+              <div class="flex flex-col gap-1 w-1/2">
+                <span class="text-xs text-white/50">Human</span>
+                <div class="h-20 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                  <div id="humanBar" class="w-full transition-all duration-1000 rounded-t"
+                    style="height: 0%; background: #3A8DFF; opacity: 0.9"></div>
+                  <span id="humanPercent"
+                    class="absolute bottom-1 w-full text-center text-xs font-bold text-white drop-shadow-md">--%</span>
+                </div>
               </div>
-              <div class="mb-6">
-                <div class="flex justify-between text-sm mb-2">
-                  <span class="text-white font-medium">Verdict: <span id="verdictLabel"
-                      class="text-gray-400">ANALYZING...</span></span>
-                  <span id="fakeProbability" class="text-gray-400 font-bold">--% FAKE</span>
-                </div>
-                <div class="h-3 w-full bg-gray-800 rounded-full overflow-hidden">
-                  <div id="scoreProgressBar"
-                    class="h-full bg-gradient-to-r from-accent-red to-orange-500 w-[0%] rounded-full shadow-[0_0_10px_rgba(255,74,74,0.5)] transition-all duration-1000">
-                  </div>
-                </div>
-                <p id="verdictDescription" class="mt-2 text-xs text-gray-400">Analyzing audio content...</p>
-              </div>
-              <div class="space-y-3">
-                <div class="flex items-center justify-between p-3 rounded-lg bg-[#0F121A] border border-gray-800">
-                  <div class="flex items-center gap-3">
-                    <div class="size-8 rounded-full bg-accent-red/10 flex items-center justify-center text-accent-red">
-                      <span class="material-symbols-outlined text-lg">graphic_eq</span>
-                    </div>
-                    <div>
-                      <p class="text-sm text-white font-medium">Ensemble Agreement</p>
-                      <p id="ensembleModelText" class="text-xs text-gray-400">Checking models...</p>
-                    </div>
-                  </div>
-                  <span id="ensembleAgreementScore"
-                    class="text-xs px-2 py-1 rounded bg-accent-red/20 text-accent-red font-bold">--</span>
-                </div>
-                <div class="flex items-center justify-between p-3 rounded-lg bg-[#0F121A] border border-gray-800">
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="size-8 rounded-full bg-accent-amber/10 flex items-center justify-center text-accent-amber">
-                      <span class="material-symbols-outlined text-lg">content_copy</span>
-                    </div>
-                    <div>
-                      <p class="text-sm text-white font-medium">Clone Source</p>
-                      <p class="text-xs text-gray-400">Match found in DB #4492</p>
-                    </div>
-                  </div>
-                  <span class="text-xs px-2 py-1 rounded bg-accent-amber/20 text-accent-amber font-bold">Review</span>
+              <div class="flex flex-col gap-1 w-1/2">
+                <span class="text-xs text-white/50">AI-Generated</span>
+                <div class="h-20 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                  <div id="aiBar" class="w-full transition-all duration-1000 rounded-t"
+                    style="height: 0%; background: #FF4A4A; opacity: 0.85"></div>
+                  <span id="aiPercent"
+                    class="absolute bottom-1 w-full text-center text-xs font-bold text-white/60">--%</span>
                 </div>
               </div>
             </div>
+            <p id="probabilityNote" class="text-xs text-primary mt-3 font-medium flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">trending_up</span>
+              <span id="probabilityText">Analyzing audio patterns...</span>
+            </p>
           </div>
-          <!-- Small Quick Stats -->
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-surface-dark border border-[#20324b] rounded-xl p-4">
-              <p class="text-xs text-gray-400 uppercase mb-1">Duration Analyzed</p>
-              <p class="text-xl font-bold text-white">03:45.02</p>
+
+          <!-- Model Info Card -->
+          <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+              <h3 class="text-white/70 text-sm font-medium">Analysis Mode</h3>
+              <span class="material-symbols-outlined text-white/30">memory</span>
             </div>
-            <div class="bg-surface-dark border border-[#20324b] rounded-xl p-4">
-              <p class="text-xs text-gray-400 uppercase mb-1">Sample Rate</p>
-              <p class="text-xl font-bold text-white">44.1 kHz</p>
+            <div class="mt-2">
+              <span id="analysisMode" class="text-2xl font-bold text-white block">Loading...</span>
+              <span id="analysisModeInfo" class="text-sm text-white/60 block mt-1">Initializing detector...</span>
+            </div>
+            <div id="modelTags" class="flex gap-2 mt-4 flex-wrap">
+              <!-- Populated dynamically -->
             </div>
           </div>
         </div>
-        <!-- Visualizer & Detailed Metrics (Right Column) -->
-        <div class="xl:col-span-8 flex flex-col gap-6">
-          <!-- Audio Visualizer -->
-          <div class="bg-surface-dark border border-[#20324b] rounded-2xl p-1 flex flex-col h-[360px]">
-            <div class="flex items-center justify-between px-5 py-3 border-b border-[#20324b]">
-              <h3 class="text-sm font-semibold text-white">Spectral Analysis</h3>
+
+        <!-- Middle Section: Audio Player + Timeline | Key Findings -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[350px]">
+
+          <!-- Audio Player & Segment Timeline -->
+          <div
+            class="lg:col-span-7 flex flex-col bg-[#0D1B2A] rounded-2xl overflow-hidden shadow-xl border border-white/5">
+            <div class="bg-surface-dark px-6 py-3 border-b border-white/10 flex justify-between items-center">
+              <div class="flex gap-2 items-center">
+                <span class="material-symbols-outlined text-white/40">audio_file</span>
+                <span class="text-white/70 font-bold text-sm">Audio Playback &amp; Analysis</span>
+              </div>
               <div class="flex gap-2">
-                <button class="px-3 py-1 text-xs font-medium rounded-md bg-[#20324b] text-white">Spectrogram</button>
-                <button
-                  class="px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-white">Waveform</button>
+                <span id="analysisBadge"
+                  class="hidden flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
+                  <span class="material-symbols-outlined !text-[14px]">assessment</span>
+                  <span id="analysisBadgeText">Single Pass</span>
+                </span>
+                <span id="segmentCountBadge"
+                  class="hidden flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
+                  <span class="material-symbols-outlined !text-[14px]">segment</span>
+                  <span id="segmentCountText">--</span>
+                </span>
               </div>
             </div>
-            <!-- Visualizer Area -->
-            <div class="flex-1 relative bg-[#0a0f16] m-1 rounded-xl overflow-hidden group">
-              <!-- Dynamic Audio Container -->
-              <div id="audioContainer" class="absolute inset-0 flex items-center justify-center">
-                <div id="noAudioPlaceholder" class="flex flex-col items-center gap-4 text-gray-400">
+
+            <!-- Audio Player Area -->
+            <div class="p-4 flex flex-col gap-4 flex-1">
+              <!-- Placeholder / Player -->
+              <div id="audioContainer">
+                <div id="noAudioPlaceholder" class="flex flex-col items-center gap-4 text-white/40 py-8">
                   <span class="material-symbols-outlined text-6xl opacity-50">mic</span>
                   <p class="text-sm">No audio uploaded</p>
                   <a href="homepage.html" class="text-primary hover:underline text-sm">Upload audio to analyze</a>
                 </div>
-                <audio id="uploadedAudio" class="hidden w-full max-w-xl" controls></audio>
-              </div>
-              <!-- Background Spectrogram (shown when audio exists) -->
-              <div id="spectrogramBg" class="hidden absolute inset-0 bg-cover bg-center opacity-80"
-                data-alt="Detailed audio spectrogram showing frequency intensity heat map"
-                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDLVV8WOTRRDz3dja2PUA4mXuwVLqj33i7j5pqraMDRjuz11tX6rzG38uMLsaVyKwbJG8jxW67CrUEzxN4yfbFzpuHQLriLE6RndTeOrXtxpgHNoWcbIYa9SSu8ySUHp6RkRNefWuLsmRTdGTg1aDOr8h2OIjKtx1Mgf9oHJ8nsqo-HpRryK5pRhrRs6QJkkQpLm64dOGsivUb53qmHy1qWS53d-stIXsubfhQSrTs5X77FFr4vPOKprk6VyYzZc0RjCRcgh9BV_ddX');">
-              </div>
-              <!-- Gradient Overlay for Depth -->
-              <div class="absolute inset-0 bg-gradient-to-t from-[#0a0f16] via-transparent to-transparent"></div>
-              <!-- Playhead Line -->
-              <div
-                class="absolute top-0 bottom-0 left-1/3 w-[1px] bg-accent-red z-10 shadow-[0_0_10px_rgba(255,74,74,0.8)]">
-                <div class="absolute -top-1 -left-1.5 size-3 bg-accent-red rounded-full"></div>
-                <div class="absolute top-2 left-2 text-[10px] font-mono text-accent-red bg-black/50 px-1 rounded">
-                  01:15.20</div>
-              </div>
-              <!-- Highlights -->
-              <div class="absolute top-1/4 left-1/4 w-32 h-16 border border-accent-amber/50 bg-accent-amber/10 rounded">
-              </div>
-              <!-- Play Controls Overlay -->
-              <div
-                class="absolute bottom-0 left-0 right-0 p-4 flex items-center gap-4 bg-gradient-to-t from-[#0a0f16] to-transparent">
-                <button
-                  class="size-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform">
-                  <span class="material-symbols-outlined text-2xl">play_arrow</span>
-                </button>
-                <div class="flex-1 h-1 bg-[#20324b] rounded-full overflow-hidden relative cursor-pointer">
-                  <div class="absolute top-0 left-0 bottom-0 w-1/3 bg-primary shadow-[0_0_8px_rgba(58,141,255,0.8)]">
+                <!-- Custom Waveform Player -->
+                <div id="audioPlayerWrapper" class="hidden flex flex-col gap-4">
+                  <div id="waveform" class="w-full h-32 relative cursor-pointer"></div>
+
+                  <div
+                    class="flex items-center justify-between text-white/70 mt-2 bg-black/20 p-3 rounded-xl border border-white/5">
+                    <div class="flex items-center gap-4">
+                      <button id="playPauseBtn"
+                        class="flex items-center justify-center size-10 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 transition-colors shadow-sm focus:outline-none">
+                        <span id="playIcon" class="material-symbols-outlined !text-[24px]">play_arrow</span>
+                      </button>
+                      <div class="text-xs font-mono tracking-wider opacity-80">
+                        <span id="currentTimeDisplay">0:00</span> / <span id="durationDisplay">0:00</span>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                      <span class="material-symbols-outlined !text-[18px] text-white/50">volume_up</span>
+                      <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1"
+                        class="w-24 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none">
+                    </div>
                   </div>
                 </div>
-                <span class="text-xs font-mono text-gray-400">01:15 / 03:45</span>
-                <span class="material-symbols-outlined text-gray-400 cursor-pointer hover:text-white">volume_up</span>
-                <span class="material-symbols-outlined text-gray-400 cursor-pointer hover:text-white">settings</span>
               </div>
-            </div>
-          </div>
-          <!-- Metrics Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Card 1 -->
-            <div
-              class="bg-surface-dark border border-[#20324b] rounded-2xl p-5 hover:border-primary/50 transition-colors">
-              <div class="flex items-center justify-between mb-4">
-                <h4 class="text-sm font-medium text-gray-300">Pitch Stability</h4>
-                <span class="material-symbols-outlined text-accent-amber text-xl">broken_image</span>
-              </div>
-              <div id="pitchStability" class="text-2xl font-bold text-white mb-1">--</div>
-              <p class="text-xs text-gray-500 mb-4">Frequency consistency analysis.</p>
-              <!-- Fake Sparkline -->
-              <div class="h-10 w-full flex items-end gap-[2px]">
-                <div class="w-1 bg-gray-700 h-2 rounded-t"></div>
-                <div class="w-1 bg-gray-700 h-4 rounded-t"></div>
-                <div class="w-1 bg-accent-amber h-8 rounded-t"></div>
-                <div class="w-1 bg-gray-700 h-3 rounded-t"></div>
-                <div class="w-1 bg-gray-700 h-5 rounded-t"></div>
-                <div class="w-1 bg-accent-amber h-9 rounded-t"></div>
-                <div class="w-1 bg-accent-amber h-6 rounded-t"></div>
-                <div class="w-1 bg-gray-700 h-4 rounded-t"></div>
-                <div class="w-1 bg-gray-700 h-2 rounded-t"></div>
-                <div class="w-1 bg-gray-700 h-3 rounded-t"></div>
-              </div>
-            </div>
-            <!-- Card 2 -->
-            <div
-              class="bg-surface-dark border border-[#20324b] rounded-2xl p-5 hover:border-primary/50 transition-colors">
-              <div class="flex items-center justify-between mb-4">
-                <h4 class="text-sm font-medium text-gray-300">Background Noise</h4>
-                <span class="material-symbols-outlined text-accent-red text-xl">graphic_eq</span>
-              </div>
-              <div id="bgNoiseLevel" class="text-2xl font-bold text-white mb-1">--dB</div>
-              <p class="text-xs text-gray-500 mb-4">Artificial silence detected (Digital zero).</p>
-              <div class="h-10 flex items-center">
-                <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                  <div class="h-full bg-accent-red w-[10%] rounded-full shadow-[0_0_5px_#FF4A4A]"></div>
+
+              <!-- Segment Timeline (shown for segmented analysis) -->
+              <div id="timelineSection" class="hidden">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 class="text-white/70 text-xs font-semibold uppercase tracking-wider">Segment Timeline</h4>
+                  <div class="flex items-center gap-3 text-[10px] text-white/40">
+                    <span class="flex items-center gap-1"><span
+                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-danger"></span> Likely AI</span>
+                    <span class="flex items-center gap-1"><span
+                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-warning"></span> Uncertain</span>
+                    <span class="flex items-center gap-1"><span
+                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-success"></span> Likely Real</span>
+                  </div>
+                </div>
+                <div id="timelineBar" class="flex w-full h-10 rounded-lg overflow-hidden gap-[2px] bg-black/30">
+                  <!-- Segment blocks injected here -->
+                </div>
+                <div class="flex justify-between text-[10px] text-white/30 mt-1 font-mono">
+                  <span>0:00</span>
+                  <span id="timelineEndLabel">--:--</span>
                 </div>
               </div>
-            </div>
-            <!-- Card 3 -->
-            <div
-              class="bg-surface-dark border border-[#20324b] rounded-2xl p-5 hover:border-primary/50 transition-colors">
-              <div class="flex items-center justify-between mb-4">
-                <h4 class="text-sm font-medium text-gray-300">Formant Analysis</h4>
-                <span class="material-symbols-outlined text-primary text-xl">timeline</span>
-              </div>
-              <div id="formantAnalysis" class="text-2xl font-bold text-white mb-1">--</div>
-              <p class="text-xs text-gray-500 mb-4">Non-human transitions observed.</p>
-              <!-- Mini scatter plot viz -->
-              <div class="h-10 relative border-l border-b border-gray-700">
-                <div class="absolute bottom-1 left-2 size-1.5 bg-primary rounded-full"></div>
-                <div class="absolute bottom-3 left-4 size-1.5 bg-primary rounded-full"></div>
-                <div class="absolute bottom-6 left-6 size-1.5 bg-primary rounded-full"></div>
-                <div class="absolute bottom-2 left-8 size-1.5 bg-primary rounded-full"></div>
-                <div class="absolute bottom-8 left-10 size-1.5 bg-accent-red rounded-full shadow-[0_0_4px_#FF4A4A]">
+
+              <!-- Segment Detail Card (appears when clicking a segment) -->
+              <div id="segmentDetail" class="hidden bg-white/5 border border-white/10 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 id="segmentDetailTitle" class="text-white font-semibold text-sm">Segment 1</h4>
+                  <button id="segmentDetailClose" class="text-white/40 hover:text-white">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p class="text-[10px] text-white/40 uppercase">Time Range</p>
+                    <p id="segDetailTime" class="text-sm font-bold text-white">--</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-white/40 uppercase">Fake Probability</p>
+                    <p id="segDetailFake" class="text-sm font-bold text-accent-danger">--%</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-white/40 uppercase">Verdict</p>
+                    <p id="segDetailVerdict" class="text-sm font-bold text-white">--</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-      <!-- Deep Analysis Section -->
-      <div class="mb-8">
-        <h3 class="text-lg font-bold text-white mb-4">Deep Analysis Modules</h3>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Graph 1 -->
-          <div class="bg-surface-dark border border-[#20324b] rounded-2xl p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h4 class="font-semibold text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">ssid_chart</span>
-                Spectral Centroid Consistency
-              </h4>
-              <button class="text-xs text-primary hover:text-white">Export Data</button>
-            </div>
-            <div class="h-48 w-full bg-[#0F121A] rounded-lg border border-[#20324b] relative overflow-hidden p-4">
-              <!-- Axis lines -->
-              <div class="absolute left-8 top-4 bottom-8 w-[1px] bg-gray-800"></div>
-              <div class="absolute left-8 right-4 bottom-8 h-[1px] bg-gray-800"></div>
-              <!-- The Chart Line (CSS Art) -->
-              <svg class="absolute inset-0 w-full h-full text-primary" preserveaspectratio="none">
-                <path class="opacity-80 drop-shadow-[0_0_3px_#3A8DFF]"
-                  d="M 40 100 Q 100 80 150 120 T 250 80 T 350 140 T 500 60" fill="none" stroke="currentColor"
-                  stroke-width="2"></path>
-                <path class="opacity-60" d="M 40 110 Q 100 90 150 130 T 250 90 T 350 150 T 500 70" fill="none"
-                  stroke="#FF4A4A" stroke-dasharray="4 4" stroke-width="2"></path>
-              </svg>
-              <!-- Legend -->
-              <div class="absolute top-4 right-4 flex flex-col gap-2 text-[10px] text-gray-500">
-                <div class="flex items-center gap-2"><span
-                    class="size-2 rounded-full bg-primary shadow-[0_0_4px_#3A8DFF]"></span> Observed</div>
-                <div class="flex items-center gap-2"><span class="size-2 rounded-full bg-accent-red"></span> Expected
-                  Natural</div>
+
+          <!-- Key Findings Column -->
+          <div class="lg:col-span-5 flex flex-col gap-4">
+            <!-- Key Findings -->
+            <div class="bg-surface-dark/40 border border-white/5 rounded-2xl p-5 flex-1 flex flex-col">
+              <div class="flex justify-between items-center mb-4">
+                <div class="flex gap-2 items-center">
+                  <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <span class="material-symbols-outlined !text-[20px]">lightbulb</span>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-sm">Key Findings</h4>
+                    <p id="findingsCount" class="text-white/40 text-xs">Analyzing...</p>
+                  </div>
+                </div>
+              </div>
+              <div id="keyFindings" class="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar">
+                <!-- Loading skeletons -->
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
               </div>
             </div>
-          </div>
-          <!-- List Module -->
-          <div class="bg-surface-dark border border-[#20324b] rounded-2xl p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h4 class="font-semibold text-white flex items-center gap-2">
-                <span class="material-symbols-outlined text-accent-red">fingerprint</span>
-                AI Signature Artifacts
-              </h4>
-              <span
-                class="px-2 py-1 bg-accent-red/10 text-accent-red text-xs rounded font-bold border border-accent-red/20">3
-                Critical Issues</span>
-            </div>
-            <div class="space-y-3">
-              <div class="flex items-start gap-4 p-3 rounded-lg bg-[#0F121A] border-l-4 border-accent-red">
-                <div class="mt-0.5">
-                  <span class="material-symbols-outlined text-accent-red text-sm">error</span>
+
+            <!-- Segment Summary (for segmented analysis) -->
+            <div id="segmentSummaryCard" class="hidden bg-surface-dark/40 border border-white/5 rounded-2xl p-5">
+              <div class="flex justify-between items-center mb-3">
+                <div class="flex gap-2 items-center">
+                  <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
+                    <span class="material-symbols-outlined !text-[20px]">analytics</span>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-sm">Segment Summary</h4>
+                    <p class="text-white/40 text-xs">Per-segment analysis breakdown</p>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-sm font-medium text-white">Phase Discontinuity at 2.4kHz</p>
-                  <p class="text-xs text-gray-400 mt-1">Typical of vocoder-based synthesis engines (Vocoder Artifacts).
-                  </p>
-                </div>
-                <span class="ml-auto text-xs font-mono text-gray-500">00:42.1</span>
               </div>
-              <div class="flex items-start gap-4 p-3 rounded-lg bg-[#0F121A] border-l-4 border-accent-amber">
-                <div class="mt-0.5">
-                  <span class="material-symbols-outlined text-accent-amber text-sm">warning</span>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-white">Super-human Breath Spacing</p>
-                  <p class="text-xs text-gray-400 mt-1">Inhale duration too short for phrase length.</p>
-                </div>
-                <span class="ml-auto text-xs font-mono text-gray-500">01:15.8</span>
-              </div>
-              <div class="flex items-start gap-4 p-3 rounded-lg bg-[#0F121A] border-l-4 border-gray-700">
-                <div class="mt-0.5">
-                  <span class="material-symbols-outlined text-gray-400 text-sm">info</span>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-300">Metadata Stripped</p>
-                  <p class="text-xs text-gray-500 mt-1">Original encoding software tags missing.</p>
-                </div>
-                <span class="ml-auto text-xs font-mono text-gray-500">Global</span>
+              <div id="segmentSummaryContent" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                <!-- Populated dynamically -->
               </div>
             </div>
           </div>
         </div>
+
+        <!-- AI Explanation Panel (collapsible) -->
+        <div id="explanationPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+          <button id="explanationToggle"
+            class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+            <div class="flex gap-2 items-center">
+              <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                <span class="material-symbols-outlined !text-[20px]">smart_toy</span>
+              </div>
+              <div class="text-left">
+                <h4 class="text-white font-bold text-sm">AI Explanation</h4>
+                <p class="text-white/40 text-xs">Why we reached this verdict</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-white/40 transition-transform"
+              id="explanationChevron">expand_more</span>
+          </button>
+          <div id="explanationContent" class="hidden px-5 pb-5">
+            <div id="explanationText"
+              class="text-white/70 text-sm leading-relaxed whitespace-pre-line border-t border-white/5 pt-4"></div>
+          </div>
+        </div>
+
+        <!-- Detection Model Details Panel (collapsible) -->
+        <div id="modelsPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+          <button id="modelsToggle"
+            class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+            <div class="flex gap-2 items-center">
+              <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
+                <span class="material-symbols-outlined !text-[20px]">hub</span>
+              </div>
+              <div class="text-left">
+                <h4 class="text-white font-bold text-sm">Detection Model</h4>
+                <p id="modelsSubtitle" class="text-white/40 text-xs">Model that performed this analysis</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-white/40 transition-transform"
+              id="modelsChevron">expand_more</span>
+          </button>
+          <div id="modelsContent" class="hidden px-5 pb-5">
+            <div id="modelsList" class="flex flex-col gap-3 border-t border-white/5 pt-4"></div>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
 
   <!-- Storage Utilities -->
   <script src="../js/storage-utils.js"></script>
-
   <!-- Dynamic Content Loading Script -->
   <script src="../js/audio-result.js"></script>
 </body>
