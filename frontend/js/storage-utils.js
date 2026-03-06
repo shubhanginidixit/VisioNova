@@ -215,6 +215,115 @@ const VisioNovaStorage = {
         } catch (error) {
             console.error('[Storage] Error clearing document file:', error);
         }
+    },
+
+    // ─── Audio file storage (IndexedDB for large files) ───────────
+
+    /**
+     * Save audio file data to IndexedDB (handles files up to 200 MB).
+     * Falls back to sessionStorage for tiny files.
+     * @param {string} dataURL - Base64 data URL of the audio
+     * @param {string} fileName - Original file name
+     * @param {string} mimeType - MIME type
+     * @returns {Promise<boolean>}
+     */
+    saveAudioFile: async function (dataURL, fileName, mimeType) {
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+
+            const fileData = {
+                id: 'currentAudio',
+                data: dataURL,
+                fileName: fileName || 'audio.wav',
+                mimeType: mimeType || 'audio/wav',
+                timestamp: new Date().toISOString()
+            };
+
+            await new Promise((resolve, reject) => {
+                const request = store.put(fileData);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+
+            // Store lightweight metadata in sessionStorage for quick checks
+            sessionStorage.setItem('visioNova_audioFile_meta', JSON.stringify({
+                fileName: fileData.fileName,
+                mimeType: fileData.mimeType,
+                timestamp: fileData.timestamp
+            }));
+
+            console.log('[Storage] Audio file saved to IndexedDB:', fileName);
+            db.close();
+            return true;
+        } catch (error) {
+            console.error('[Storage] Error saving audio file to IndexedDB:', error);
+            return false;
+        }
+    },
+
+    /**
+     * Retrieve audio file data from IndexedDB.
+     * @returns {Promise<Object|null>} - { data, fileName, mimeType, timestamp } or null
+     */
+    getAudioFile: async function () {
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readonly');
+            const store = transaction.objectStore('files');
+
+            const fileData = await new Promise((resolve, reject) => {
+                const request = store.get('currentAudio');
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+
+            db.close();
+            if (fileData) {
+                console.log('[Storage] Audio file retrieved from IndexedDB:', fileData.fileName);
+            }
+            return fileData || null;
+        } catch (error) {
+            console.error('[Storage] Error getting audio file from IndexedDB:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Check if an audio file exists in IndexedDB
+     * @returns {Promise<boolean>}
+     */
+    hasAudioFile: async function () {
+        const meta = sessionStorage.getItem('visioNova_audioFile_meta');
+        if (meta) return true;
+        const data = await this.getAudioFile();
+        return data !== null;
+    },
+
+    /**
+     * Clear audio file from IndexedDB
+     */
+    clearAudioFile: async function () {
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+
+            await new Promise((resolve, reject) => {
+                const request = store.delete('currentAudio');
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+
+            sessionStorage.removeItem('visioNova_audioFile_meta');
+            // Also clear the legacy sessionStorage key
+            sessionStorage.removeItem(this.KEYS.audio);
+            console.log('[Storage] Audio file cleared from IndexedDB');
+            db.close();
+        } catch (error) {
+            console.error('[Storage] Error clearing audio file:', error);
+        }
     }
 };
 

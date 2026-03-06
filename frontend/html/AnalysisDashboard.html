@@ -394,8 +394,17 @@
                             return null;
                         }
 
-                        const inputData = VisioNovaStorage.getFile(mediaType);
+                        let inputData = VisioNovaStorage.getFile(mediaType);
                         logDebug(`Input data for ${mediaType}:`, inputData);
+
+                        // For audio, data is stored in IndexedDB (not sessionStorage) due to file size
+                        if (mediaType === 'audio' && (!inputData || !inputData.data)) {
+                            const audioFromDB = await VisioNovaStorage.getAudioFile();
+                            if (audioFromDB && audioFromDB.data) {
+                                inputData = audioFromDB;
+                                logDebug('Audio data retrieved from IndexedDB:', inputData.fileName);
+                            }
+                        }
 
                         // For document uploads (PDF/DOCX), data is in IndexedDB, not sessionStorage
                         const isDocumentUpload = mediaType === 'text' && sessionStorage.getItem('visioNova_isDocument') === 'true';
@@ -663,8 +672,78 @@
                                     logDebug('Image API error:', fetchError);
                                     throw fetchError;
                                 }
+                            } else if (mediaType === 'audio') {
+                                // Handle audio analysis with backend API
+                                logDebug('Starting audio analysis...');
+
+                                // Step 1: Voice Pattern Analysis
+                                updateStepProgress(0, 'processing', 30);
+                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing audio...');
+
+                                let progressValue = 30;
+                                const progressInterval = setInterval(() => {
+                                    if (progressValue < 80) {
+                                        progressValue += 2;
+                                        updateStepProgress(0, 'processing', progressValue);
+                                    }
+                                }, 400);
+
+                                try {
+                                    const controller = new AbortController();
+                                    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min for audio
+
+                                    const response = await fetch(`${API_BASE_URL}/api/detect-audio`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            audio: inputData.data,
+                                            filename: inputData.fileName || 'audio.wav'
+                                        }),
+                                        signal: controller.signal
+                                    });
+
+                                    clearTimeout(timeoutId);
+                                    clearInterval(progressInterval);
+
+                                    if (!response.ok) {
+                                        const errorText = await response.text();
+                                        logDebug(`Audio API error: ${response.status}`, errorText);
+                                        throw new Error(`Audio analysis failed: ${response.status}`);
+                                    }
+
+                                    // Step 1: Complete
+                                    updateStepProgress(0, 'complete', 100);
+
+                                    // Step 2: Frequency Spectrum Check
+                                    updateStepProgress(1, 'processing', 50);
+                                    updateLoadingStatus(config.statusMessages[1] || 'Checking frequency spectrum...');
+
+                                    const result = await response.json();
+                                    logDebug('Audio analysis result:', result);
+
+                                    await new Promise(r => setTimeout(r, 400));
+                                    updateStepProgress(1, 'complete', 100);
+
+                                    // Step 3: Speech Synthesis Detection
+                                    updateStepProgress(2, 'processing', 60);
+                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting synthetic speech...');
+
+                                    // Store result for AudioResultPage to use
+                                    sessionStorage.setItem('visioNova_audio_result', JSON.stringify(result));
+                                    logDebug('Audio result stored in sessionStorage');
+
+                                    await new Promise(r => setTimeout(r, 500));
+                                    updateStepProgress(2, 'complete', 100);
+                                    updateLoadingStatus('Analysis complete! Redirecting...');
+
+                                    return result;
+                                } catch (fetchError) {
+                                    clearInterval(progressInterval);
+                                    logDebug('Audio API error:', fetchError);
+                                    throw fetchError;
+                                }
                             } else {
-                                // For other media types (video, audio), simulate progress
+                                // For other media types (video), simulate progress
                                 for (let i = 0; i < config.steps.length; i++) {
                                     updateStepProgress(i, 'processing', 30);
                                     updateLoadingStatus(config.statusMessages[i] || 'Processing...');

@@ -168,14 +168,41 @@ function setupFileInputs() {
 }
 
 // Handle file upload for image/video/audio
+// Maximum file sizes per type (in bytes)
+const MAX_FILE_SIZES = {
+    audio: 200 * 1024 * 1024,  // 200 MB
+    video: 200 * 1024 * 1024,  // 200 MB
+    image: 25 * 1024 * 1024,   // 25 MB
+    text:  25 * 1024 * 1024,   // 25 MB
+};
+
 async function handleFileUpload(type, file) {
     try {
+        // Client-side size validation
+        const maxSize = MAX_FILE_SIZES[type] || 25 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const maxMB = Math.round(maxSize / (1024 * 1024));
+            alert(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum for ${type}: ${maxMB} MB.`);
+            return;
+        }
+
         const dataURL = await VisioNovaStorage.readFileAsDataURL(file);
         uploadedFiles[type] = {
             data: dataURL,
             fileName: file.name,
             mimeType: file.type
         };
+
+        // For audio, use IndexedDB exclusively (sessionStorage has ~5MB limit)
+        if (type === 'audio') {
+            const saved = await VisioNovaStorage.saveAudioFile(dataURL, file.name, file.type);
+            if (!saved) {
+                console.error('[Homepage] Failed to save audio to IndexedDB');
+                alert('Failed to store audio file. Please try again or use a smaller file.');
+                return;
+            }
+        }
+
         showUploadSuccess(type, file.name);
         showPreview(type, dataURL, file.type, file.name);
     } catch (error) {
@@ -590,7 +617,7 @@ function navigateToResult() {
         }
     } else if (activeTab === 'audio') {
         if (uploadedFiles.audio) {
-            VisioNovaStorage.saveFile('audio', uploadedFiles.audio.data, uploadedFiles.audio.fileName, uploadedFiles.audio.mimeType);
+            // Audio is already saved to IndexedDB in handleFileUpload — skip sessionStorage (quota issues)
         } else {
             const urlInput = document.querySelector('#audio-upload input[type="text"]');
             if (urlInput && urlInput.value.trim()) {
