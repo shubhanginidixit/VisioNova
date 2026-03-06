@@ -34,6 +34,7 @@ except ImportError:
 
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max upload
 CORS(app)  # Enable CORS for frontend requests
 
 # Initialize rate limiter
@@ -64,39 +65,39 @@ image_explainer = ImageExplainer()  # XAI explainer (Ensemble Analysis + Grad-CA
 ensemble_detector = None
 try:
     ensemble_detector = EnsembleDetector(use_gpu=False, load_ml_models=False)
-    print(f"✓ Ensemble detector initialized (ML models available: {ML_DETECTORS_AVAILABLE})")
+    print(f"[OK] Ensemble detector initialized (ML models available: {ML_DETECTORS_AVAILABLE})")
 except Exception as e:
-    print(f"⚠ Ensemble detector not available: {e}")
+    print(f"[WARN] Ensemble detector not available: {e}")
 
 # Fast cascade detector (speed-optimized, 3-5x faster for clear cases)
 fast_detector = None
 try:
     fast_detector = FastCascadeDetector(use_gpu=False, enable_fp16=False)
-    print("✓ Fast cascade detector initialized (3-5x speedup for clear cases)")
+    print("[OK] Fast cascade detector initialized (3-5x speedup for clear cases)")
 except Exception as e:
-    print(f"⚠ Fast cascade detector not available: {e}")
+    print(f"[WARN] Fast cascade detector not available: {e}")
 
 # Audio deepfake detector (lazy-loaded, models downloaded on first use)
 audio_detector = None
 if AUDIO_DETECTOR_AVAILABLE:
     try:
         audio_detector = AudioDeepfakeDetector(use_gpu=True)
-        print("✓ Audio deepfake detector initialized (model loads on first use)")
+        print("[OK] Audio deepfake detector initialized (model loads on first use)")
     except Exception as e:
-        print(f"⚠ Audio detector not available: {e}")
+        print(f"[WARN] Audio detector not available: {e}")
 
 # Video deepfake detector (lazy-loaded, models downloaded on first use)
 video_detector = None
 if VIDEO_DETECTOR_AVAILABLE:
     try:
         video_detector = VideoDeepfakeDetector(use_gpu=False)
-        print("✓ Video deepfake detector initialized (model loads on first use)")
+        print("[OK] Video deepfake detector initialized (model loads on first use)")
     except Exception as e:
-        print(f"⚠ Video detector not available: {e}")
+        print(f"[WARN] Video detector not available: {e}")
 
 # File upload limits
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024  # 25MB for audio
+MAX_AUDIO_FILE_SIZE = 200 * 1024 * 1024  # 200MB for audio (supports long recordings)
 MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024  # 50MB for video
 ALLOWED_EXTENSIONS = {'.pdf', '.docx', '.txt', '.doc'}
 ALLOWED_AUDIO_EXTENSIONS = {'.wav', '.mp3', '.flac', '.ogg', '.m4a', '.webm', '.aac', '.wma'}
@@ -291,6 +292,7 @@ def health_check():
             'detect_image': '/api/detect-image (POST)',
             'detect_image_fast': '/api/detect-image/fast (POST)',
             'detect_image_ensemble': '/api/detect-image/ensemble (POST)',
+            'detect_audio': '/api/detect-audio (POST)',
             'feedback': '/api/fact-check/feedback (POST)'
         }
     })
@@ -1266,9 +1268,9 @@ def detect_audio_deepfake():
     """
     Detect AI-generated or deepfake audio.
     
-    Uses an **Ensemble** of:
-    1. Wav2Vec2 (MelodyMachine) - 60% weight
-    2. WavLM (DavidCombei) - 40% weight
+    Uses NII AntiDeepfake (ASRU 2025) — state-of-the-art SSL-based detector.
+    Primary: XLS-R-1B-AntiDeepfake (1B params, EER 1.35%)
+    Fallback: Wav2Vec2-Large-AntiDeepfake (315M params, EER 1.91%)
     
     Request: multipart/form-data with 'audio' file field
     Supported formats: wav, mp3, flac, ogg, m4a, webm, aac, wma
@@ -1288,7 +1290,7 @@ def detect_audio_deepfake():
         if audio_detector is None:
             return jsonify({
                 'success': False,
-                'error': 'Audio detection not available. Install required packages: pip install soundfile librosa',
+                'error': 'Audio detection not available. Install required packages: pip install torchaudio soundfile',
                 'error_code': 'AUDIO_DETECTOR_UNAVAILABLE'
             }), 503
 
