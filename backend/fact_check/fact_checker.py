@@ -297,7 +297,7 @@ class FactChecker:
                 try:
                     sources = future.result()
                     all_sources.extend(sources)
-                    print(f"✓ Query '{query[:50]}...' returned {len(sources)} sources")
+                    print(f"[OK] Query '{query[:50]}...' returned {len(sources)} sources")
                 except Exception as e:
                     print(f"✗ Query '{query}' failed with exception: {e}")
         
@@ -371,7 +371,7 @@ class FactChecker:
                     try:
                         sources = future.result()
                         round_2_sources.extend(sources)
-                        print(f"✓ Round 2 query '{query[:50]}...' returned {len(sources)} sources")
+                        print(f"[OK] Round 2 query '{query[:50]}...' returned {len(sources)} sources")
                     except Exception as e:
                         print(f"✗ Round 2 query '{query}' failed: {e}")
 

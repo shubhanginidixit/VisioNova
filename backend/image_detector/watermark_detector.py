@@ -96,20 +96,20 @@ class WatermarkDetector:
             # Test initialization to ensure it works
             test_decoder = WatermarkDecoder('bytes', 32)
             self.watermark_lib_available = True
-            logger.info("✓ invisible-watermark library loaded and tested")
+            logger.info("[OK] invisible-watermark library loaded and tested")
         except ImportError as e:
-            logger.error(f"❌ invisible-watermark import failed: {e}")
+            logger.error(f"[ERROR] invisible-watermark import failed: {e}")
             logger.info("Install with: pip install invisible-watermark")
             self.watermark_lib_available = False
         except Exception as e:
-            logger.error(f"❌ invisible-watermark initialization failed: {e}")
+            logger.error(f"[ERROR] invisible-watermark initialization failed: {e}")
             self.watermark_lib_available = False
         
         # Try to load SteganoGAN (optional)
         try:
             from steganogan import SteganoGAN
             self.steganogan_available = True
-            logger.info("✓ steganogan library available")
+            logger.info("[OK] steganogan library available")
         except ImportError:
             logger.debug("steganogan library not available (optional)")
         except Exception as e:
@@ -423,7 +423,7 @@ class WatermarkDetector:
             result['detection_methods']['adversarial_analysis'] = adversarial_result
             
             if adversarial_result.get('detected'):
-                result['details'].append(f"⚠️ Experimental: Possible adversarial perturbations detected ({adversarial_result.get('type', 'unknown')})")
+                result['details'].append(f"[WARN] Experimental: Possible adversarial perturbations detected ({adversarial_result.get('type', 'unknown')})")
                 # Don't set watermark_detected for experimental results
                 result['detection_methods']['adversarial_analysis']['note'] = 'Experimental - high false positive rate'
             
