@@ -135,7 +135,24 @@ class FastCascadeDetector:
         except Exception as e:
             logger.debug(f"Could not apply FP16: {e}")
         return False
-    
+
+    @staticmethod
+    def _downscale_image(image: Image.Image, max_dimension: int = 4096) -> Image.Image:
+        """Downscale image so its longest side ≤ max_dimension, preserving aspect ratio.
+
+        Prevents OOM on large RAW/TIFF/PNG files (50 MP+). Detection quality is
+        unaffected: all ML models resize to 224–512 px internally.
+        """
+        w, h = image.size
+        if max(w, h) <= max_dimension:
+            return image
+        if w >= h:
+            new_w, new_h = max_dimension, int(h * max_dimension / w)
+        else:
+            new_w, new_h = int(w * max_dimension / h), max_dimension
+        logger.info("Downscaling image from %dx%d to %dx%d for analysis", w, h, new_w, new_h)
+        return image.resize((new_w, new_h), Image.LANCZOS)
+
     def detect(self, image_data: bytes, filename: str = "image") -> Dict[str, Any]:
         """
         Perform fast cascading detection.
@@ -171,9 +188,13 @@ class FastCascadeDetector:
             image = Image.open(io.BytesIO(image_data))
             if image.mode != 'RGB':
                 image = image.convert('RGB')
-            
-            result['dimensions'] = {'width': image.width, 'height': image.height}
-            
+
+            # Downscale huge images to prevent OOM; ML models resize to ≤512px internally
+            original_dimensions = {'width': image.width, 'height': image.height}
+            image = self._downscale_image(image)
+
+            result['dimensions'] = original_dimensions
+
             # ========== STAGE 1: Quick Statistical Analysis ==========
             stage1_start = time.time()
             stage1_result = self._run_stage1(image, image_data)

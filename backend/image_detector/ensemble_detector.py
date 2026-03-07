@@ -128,6 +128,7 @@ class EnsembleDetector:
         self.edge_analyzer = None         # Edge coherence analysis
         
         # Pretrained HuggingFace detectors
+        self.deepfake_detector = None     # dima806 ViT (98.25% accuracy)
         self.sdxl_detector = None         # Organika/sdxl-detector (98.1% for modern diffusion)
         
         # NEW 2026: Latest high-accuracy HuggingFace detectors
@@ -308,7 +309,25 @@ class EnsembleDetector:
                 logger.warning(f"ML detectors not available: {e}")
             except Exception as e:
                 logger.warning(f"Error loading ML detectors: {e}")
-    
+
+    @staticmethod
+    def _downscale_image(image: Image.Image, max_dimension: int = 4096) -> Image.Image:
+        """Downscale image so its longest side ≤ max_dimension, preserving aspect ratio.
+
+        Prevents OOM on large RAW/TIFF/PNG files (50 MP+). Detection quality is
+        unaffected: all ML models resize to 224–512 px internally. Metadata,
+        watermark, and C2PA checks receive original bytes, so they are unaffected.
+        """
+        w, h = image.size
+        if max(w, h) <= max_dimension:
+            return image
+        if w >= h:
+            new_w, new_h = max_dimension, int(h * max_dimension / w)
+        else:
+            new_w, new_h = int(w * max_dimension / h), max_dimension
+        logger.info("Downscaling image from %dx%d to %dx%d for ML analysis", w, h, new_w, new_h)
+        return image.resize((new_w, new_h), Image.LANCZOS)
+
     def detect(self, image_data: bytes, filename: str = "image") -> Dict[str, Any]:
         """
         Perform ensemble detection on an image.
@@ -339,9 +358,13 @@ class EnsembleDetector:
             image = Image.open(io.BytesIO(image_data))
             if image.mode != 'RGB':
                 image = image.convert('RGB')
-            
+
+            # Downscale huge images to prevent OOM; ML models resize to ≤512px internally
+            original_dimensions = {'width': image.width, 'height': image.height}
+            image = self._downscale_image(image)
+
             img_array = np.array(image)
-            result['dimensions'] = {'width': image.width, 'height': image.height}
+            result['dimensions'] = original_dimensions
             result['file_size_bytes'] = len(image_data)
             
             # Run all detectors

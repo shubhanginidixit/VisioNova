@@ -55,7 +55,18 @@ class ELAAnalyzer:
             original = Image.open(io.BytesIO(image_data))
             if original.mode != 'RGB':
                 original = original.convert('RGB')
-            
+
+            # Downscale huge images — ELA is computed pixel-by-pixel, so
+            # 50 MP+ images are extremely slow and memory-intensive.
+            # 4096px retains more than enough detail for manipulation detection.
+            _max_ela_dim = 4096
+            if max(original.width, original.height) > _max_ela_dim:
+                _ratio = _max_ela_dim / max(original.width, original.height)
+                original = original.resize(
+                    (int(original.width * _ratio), int(original.height * _ratio)),
+                    Image.LANCZOS
+                )
+
             # Generate ELA
             ela_image, error_stats = self._compute_ela(original)
             
