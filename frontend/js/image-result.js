@@ -38,9 +38,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Initialize button handlers
     initButtonHandlers();
 
-    // Load image data from storage
-    imageData = VisioNovaStorage.getFile('image');
-    console.log('[ImageResult] Image data found:', imageData ? 'Yes' : 'No');
+    // Load image data from storage (try IndexedDB first for large files, fall back to sessionStorage)
+    imageData = await VisioNovaStorage.getImageFile();
+    if (!imageData) {
+        imageData = VisioNovaStorage.getFile('image');
+    }
+    console.log('[ImageResult] Image data from storage:', imageData ? 'found' : 'not found');
 
     if (imageData) {
         await processImageAnalysis(imageData);
