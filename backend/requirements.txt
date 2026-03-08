@@ -1,0 +1,73 @@
+# VisioNova Backend Dependencies
+flask>=2.3.0
+flask-cors>=4.0.0
+flask-limiter>=3.5.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+python-dotenv>=1.0.0
+lxml>=4.9.0
+duckduckgo-search>=6.0.0
+groq>=0.4.0
+
+# ML & Deep Learning
+transformers>=4.30.0
+torch>=2.0.0
+torchvision>=0.15.0
+timm>=0.9.0  # For advanced vision models
+safetensors>=0.4.0  # For loading model weights in safetensors format
+huggingface_hub>=0.20.0  # For downloading model files from HuggingFace
+binoculars>=0.1.0  # Zero-shot AI text detection (dual Falcon-7B, GPU-only)
+
+# Document Processing
+PyMuPDF>=1.23.0
+python-docx>=1.0.0
+PyPDF2>=3.0.0  # PDF text extraction for fact-checking
+pandas>=2.0.0
+scikit-learn>=1.3.0
+datasets>=2.14.0
+accelerate>=0.20.0
+sentencepiece>=0.1.99
+
+# Imageho Detection Dependencies
+pillow>=10.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+opencv-python>=4.8.0
+tqdm>=4.65.0  # For model download progress
+
+# Watermark & Content Credentials Detection
+invisible-watermark>=0.2.0  # For Stable Diffusion DWT-DCT/DWT-DCT-SVD watermark detection
+c2pa-python>=0.6.0  # For C2PA Content Credentials (DALL-E 3, Adobe Firefly, Microsoft, etc.)
+# steganogan>=0.1.3  # Optional: For SteganoGAN steganographic watermark detection
+
+# ML Image Detection Models (downloaded on first use)
+# haywoodsloan/ai-image-detector-dev-deploy (SwinV2, 98.1% accuracy)
+# Organika/sdxl-detector (Swin, 98.1% F1, diffusion specialist)
+# NYUAD-ComNets/NYUAD_AI-generated_images_detector (HuggingFace)
+# dima806/deepfake_vs_real_image_detection (for deepfakes)
+# Bombek1/ai-image-detector-siglip-dinov2 (SigLIP2+DINOv2, 99.97% AUC, 25+ generators)
+# prithivMLmods/Deepfake-Detect-Siglip2 (SigLIP2, binary deepfake)
+# prithivMLmods/AI-vs-Deepfake-vs-Real-Siglip2 (SigLIP2, 3-class)
+# WpythonW/dinoV2-deepfake-detector (DINOv2, degradation-resilient)
+peft>=0.7.0  # LoRA adapter support (Bombek1 SigLIP2+DINOv2 model)
+
+# XAI Explainability
+pytorch-grad-cam>=1.5.0  # Optional: Grad-CAM attention heatmaps for Vision Transformers
+
+# Audio Detection Dependencies (NII AntiDeepfake - ASRU 2025)
+soundfile>=0.12.0  # Audio file reading (wav, flac, ogg)
+torchaudio>=2.0.0  # Audio loading, resampling, and preprocessing
+# Wav2Vec2 architecture reimplemented in wav2vec2_arch.py (no fairseq needed)
+# Primary: nii-yamagishilab/xls-r-1b-anti-deepfake (XLS-R 1B, EER 1.35% In-the-Wild)
+# Fallback: nii-yamagishilab/wav2vec-large-anti-deepfake (Wav2Vec2 Large, EER 1.91% In-the-Wild)
+
+# Video Detection Dependencies
+# opencv-python already listed above
+# Model: Naman712/Deep-fake-detection (ResNeXt50 + LSTM, 87% accuracy)
+# Fallback: dima806/deepfake_vs_real_faces_detection (ViT)
+
+# Text Detection Ensemble (4 models, weighted average)
+# desklib/ai-text-detector-v1.01 (DeBERTa-v3-large, 400M, RAID #1, w=0.35)
+# Oxidane/tmr-ai-text-detector (RoBERTa-base, 125M, 97.3% acc, w=0.30)
+# fakespot-ai/roberta-base-ai-text-detection-v1 (RoBERTa-base, 125M, w=0.20)
+# MayZhou/e5-small-lora-ai-generated-detector (E5-small+LoRA, 33M, w=0.15)

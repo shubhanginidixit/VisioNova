@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>VisioNova - Audio Analysis</title>
+  <script>
+    (function () {
+      const theme = localStorage.getItem('visioNova_theme') || 'dark';
+      document.documentElement.classList.add(theme);
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#3A8DFF",
+            "accent-success": "#00D991",
+            "accent-warning": "#FFB74A",
+            "accent-danger": "#FF4A4A",
+            "background-light": "#F5F7FA",
+            "background-dark": "#0F121A",
+            "surface-dark": "#0D1B2A",
+            "panel-dark": "#161B2E",
+            "card-dark": "#1E2338",
+          },
+          fontFamily: { "display": ["Inter", "sans-serif"] },
+          borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+        },
+      },
+    }
+  </script>
+  <link rel="stylesheet" href="../css/common.css">
+  <script src="../js/theme-toggle.js"></script>
+  <!-- WaveSurfer.js for cool waveform visualizations -->
+  <script src="https://unpkg.com/wavesurfer.js@7"></script>
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+  <style>
+    .bg-hero-gradient {
+      background: radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.08) 0%, transparent 60%);
+    }
+
+    .shadow-glow {
+      box-shadow: 0 0 20px rgba(58, 141, 255, 0.15);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1E2338;
+      border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3A8DFF;
+      border-radius: 4px;
+    }
+
+    #explanationChevron.rotated,
+    #modelsChevron.rotated {
+      transform: rotate(180deg);
+    }
+
+    /* Segment timeline bar */
+    .seg-block {
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .seg-block:hover {
+      filter: brightness(1.3);
+      transform: scaleY(1.15);
+    }
+
+    .seg-block.active {
+      outline: 2px solid white;
+      outline-offset: 1px;
+      z-index: 2;
+    }
+
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* Custom Slider & Waveform Glow */
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(58, 141, 255, 0.5);
+    }
+
+    #waveform {
+      filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.4));
+    }
+
+    #waveform::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      z-index: -1;
+    }
+  </style>
+</head>
+
+<body
+  class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
+  <div class="fixed inset-0 z-0 pointer-events-none">
+    <div
+      class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
+    </div>
+    <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
+  </div>
+
+  <!-- Header -->
+  <header
+    class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
+    <div class="flex items-center gap-4 text-white">
+      <div class="size-8 text-primary">
+        <span class="material-symbols-outlined !text-[32px]">hub</span>
+      </div>
+      <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
+    </div>
+    <div class="flex flex-1 justify-center hidden md:flex">
+      <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
+        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+          href="homepage.html">Home</a>
+        <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+          href="AnalysisDashboard.html">Analyze</a>
+        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+          href="FactCheckPage.html">Fact Check</a>
+        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+          href="ReportPage.html">Reports</a>
+        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+          href="#">API</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-3">
+      <button
+        class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
+        <span class="material-symbols-outlined !text-[20px]">notifications</span>
+        <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
+      </button>
+      <button id="themeToggle"
+        class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
+        title="Toggle Dark/Light Mode">
+        <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
+        <span class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Sidebar -->
+    <aside
+      class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
+      <div class="flex flex-col gap-6 w-full px-3">
+        <div class="w-full flex flex-col gap-1">
+          <a href="homepage.html"
+            class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
+            <span class="material-symbols-outlined shrink-0">add_circle</span>
+            <span
+              class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
+              Scan</span>
+          </a>
+        </div>
+        <div class="w-full h-px bg-[#1E2338]"></div>
+        <div class="flex flex-col gap-2 w-full">
+          <a href="AnalysisDashboard.html"
+            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+            <span class="material-symbols-outlined shrink-0">dashboard</span>
+            <span
+              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
+          </a>
+          <a href="ReportPage.html"
+            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+            <span class="material-symbols-outlined shrink-0">history</span>
+            <span
+              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
+              Scans</span>
+          </a>
+          <a href="ReportPage.html"
+            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+            <span class="material-symbols-outlined shrink-0">folder_open</span>
+            <span
+              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
+          </a>
+          <a href="FactCheckPage.html"
+            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+            <span class="material-symbols-outlined shrink-0">shield</span>
+            <span
+              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
+              Intel</span>
+          </a>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2 w-full px-3">
+        <button
+          class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+          <span class="material-symbols-outlined shrink-0">settings</span>
+          <span
+            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
+        </button>
+        <button
+          class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+          <span class="material-symbols-outlined shrink-0">help</span>
+          <span
+            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 md:p-8 lg:px-12">
+      <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
+        </div>
+        <div
+          class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
+        </div>
+      </div>
+
+      <div class="max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
+
+        <!-- Page Heading -->
+        <div class="flex flex-wrap justify-between items-end gap-4 border-b border-white/10 pb-6">
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
+              <span>Analyze</span>
+              <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+              <span>Audio Analysis</span>
+            </div>
+            <h1 id="pageTitle" class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Audio
+              Analysis</h1>
+            <p class="text-[#8da8ce] text-sm font-normal flex items-center gap-3 flex-wrap">
+              <span class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                <span id="analysisDate">Analyzed just now</span>
+              </span>
+              <span id="fileBadge"
+                class="hidden px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 border border-white/10 uppercase tracking-wide"></span>
+              <span id="durationBadge" class="hidden flex items-center gap-1 text-xs">
+                <span class="material-symbols-outlined text-[16px]">timer</span>
+                <span id="durationText">--</span>
+              </span>
+              <span id="sampleRateBadge" class="hidden flex items-center gap-1 text-xs">
+                <span class="material-symbols-outlined text-[16px]">graphic_eq</span>
+                <span id="sampleRateText">--</span>
+              </span>
+            </p>
+          </div>
+          <div class="flex gap-3">
+            <button id="reanalyzeBtn"
+              class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all">
+              <span class="material-symbols-outlined text-[20px] mr-2">refresh</span>
+              Re-analyze
+            </button>
+            <button id="exportPdfBtn"
+              class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-lg shadow-primary/20 transition-all">
+              <span class="material-symbols-outlined text-[20px] mr-2">download</span>
+              Export Report
+            </button>
+          </div>
+        </div>
+
+        <!-- Scorecard Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Probability Card -->
+          <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+              <h3 class="text-white/70 text-sm font-medium">Human vs. AI Probability</h3>
+              <span class="material-symbols-outlined text-white/30">mic</span>
+            </div>
+            <div class="flex gap-4 items-end mt-4">
+              <div class="flex flex-col gap-1 w-1/2">
+                <span class="text-xs text-white/50">Human</span>
+                <div class="h-20 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                  <div id="humanBar" class="w-full transition-all duration-1000 rounded-t"
+                    style="height: 0%; background: #3A8DFF; opacity: 0.9"></div>
+                  <span id="humanPercent"
+                    class="absolute bottom-1 w-full text-center text-xs font-bold text-white drop-shadow-md">--%</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1 w-1/2">
+                <span class="text-xs text-white/50">AI-Generated</span>
+                <div class="h-20 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                  <div id="aiBar" class="w-full transition-all duration-1000 rounded-t"
+                    style="height: 0%; background: #FF4A4A; opacity: 0.85"></div>
+                  <span id="aiPercent"
+                    class="absolute bottom-1 w-full text-center text-xs font-bold text-white/60">--%</span>
+                </div>
+              </div>
+            </div>
+            <p id="probabilityNote" class="text-xs text-primary mt-3 font-medium flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">trending_up</span>
+              <span id="probabilityText">Analyzing audio patterns...</span>
+            </p>
+          </div>
+
+          <!-- Model Info Card -->
+          <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-start">
+              <h3 class="text-white/70 text-sm font-medium">Analysis Mode</h3>
+              <span class="material-symbols-outlined text-white/30">memory</span>
+            </div>
+            <div class="mt-2">
+              <span id="analysisMode" class="text-2xl font-bold text-white block">Loading...</span>
+              <span id="analysisModeInfo" class="text-sm text-white/60 block mt-1">Initializing detector...</span>
+            </div>
+            <div id="modelTags" class="flex gap-2 mt-4 flex-wrap">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Section: Audio Player + Timeline | Key Findings -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[350px]">
+
+          <!-- Audio Player & Segment Timeline -->
+          <div
+            class="lg:col-span-7 flex flex-col bg-[#0D1B2A] rounded-2xl overflow-hidden shadow-xl border border-white/5">
+            <div class="bg-surface-dark px-6 py-3 border-b border-white/10 flex justify-between items-center">
+              <div class="flex gap-2 items-center">
+                <span class="material-symbols-outlined text-white/40">audio_file</span>
+                <span class="text-white/70 font-bold text-sm">Audio Playback &amp; Analysis</span>
+              </div>
+              <div class="flex gap-2">
+                <span id="analysisBadge"
+                  class="hidden flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
+                  <span class="material-symbols-outlined !text-[14px]">assessment</span>
+                  <span id="analysisBadgeText">Single Pass</span>
+                </span>
+                <span id="segmentCountBadge"
+                  class="hidden flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
+                  <span class="material-symbols-outlined !text-[14px]">segment</span>
+                  <span id="segmentCountText">--</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Audio Player Area -->
+            <div class="p-4 flex flex-col gap-4 flex-1">
+              <!-- Placeholder / Player -->
+              <div id="audioContainer">
+                <div id="noAudioPlaceholder" class="flex flex-col items-center gap-4 text-white/40 py-8">
+                  <span class="material-symbols-outlined text-6xl opacity-50">mic</span>
+                  <p class="text-sm">No audio uploaded</p>
+                  <a href="homepage.html" class="text-primary hover:underline text-sm">Upload audio to analyze</a>
+                </div>
+                <!-- Custom Waveform Player -->
+                <div id="audioPlayerWrapper" class="hidden flex flex-col gap-4">
+                  <div id="waveform" class="w-full h-32 relative cursor-pointer"></div>
+
+                  <div
+                    class="flex items-center justify-between text-white/70 mt-2 bg-black/20 p-3 rounded-xl border border-white/5">
+                    <div class="flex items-center gap-4">
+                      <button id="playPauseBtn"
+                        class="flex items-center justify-center size-10 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 transition-colors shadow-sm focus:outline-none">
+                        <span id="playIcon" class="material-symbols-outlined !text-[24px]">play_arrow</span>
+                      </button>
+                      <div class="text-xs font-mono tracking-wider opacity-80">
+                        <span id="currentTimeDisplay">0:00</span> / <span id="durationDisplay">0:00</span>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                      <span class="material-symbols-outlined !text-[18px] text-white/50">volume_up</span>
+                      <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1"
+                        class="w-24 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Segment Timeline (shown for segmented analysis) -->
+              <div id="timelineSection" class="hidden">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 class="text-white/70 text-xs font-semibold uppercase tracking-wider">Segment Timeline</h4>
+                  <div class="flex items-center gap-3 text-[10px] text-white/40">
+                    <span class="flex items-center gap-1"><span
+                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-danger"></span> Likely AI</span>
+                    <span class="flex items-center gap-1"><span
+                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-warning"></span> Uncertain</span>
+                    <span class="flex items-center gap-1"><span
+                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-success"></span> Likely Real</span>
+                  </div>
+                </div>
+                <div id="timelineBar" class="flex w-full h-10 rounded-lg overflow-hidden gap-[2px] bg-black/30">
+                  <!-- Segment blocks injected here -->
+                </div>
+                <div class="flex justify-between text-[10px] text-white/30 mt-1 font-mono">
+                  <span>0:00</span>
+                  <span id="timelineEndLabel">--:--</span>
+                </div>
+              </div>
+
+              <!-- Segment Detail Card (appears when clicking a segment) -->
+              <div id="segmentDetail" class="hidden bg-white/5 border border-white/10 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 id="segmentDetailTitle" class="text-white font-semibold text-sm">Segment 1</h4>
+                  <button id="segmentDetailClose" class="text-white/40 hover:text-white">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p class="text-[10px] text-white/40 uppercase">Time Range</p>
+                    <p id="segDetailTime" class="text-sm font-bold text-white">--</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-white/40 uppercase">Fake Probability</p>
+                    <p id="segDetailFake" class="text-sm font-bold text-accent-danger">--%</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-white/40 uppercase">Verdict</p>
+                    <p id="segDetailVerdict" class="text-sm font-bold text-white">--</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Findings Column -->
+          <div class="lg:col-span-5 flex flex-col gap-4">
+            <!-- Key Findings -->
+            <div class="bg-surface-dark/40 border border-white/5 rounded-2xl p-5 flex-1 flex flex-col">
+              <div class="flex justify-between items-center mb-4">
+                <div class="flex gap-2 items-center">
+                  <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <span class="material-symbols-outlined !text-[20px]">lightbulb</span>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-sm">Key Findings</h4>
+                    <p id="findingsCount" class="text-white/40 text-xs">Analyzing...</p>
+                  </div>
+                </div>
+              </div>
+              <div id="keyFindings" class="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar">
+                <!-- Loading skeletons -->
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
+              </div>
+            </div>
+
+            <!-- Segment Summary (for segmented analysis) -->
+            <div id="segmentSummaryCard" class="hidden bg-surface-dark/40 border border-white/5 rounded-2xl p-5">
+              <div class="flex justify-between items-center mb-3">
+                <div class="flex gap-2 items-center">
+                  <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
+                    <span class="material-symbols-outlined !text-[20px]">analytics</span>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-sm">Segment Summary</h4>
+                    <p class="text-white/40 text-xs">Per-segment analysis breakdown</p>
+                  </div>
+                </div>
+              </div>
+              <div id="segmentSummaryContent" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Explanation Panel (collapsible) -->
+        <div id="explanationPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+          <button id="explanationToggle"
+            class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+            <div class="flex gap-2 items-center">
+              <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                <span class="material-symbols-outlined !text-[20px]">smart_toy</span>
+              </div>
+              <div class="text-left">
+                <h4 class="text-white font-bold text-sm">AI Explanation</h4>
+                <p class="text-white/40 text-xs">Why we reached this verdict</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-white/40 transition-transform"
+              id="explanationChevron">expand_more</span>
+          </button>
+          <div id="explanationContent" class="hidden px-5 pb-5">
+            <div id="explanationText"
+              class="text-white/70 text-sm leading-relaxed whitespace-pre-line border-t border-white/5 pt-4"></div>
+          </div>
+        </div>
+
+        <!-- Detection Model Details Panel (collapsible) -->
+        <div id="modelsPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+          <button id="modelsToggle"
+            class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+            <div class="flex gap-2 items-center">
+              <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
+                <span class="material-symbols-outlined !text-[20px]">hub</span>
+              </div>
+              <div class="text-left">
+                <h4 class="text-white font-bold text-sm">Detection Model</h4>
+                <p id="modelsSubtitle" class="text-white/40 text-xs">Model that performed this analysis</p>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-white/40 transition-transform"
+              id="modelsChevron">expand_more</span>
+          </button>
+          <div id="modelsContent" class="hidden px-5 pb-5">
+            <div id="modelsList" class="flex flex-col gap-3 border-t border-white/5 pt-4"></div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Storage Utilities -->
+  <script src="../js/storage-utils.js"></script>
+  <!-- Dynamic Content Loading Script -->
+  <script src="../js/audio-result.js"></script>
+</body>
+
+</html>
