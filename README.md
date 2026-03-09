@@ -1,3 +1,12 @@
+---
+title: VisioNova
+emoji: 👁️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # VisioNova
 
 VisioNova is a multi-modal AI credibility engine designed to verify the authenticity of digital media and detect misinformation. It provides comprehensive forensic analysis for images, videos, audio, text, and fact-checking.

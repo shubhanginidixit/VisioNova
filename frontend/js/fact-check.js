@@ -3,7 +3,7 @@
  * Connects to the backend API for claim verification.
  */
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';
 const MAX_INPUT_LENGTH = 5000;  // Maximum characters allowed
 const DEBOUNCE_DELAY = 300;     // Milliseconds to wait before submitting
 
