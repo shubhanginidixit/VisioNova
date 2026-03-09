@@ -3,7 +3,7 @@
  * Performs client-side text analysis and displays results
  */
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';
 
 // Analysis state
 let textData = null;
