@@ -1,297 +1,1055 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova - Intelligence Dashboard</title>
-    <!-- Blocking theme script to prevent FOUC -->
-    <script>
-        (function () {
-            const theme = localStorage.getItem('visioNova_theme') || 'dark';
-            document.documentElement.classList.add(theme);
-        })();
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "v-bg": "#0A0F1A", // Deep void 
-                        "v-surface": "#0F1626", // Slightly elevated
-                        "v-panel": "#141C2F", // Card panels
-                        "v-border": "rgba(255, 255, 255, 0.08)",
-                        "v-border-focus": "rgba(100, 255, 218, 0.4)",
-                        "v-text-main": "#F8FAFC",
-                        "v-text-muted": "#94A3B8",
-                        "v-authentic": "#64FFDA", // Teal 
-                        "v-suspicious": "#FFB74D", // Muted Orange
-                        "v-brand": "#3B82F6", // Structural blue
-                    },
-                    fontFamily: {
-                        "sans": ["Inter", "sans-serif"],
-                        "mono": ["Roboto Mono", "monospace"],
-                    },
-                    boxShadow: {
-                        'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-                        'glow': '0 0 15px rgba(100, 255, 218, 0.1)',
-                    }
-                },
-            },
-        }
-    </script>
-    
+    <title>VisioNova — Intelligence Dashboard</title>
+    <meta name="description" content="VisioNova: Multi-modal AI credibility engine for deepfake and misinformation detection." />
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
     <style>
-        /* Base system overrides replacing common CSS */
-        body { background-color: theme('colors.v-bg'); color: theme('colors.v-text-main'); letter-spacing: -0.01em; }
-        .light body { background-color: #F8FAFC; color: #0F172A; }
-        
-        .panel {
-            background-color: theme('colors.v-panel');
-            border: 1px solid theme('colors.v-border');
-            box-shadow: theme('boxShadow.panel');
+        /* =============================================
+           VISIONOVA FORENSIC DESIGN SYSTEM — v3.0
+           Self-contained, no external CSS overrides
+        ============================================= */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #08101E;
+            --surface: #0C1628;
+            --panel: #101D30;
+            --raised: #152238;
+            --border: rgba(255,255,255,0.07);
+            --border-strong: rgba(255,255,255,0.14);
+            --text: #F0F4FA;
+            --muted: #8899B4;
+            --dim: #4A5A72;
+            --authentic: #47E5BC;
+            --suspicious: #FFAA44;
+            --danger: #FF4A5E;
+            --brand: #4B8EF5;
+            --brand-dim: rgba(75,142,245,0.12);
+            --authentic-dim: rgba(71,229,188,0.1);
+            --suspicious-dim: rgba(255,170,68,0.1);
         }
-        .light .panel { background-color: #FFFFFF; border-color: #E2E8F0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        
-        /* Unified 1px Structure Grid */
-        .structural-grid {
-            background-image: linear-gradient(theme('colors.v-border') 1px, transparent 1px),
-                              linear-gradient(90deg, theme('colors.v-border') 1px, transparent 1px);
-            background-size: 40px 40px;
-            opacity: 0.2;
+
+        html, body {
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
         }
-        .light .structural-grid { opacity: 0.05; background-image: linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px); }
 
-        /* Typography */
-        .data-label { font-family: theme('fontFamily.mono'); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: theme('colors.v-text-muted'); }
-        .light .data-label { color: #64748B; }
+        /* ---- Layout Shell ---- */
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
 
-        /* Input / Button Resets */
-        .btn-primary { background: transparent; border: 1px solid theme('colors.v-authentic'); color: theme('colors.v-authentic'); transition: all 0.2s; }
-        .btn-primary:hover { background: rgba(100, 255, 218, 0.1); box-shadow: theme('boxShadow.glow'); }
-        .light .btn-primary { background: #0F172A; color: #FFF; border-color: #0F172A; }
-        .light .btn-primary:hover { background: #334155; }
-        
-        .input-base { background: theme('colors.v-surface'); border: 1px solid theme('colors.v-border'); color: white; transition: border-color 0.2s; }
-        .input-base:focus { border-color: theme('colors.v-border-focus'); outline: none; }
-        .light .input-base { background: #F1F5F9; border-color: #CBD5E1; color: #0F172A; }
-        .light .input-base:focus { border-color: #3B82F6; }
+        /* ---- Top Nav ---- */
+        .topnav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 52px;
+            padding: 0 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 50;
+        }
 
-        /* Animations */
+        .topnav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .topnav-brand .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--brand) 0%, var(--authentic) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        .topnav-brand .logo-icon span {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .topnav-brand .brand-name {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+        .topnav-brand .brand-version {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            color: var(--authentic);
+            background: var(--authentic-dim);
+            border: 1px solid rgba(71,229,188,0.2);
+            padding: 1px 6px;
+            margin-left: 4px;
+        }
+
+        .topnav-links {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .nav-link {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--muted);
+            text-decoration: none;
+            padding: 5px 14px;
+            border: 1px solid transparent;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--text);
+            border-color: var(--border-strong);
+            background: var(--raised);
+        }
+
+        .nav-link.active {
+            color: var(--authentic);
+            border-color: rgba(71,229,188,0.3);
+            background: var(--authentic-dim);
+        }
+
+        .topnav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            color: var(--authentic);
+            padding: 4px 10px;
+            border: 1px solid rgba(71,229,188,0.2);
+            background: var(--authentic-dim);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--authentic);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ---- Body Layout ---- */
+        .body-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ---- Sidebar ---- */
+        .sidebar {
+            width: 56px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 8px;
+            flex-shrink: 0;
+            transition: width 0.25s ease;
+            overflow: hidden;
+        }
+
+        .sidebar:hover {
+            width: 200px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 10px 16px;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .sidebar-item:hover {
+            color: var(--text);
+            background: var(--raised);
+        }
+
+        .sidebar-item.active {
+            color: var(--authentic);
+            background: var(--authentic-dim);
+        }
+
+        .sidebar-item .material-symbols-outlined {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-divider {
+            width: 70%;
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        /* ---- Main Stage ---- */
+        .main-stage {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            background: var(--bg);
+            position: relative;
+        }
+
+        /* Subtle grid texture */
+        .main-stage::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        .main-stage > * { position: relative; z-index: 1; }
+
+        /* ---- Context Header ---- */
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .page-header-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--authentic);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .page-header h1 {
+            font-size: clamp(24px, 3.5vw, 40px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            line-height: 1.1;
+        }
+
+        .page-header p {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+            max-width: 560px;
+        }
+
+        /* ---- Primary Analysis Panel ---- */
+        .analysis-panel {
+            background: var(--panel);
+            border: 1px solid var(--border-strong);
+            display: flex;
+            flex-direction: column;
+            max-width: 1000px;
+        }
+
+        /* Tab strip */
+        .tab-strip {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 14px 8px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-right: 1px solid var(--border);
+            transition: color 0.15s, background 0.15s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn:last-child { border-right: none; }
+
+        .tab-btn .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text);
+            background: var(--raised);
+        }
+
+        .tab-btn.active {
+            color: var(--authentic);
+            border-bottom-color: var(--authentic);
+            background: var(--authentic-dim);
+        }
+
+        /* Tab Contents */
+        .tab-contents { min-height: 360px; }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: flex; }
+
+        .upload-layout {
+            display: flex;
+            width: 100%;
+            min-height: 360px;
+        }
+
+        .upload-sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            padding: 20px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .upload-sidebar-label {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--authentic);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .upload-sidebar p {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .upload-meta {
+            margin-top: auto;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            height: 36px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            padding: 0 10px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .input-row input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            width: 100%;
+        }
+
+        .input-row input::placeholder { color: var(--dim); }
+
+        .meta-label {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--dim);
+            margin-bottom: 6px;
+        }
+
+        /* Dropzone */
+        .upload-dropzone {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dropzone {
+            width: 100%;
+            height: 100%;
+            border: 1px dashed var(--border-strong);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s, background 0.2s;
+            min-height: 280px;
+        }
+
+        .dropzone:hover {
+            border-color: var(--authentic);
+            background: var(--authentic-dim);
+        }
+
+        /* Scan line on hover */
+        .dropzone::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--authentic), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .dropzone:hover::after {
+            opacity: 0.6;
+            animation: scanline 2s linear infinite;
+        }
+
         @keyframes scanline {
-            0% { transform: translateY(-100%); opacity: 0; }
-            50% { opacity: 1; }
-            100% { transform: translateY(400px); opacity: 0; }
+            0% { top: -2px; }
+            100% { top: 100%; }
         }
-        .animate-scan { animation: scanline 3s linear infinite; }
-        
-        /* Tab states */
-        .media-tab { transition: all 0.2s; }
-        .active-tab { border-bottom: 2px solid theme('colors.v-authentic'); color: theme('colors.v-authentic'); }
-        .inactive-tab { border-bottom: 2px solid transparent; color: theme('colors.v-text-muted'); }
-        .inactive-tab:hover { color: white; background: rgba(255,255,255,0.02); }
-        .light .active-tab { border-color: #0F172A; color: #0F172A; }
-        .light .inactive-tab { color: #64748B; }
-        .light .inactive-tab:hover { color: #0F172A; background: #F1F5F9; }
+
+        .dropzone .dz-icon {
+            font-size: 32px;
+            color: var(--dim);
+            transition: color 0.2s;
+        }
+
+        .dropzone:hover .dz-icon { color: var(--authentic); }
+
+        .dropzone .dz-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .dropzone .dz-sub {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .dz-browse {
+            color: var(--authentic);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .dz-paste-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border: 1px solid var(--border-strong);
+            background: var(--raised);
+            color: var(--muted);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+            margin-top: 8px;
+        }
+
+        .dz-paste-btn:hover {
+            color: var(--text);
+            border-color: var(--authentic);
+        }
+
+        /* Preview state */
+        .dropzone-preview {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: var(--panel);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .dropzone-preview.visible { display: flex; }
+
+        .dropzone-preview img {
+            max-height: 200px;
+            max-width: 100%;
+            object-fit: contain;
+            border: 1px solid var(--border);
+            opacity: 0.9;
+        }
+
+        .file-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--raised);
+            border: 1px solid var(--border-strong);
+            padding: 6px 12px;
+        }
+
+        .file-name {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--text);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .wipe-btn {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            color: var(--suspicious);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 0.06em;
+        }
+
+        /* Text pane */
+        .text-pane {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .text-pane textarea {
+            width: 100%;
+            height: 100%;
+            min-height: 260px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            padding: 14px;
+            resize: none;
+            outline: none;
+            line-height: 1.7;
+        }
+
+        .text-pane textarea::placeholder { color: var(--dim); }
+        .text-pane textarea:focus { border-color: var(--suspicious); }
+
+        /* Doc upload zone */
+        .doc-upload-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 14px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface);
+            cursor: pointer;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            transition: border-color 0.15s, color 0.15s;
+        }
+
+        .doc-upload-zone:hover {
+            border-color: var(--suspicious);
+            color: var(--suspicious);
+        }
+
+        /* URL pane */
+        .url-pane {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .url-input-wrap {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .url-input-label {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--dim);
+            text-align: center;
+        }
+
+        .url-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 44px;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            padding: 0 14px;
+        }
+
+        .url-field:focus-within { border-color: rgba(255, 74, 94, 0.5); }
+
+        .url-field .material-symbols-outlined {
+            font-size: 18px;
+            color: rgba(255, 74, 94, 0.6);
+            flex-shrink: 0;
+        }
+
+        .url-field input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            width: 100%;
+        }
+
+        .url-field input::placeholder { color: var(--dim); }
+
+        /* Toolbar */
+        .analysis-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+        }
+
+        .toolbar-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .toolbar-status .indicator {
+            width: 6px;
+            height: 6px;
+            background: var(--authentic);
+            border-radius: 50%;
+        }
+
+        .execute-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 28px;
+            background: transparent;
+            border: 1px solid var(--authentic);
+            color: var(--authentic);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: color 0.2s, box-shadow 0.2s;
+        }
+
+        .execute-btn::before {
+            content: '';
+            position: absolute;
+            left: -100%;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--authentic-dim);
+            transition: left 0.3s ease;
+        }
+
+        .execute-btn:hover::before { left: 0; }
+
+        .execute-btn:hover {
+            box-shadow: 0 0 20px rgba(71,229,188,0.2);
+        }
+
+        .execute-btn span, .execute-btn .material-symbols-outlined {
+            position: relative;
+            z-index: 1;
+        }
+
+        .execute-btn .material-symbols-outlined { font-size: 18px; }
+
+        /* ---- Feature Cards Row ---- */
+        .features-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            max-width: 1000px;
+        }
+
+        .feat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-decoration: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .feat-card:hover { background: var(--raised); }
+
+        .feat-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feat-card .material-symbols-outlined {
+            font-size: 16px;
+            color: var(--dim);
+            transition: color 0.2s;
+        }
+
+        .feat-card:hover .material-symbols-outlined { color: var(--text); }
+
+        .feat-card-title {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text);
+        }
+
+        .feat-card p {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .feat-card.c-video:hover { border-color: var(--brand); }
+        .feat-card.c-audio:hover { border-color: #9B59B6; }
+        .feat-card.c-text:hover { border-color: var(--suspicious); }
+        .feat-card.c-fact:hover { border-color: var(--danger); }
+
+        .feat-card.c-video:hover .material-symbols-outlined { color: var(--brand); }
+        .feat-card.c-audio:hover .material-symbols-outlined { color: #9B59B6; }
+        .feat-card.c-text:hover .material-symbols-outlined { color: var(--suspicious); }
+        .feat-card.c-fact:hover .material-symbols-outlined { color: var(--danger); }
+
+        /* ---- Scrollbar ---- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--raised); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-stage { padding: 20px 16px; }
+            .features-row { grid-template-columns: repeat(2, 1fr); }
+            .upload-layout { flex-direction: column; }
+            .upload-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+            .topnav-links { display: none; }
+        }
     </style>
-    <link rel="stylesheet" href="../css/common.css"> <!-- Fallback for header/sidebar injection -->
-    <script src="../js/layout.js"></script>
 </head>
 
-<body class="flex h-screen w-full flex-col overflow-hidden selection:bg-v-brand selection:text-white relative">
-    
-    <!-- Background Grid Texture -->
-    <div class="absolute inset-0 pointer-events-none structural-grid z-0"></div>
+<body>
+<div class="app-shell">
 
-    <!-- Top Navigation Bar (Injected by layout.js) -->
-    <header class="relative z-20 border-b border-v-border bg-v-bg/90 backdrop-blur-sm"></header>
+    <!-- ═══ TOP NAVIGATION ═══ -->
+    <nav class="topnav">
+        <a class="topnav-brand" href="homepage.html">
+            <div class="logo-icon">
+                <span class="material-symbols-outlined" style="font-size:14px;">blur_on</span>
+            </div>
+            <span class="brand-name">VisioNova</span>
+            <span class="brand-version">v2.1</span>
+        </a>
 
-    <div class="flex flex-1 overflow-hidden relative z-10 w-full max-w-[1600px] mx-auto">
-        <!-- Sidebar Navigation (Injected by layout.js) -->
-        <aside class="border-r border-v-border bg-v-bg/90 backdrop-blur-sm hidden md:block"></aside>
-        
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto w-full px-6 py-8 md:px-12 flex flex-col gap-8">
-            
-            <!-- Context Header -->
-            <header class="flex flex-col gap-1 w-full max-w-5xl mx-auto mt-4">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-2 w-2 rounded-full bg-v-authentic animate-pulse"></span>
-                    <span class="data-label text-v-authentic">System Active // Visionova v2.1</span>
+        <div class="topnav-links">
+            <a href="homepage.html" class="nav-link active">Home</a>
+            <a href="AnalysisDashboard.html" class="nav-link">Analyze</a>
+            <a href="FactCheckPage.html" class="nav-link">Fact Check</a>
+            <a href="ReportPage.html" class="nav-link">Reports</a>
+        </div>
+
+        <div class="topnav-right">
+            <div class="status-pill">
+                <div class="status-dot"></div>
+                SYSTEMS ONLINE
+            </div>
+        </div>
+    </nav>
+
+    <div class="body-layout">
+
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar">
+            <a href="homepage.html" class="sidebar-item active">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span>New Scan</span>
+            </a>
+            <div class="sidebar-divider"></div>
+            <a href="AnalysisDashboard.html" class="sidebar-item">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="FactCheckPage.html" class="sidebar-item">
+                <span class="material-symbols-outlined">shield</span>
+                <span>Fact Check</span>
+            </a>
+            <a href="ReportPage.html" class="sidebar-item">
+                <span class="material-symbols-outlined">description</span>
+                <span>Reports</span>
+            </a>
+        </aside>
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        <main class="main-stage">
+
+            <!-- Page Header -->
+            <header class="page-header">
+                <div class="page-header-eyebrow">
+                    <div style="width:6px;height:6px;background:var(--authentic);border-radius:50%;animation:pulse-dot 2s infinite;"></div>
+                    System Active // Multi-Modal Credibility Engine
                 </div>
-                <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-v-text-main mt-2">Intelligence Dashboard</h1>
-                <p class="text-v-text-muted text-sm max-w-2xl mt-1 font-mono">Multi-modal credibility engine. Awaiting telemetry input for deepfake verification.</p>
+                <h1>Intelligence Dashboard</h1>
+                <p>Forensic analysis pipeline. Upload media to begin multi-modal deepfake and misinformation verification.</p>
             </header>
 
-            <!-- Main Interactive Terminal Panel -->
-            <div class="w-full max-w-5xl mx-auto panel rounded-none flex flex-col">
-                
-                <!-- Tab Navigation (Strict Grid) -->
-                <div class="grid grid-cols-5 border-b border-v-border" id="mediaTabs">
-                    <button data-tab="image" data-result="ImageResultPage.html" class="media-tab flex flex-col items-center justify-center gap-1.5 py-4 active-tab">
-                        <span class="material-symbols-outlined text-lg">image</span>
-                        <span class="data-label !text-[10px] md:!text-xs">Image</span>
+            <!-- Primary Analysis Panel -->
+            <section class="analysis-panel">
+
+                <!-- Tabs -->
+                <div class="tab-strip" id="tabStrip">
+                    <button class="tab-btn active" data-tab="image" data-page="ImageResultPage.html">
+                        <span class="material-symbols-outlined">image</span>
+                        Image
                     </button>
-                    <button data-tab="video" data-result="VideoResultPage.html" class="media-tab flex flex-col items-center justify-center gap-1.5 py-4 inactive-tab border-l border-v-border">
-                        <span class="material-symbols-outlined text-lg">videocam</span>
-                        <span class="data-label !text-[10px] md:!text-xs">Video</span>
+                    <button class="tab-btn" data-tab="video" data-page="VideoResultPage.html">
+                        <span class="material-symbols-outlined">videocam</span>
+                        Video
                     </button>
-                    <button data-tab="audio" data-result="AudioResultPage.html" class="media-tab flex flex-col items-center justify-center gap-1.5 py-4 inactive-tab border-l border-v-border">
-                        <span class="material-symbols-outlined text-lg">mic</span>
-                        <span class="data-label !text-[10px] md:!text-xs">Audio</span>
+                    <button class="tab-btn" data-tab="audio" data-page="AudioResultPage.html">
+                        <span class="material-symbols-outlined">graphic_eq</span>
+                        Audio
                     </button>
-                    <button data-tab="text" data-result="TextResultPage.html" class="media-tab flex flex-col items-center justify-center gap-1.5 py-4 inactive-tab border-l border-v-border">
-                        <span class="material-symbols-outlined text-lg">description</span>
-                        <span class="data-label !text-[10px] md:!text-xs">Text</span>
+                    <button class="tab-btn" data-tab="text" data-page="TextResultPage.html">
+                        <span class="material-symbols-outlined">description</span>
+                        Text
                     </button>
-                    <button data-tab="url" data-result="FactCheckPage.html" class="media-tab flex flex-col items-center justify-center gap-1.5 py-4 inactive-tab border-l border-v-border">
-                        <span class="material-symbols-outlined text-lg">language</span>
-                        <span class="data-label !text-[10px] md:!text-xs">Fact Check</span>
+                    <button class="tab-btn" data-tab="url" data-page="FactCheckPage.html">
+                        <span class="material-symbols-outlined">radar</span>
+                        Fact Check
                     </button>
                 </div>
 
-                <!-- Action Stage -->
-                <div id="uploadContents" class="min-h-[400px] flex items-stretch">
-                    
-                    <!-- IMAGE UPLOAD VIEW -->
-                    <div id="image-upload" class="upload-content w-full flex flex-col md:flex-row border-b border-v-border bg-v-surface/30">
-                        <!-- Left Data Sidebar -->
-                        <div class="w-full md:w-64 border-r border-v-border p-6 flex flex-col gap-6 shrink-0 bg-transparent">
-                            <div>
-                                <h3 class="data-label mb-2 pb-1 border-b border-v-border">Target Acquisition</h3>
-                                <p class="text-xs text-v-text-muted mt-2">Awaiting image ingestion targeting ViT Ensemble analysis. Supports JPG, PNG, WEBP (Max 50MB).</p>
-                            </div>
-                            <!-- URL Input -->
-                            <div class="mt-auto flex flex-col gap-2">
-                                <label class="data-label">Remote Source Array</label>
-                                <div class="flex items-center gap-2 h-9 input-base px-3 font-mono text-xs">
-                                    <span class="text-v-text-muted">></span>
-                                    <input id="imageUrlInput" class="bg-transparent border-none w-full outline-none focus:ring-0 p-0 text-xs" placeholder="[ URL INJECTION ]" type="text" />
+                <!-- Tab Contents -->
+                <div class="tab-contents">
+
+                    <!-- IMAGE -->
+                    <div class="tab-pane active" id="tab-image">
+                        <div class="upload-layout">
+                            <div class="upload-sidebar">
+                                <div class="upload-sidebar-label">Target Acquisition</div>
+                                <p>Awaiting image ingestion for Vision Transformer ensemble analysis. JPG, PNG, WEBP — max 50MB.</p>
+                                <div class="upload-meta">
+                                    <div class="meta-label">Remote Source</div>
+                                    <div class="input-row">
+                                        <span>&gt;</span>
+                                        <input id="imageUrlInput" type="text" placeholder="[ PASTE IMAGE URL ]" />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Main Drop Zone -->
-                        <div class="flex-1 p-6 flex flex-col justify-center items-center relative group min-h-[300px]">
-                            <div id="image-drop-zone" class="w-full h-full border border-dashed border-v-border group-hover:border-v-authentic flex flex-col items-center justify-center bg-v-bg/50 cursor-pointer relative overflow-hidden transition-colors" tabindex="0">
-                                
-                                <!-- Scanner Decorative Line -->
-                                <div class="absolute top-0 left-0 w-full h-[1px] bg-v-authentic opacity-0 group-hover:opacity-50 animate-scan pointer-events-none"></div>
-
-                                <!-- Default View -->
-                                <div id="image-upload-default" class="flex flex-col items-center justify-center gap-3 text-center transition-opacity z-10">
-                                    <span class="material-symbols-outlined text-v-text-muted group-hover:text-v-authentic transition-colors !text-3xl">add_photo_alternate</span>
-                                    <div>
-                                        <p class="text-sm font-medium">Initialize Media Drop</p>
-                                        <p class="text-xs text-v-text-muted mt-1 font-mono">Drag & Drop or <span class="text-v-authentic hover:underline" id="imageBrowseLink">Browse Storage</span></p>
-                                    </div>
-                                    <button id="pasteImageBtn" type="button" class="mt-4 px-4 py-1.5 border border-v-border hover:border-v-text-muted bg-v-surface text-xs font-mono text-v-text-muted transition-colors flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-sm">content_paste</span> [CLIPBOARD PASTE]
+                            <div class="upload-dropzone">
+                                <div class="dropzone" id="imageDropZone" tabindex="0">
+                                    <span class="material-symbols-outlined dz-icon">add_photo_alternate</span>
+                                    <div class="dz-title">Initialize Media Drop</div>
+                                    <div class="dz-sub">Drag & Drop or <span class="dz-browse" id="imgBrowse">Browse Storage</span></div>
+                                    <button class="dz-paste-btn" id="pasteImageBtn" type="button">
+                                        <span class="material-symbols-outlined" style="font-size:14px;">content_paste</span>
+                                        Clipboard Paste
                                     </button>
-                                </div>
-
-                                <!-- Preview View -->
-                                <div id="image-preview-state" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-v-bg transition-opacity">
-                                    <img id="image-preview-img" class="max-h-[220px] max-w-full object-contain border border-v-border opacity-90" alt="Preview Output" />
-                                    <div class="flex items-center gap-4 mt-4 bg-v-surface border border-v-border px-4 py-2">
-                                        <span id="image-file-name" class="font-mono text-xs text-v-text-main truncate max-w-[150px]">target.png</span>
-                                        <button id="clearImageBtn" type="button" class="text-v-suspicious hover:text-red-400 font-mono text-[10px] tracking-wider transition-colors pt-px">[ WIPE ]</button>
+                                    <!-- Preview -->
+                                    <div class="dropzone-preview" id="imagePreview">
+                                        <img id="imagePreviewImg" alt="Preview" />
+                                        <div class="file-chip">
+                                            <span class="file-name" id="imageFileName">target.png</span>
+                                            <button class="wipe-btn" id="clearImageBtn">[ WIPE ]</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- VIDEO UPLOAD VIEW (Hidden) -->
-                    <div id="video-upload" class="upload-content hidden w-full flex flex-col md:flex-row border-b border-v-border bg-v-surface/30">
-                        <div class="w-full md:w-64 border-r border-v-border p-6 flex flex-col gap-6 shrink-0">
-                            <div>
-                                <h3 class="data-label mb-2 pb-1 border-b border-v-border">Video Telemetry</h3>
-                                <p class="text-xs text-v-text-muted mt-2">Frame-by-frame deepfake analysis pipeline. Supp: MP4/MOV/AVI < 500MB.</p>
-                            </div>
-                            <div class="mt-auto flex flex-col gap-2">
-                                <label class="data-label">Remote Source Box</label>
-                                <input class="h-9 input-base px-3 font-mono text-xs w-full outline-none focus:ring-0" placeholder="[ INPUT VIDEO URL ]" type="text" />
-                            </div>
-                        </div>
-                        <div class="flex-1 p-6 flex flex-col justify-center items-center relative group min-h-[300px]">
-                            <div class="w-full h-full border border-dashed border-v-border group-hover:border-v-brand flex flex-col items-center justify-center bg-v-bg/50 cursor-pointer overflow-hidden transition-colors">
-                                <span class="material-symbols-outlined text-v-text-muted group-hover:text-v-brand transition-colors !text-3xl mb-3">movie</span>
-                                <p class="text-sm font-medium">Mount Video File</p>
-                                <p class="text-xs text-v-text-muted mt-1 font-mono">Drag & Drop or <span class="text-v-brand hover:underline">Browse</span></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- AUDIO UPLOAD VIEW (Hidden) -->
-                    <div id="audio-upload" class="upload-content hidden w-full flex flex-col md:flex-row border-b border-v-border bg-v-surface/30">
-                        <div class="w-full md:w-64 border-r border-v-border p-6 flex flex-col gap-6 shrink-0">
-                            <div>
-                                <h3 class="data-label mb-2 pb-1 border-b border-v-border">Spectral Intake</h3>
-                                <p class="text-xs text-v-text-muted mt-2">NII AntiDeepfake synthetic voice array detection. Supp: MP3/WAV/FLAC.</p>
-                            </div>
-                            <div class="mt-auto flex flex-col gap-2">
-                                <label class="data-label">Remote Audio URI</label>
-                                <input class="h-9 input-base px-3 font-mono text-xs w-full outline-none focus:ring-0" placeholder="[ AUDIO STREAM URL ]" type="text" />
-                            </div>
-                        </div>
-                        <div class="flex-1 p-6 flex flex-col justify-center items-center relative group min-h-[300px]">
-                            <div class="w-full h-full border border-dashed border-v-border group-hover:border-[#9333EA] flex flex-col items-center justify-center bg-v-bg/50 cursor-pointer overflow-hidden transition-colors">
-                                <span class="material-symbols-outlined text-v-text-muted group-hover:text-[#9333EA] transition-colors !text-3xl mb-3">graphic_eq</span>
-                                <p class="text-sm font-medium">Inject Audio Signal</p>
-                                <p class="text-xs text-v-text-muted mt-1 font-mono">Drag & Drop or <span class="text-[#9333EA] hover:underline">Browse Storage</span></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TEXT UPLOAD VIEW (Hidden) -->
-                    <div id="text-upload" class="upload-content hidden w-full flex flex-col md:flex-row border-b border-v-border bg-v-surface/30">
-                        <div class="w-full md:w-64 border-r border-v-border p-6 flex flex-col gap-6 shrink-0">
-                            <div>
-                                <h3 class="data-label mb-2 pb-1 border-b border-v-border">Semantic Buffer</h3>
-                                <p class="text-xs text-v-text-muted mt-2">LLM Artifact detection via RoBERTa/DeBERTa ensemble vectors.</p>
-                            </div>
-                            <!-- Document Upload -->
-                            <div class="mt-auto pt-6 border-t border-v-border">
-                                <label class="data-label mb-3 block">Or Mount Document</label>
-                                <div id="docUploadZone" class="flex flex-col items-center justify-center gap-2 p-4 border border-v-border bg-v-surface hover:border-v-suspicious cursor-pointer transition-colors" onclick="document.getElementById('textFileInput').click()">
-                                    <span class="material-symbols-outlined text-v-text-muted text-xl">upload_file</span>
-                                    <span class="font-mono text-[10px] uppercase">PDF/DOCX/TXT [Max 10MB]</span>
+                    <!-- VIDEO -->
+                    <div class="tab-pane" id="tab-video">
+                        <div class="upload-layout">
+                            <div class="upload-sidebar">
+                                <div class="upload-sidebar-label">Video Telemetry</div>
+                                <p>Frame-by-frame deepfake analysis pipeline. MP4, MOV, AVI — max 500MB.</p>
+                                <div class="upload-meta">
+                                    <div class="meta-label">Remote Source</div>
+                                    <div class="input-row">
+                                        <span>&gt;</span>
+                                        <input type="text" placeholder="[ PASTE VIDEO URL ]" />
+                                    </div>
                                 </div>
-                                <div id="docFileIndicator" class="hidden mt-2 flex items-center justify-between p-2 border border-v-suspicious/50 bg-v-suspicious/10">
-                                    <span id="docFileNameDisplay" class="font-mono text-[10px] text-v-suspicious truncate">file.pdf</span>
-                                    <span class="material-symbols-outlined text-v-suspicious text-xs cursor-pointer hover:text-red-400" id="docRemoveBtn">close</span>
+                            </div>
+                            <div class="upload-dropzone">
+                                <div class="dropzone" style="--hover-color: var(--brand);">
+                                    <span class="material-symbols-outlined dz-icon">movie</span>
+                                    <div class="dz-title">Mount Video File</div>
+                                    <div class="dz-sub">Drag & Drop or <span class="dz-browse" style="color:var(--brand);">Browse</span></div>
                                 </div>
                             </div>
                         </div>
-                        <div class="flex-1 p-6 flex flex-col min-h-[300px]">
-                            <textarea class="w-full flex-1 input-base p-4 text-sm resize-none font-mono focus:border-v-suspicious" placeholder="[ BEGIN RAW TEXT INJECTION HERE ]..."></textarea>
+                    </div>
+
+                    <!-- AUDIO -->
+                    <div class="tab-pane" id="tab-audio">
+                        <div class="upload-layout">
+                            <div class="upload-sidebar">
+                                <div class="upload-sidebar-label">Spectral Intake</div>
+                                <p>NII AntiDeepfake synthetic voice array detection. MP3, WAV, FLAC supported.</p>
+                                <div class="upload-meta">
+                                    <div class="meta-label">Remote Audio URI</div>
+                                    <div class="input-row">
+                                        <span>&gt;</span>
+                                        <input type="text" placeholder="[ AUDIO STREAM URL ]" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="upload-dropzone">
+                                <div class="dropzone">
+                                    <span class="material-symbols-outlined dz-icon">mic</span>
+                                    <div class="dz-title">Inject Audio Signal</div>
+                                    <div class="dz-sub">Drag & Drop or <span class="dz-browse" style="color:#9B59B6;">Browse Storage</span></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- URL / FACT CHECK VIEW (Hidden) -->
-                    <div id="url-upload" class="upload-content hidden w-full flex flex-col md:flex-row border-b border-v-border bg-v-surface/30">
-                        <div class="w-full md:w-64 border-r border-v-border p-6 flex flex-col gap-6 shrink-0">
-                            <div>
-                                <h3 class="data-label mb-2 pb-1 border-b border-v-border">Network Analysis</h3>
-                                <p class="text-xs text-v-text-muted mt-2">Initialize investigative web-scraping and cross-reference reasoning logs.</p>
+                    <!-- TEXT -->
+                    <div class="tab-pane" id="tab-text">
+                        <div class="upload-layout">
+                            <div class="upload-sidebar">
+                                <div class="upload-sidebar-label">Semantic Buffer</div>
+                                <p>LLM artifact detection via RoBERTa/DeBERTa ensemble vectors. Binoculars perplexity scoring.</p>
+                                <div class="upload-meta" style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border);">
+                                    <div class="meta-label" style="margin-bottom:8px;">Or Mount Document</div>
+                                    <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('textFileInput').click()">
+                                        <span class="material-symbols-outlined" style="font-size:18px;">upload_file</span>
+                                        PDF / DOCX / TXT — Max 10MB
+                                    </div>
+                                    <div id="docFileIndicator" style="display:none;margin-top:8px;">
+                                        <div class="file-chip" style="border-color:rgba(255,170,68,0.4);">
+                                            <span class="file-name" id="docFileNameDisplay" style="color:var(--suspicious);">file.pdf</span>
+                                            <span class="material-symbols-outlined" id="docRemoveBtn" style="font-size:14px;color:var(--suspicious);cursor:pointer;">close</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="mt-auto text-xs text-v-text-muted font-mono leading-relaxed bg-v-bg p-3 border border-v-border">
-                                > Awaiting coordinate TARGET.<br>
-                                > Protocol: Semantic Web Ping<br>
-                                > Status: STBY
+                            <div class="text-pane">
+                                <textarea id="textInput" placeholder="[ BEGIN RAW TEXT INJECTION HERE ]..."></textarea>
                             </div>
                         </div>
-                        <div class="flex-1 p-6 flex items-center justify-center min-h-[300px]">
-                            <div class="w-full max-w-lg flex flex-col gap-4">
-                                <label class="data-label text-center block">Target Uniform Resource Locator</label>
-                                <div class="flex items-center gap-3 h-12 input-base px-4 font-mono text-sm w-full focus-within:border-red-500/50">
-                                    <span class="material-symbols-outlined text-red-500/70">radar</span>
-                                    <input class="bg-transparent border-none w-full outline-none focus:ring-0 p-0 text-sm" placeholder="https://..." type="url" />
+                    </div>
+
+                    <!-- URL / FACT CHECK -->
+                    <div class="tab-pane" id="tab-url">
+                        <div class="upload-layout">
+                            <div class="upload-sidebar">
+                                <div class="upload-sidebar-label">Network Analysis</div>
+                                <p>Web-scraping and cross-reference reasoning. Verifies factual claims against real-time knowledge bases.</p>
+                                <div class="upload-meta" style="margin-top:auto;">
+                                    <div style="font-family:'Roboto Mono',monospace;font-size:11px;color:var(--dim);line-height:1.8;padding:10px;background:var(--surface);border:1px solid var(--border);">
+                                        &gt; Awaiting TARGET coordinate.<br>
+                                        &gt; Protocol: Semantic Web Ping<br>
+                                        &gt; Status: STANDBY
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="url-pane">
+                                <div class="url-input-wrap">
+                                    <div class="url-input-label">Target Uniform Resource Locator</div>
+                                    <div class="url-field">
+                                        <span class="material-symbols-outlined">radar</span>
+                                        <input type="url" id="urlInput" placeholder="https://..." />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -299,66 +1057,179 @@
 
                 </div>
 
-                <!-- Execution Toolbar -->
-                <div class="flex items-center justify-between p-4 bg-v-bg">
-                    <div class="flex items-center gap-3">
-                        <span class="flex h-1.5 w-1.5 rounded-full bg-v-authentic"></span>
-                        <span class="data-label uppercase">Ensemble Standby</span>
+                <!-- Toolbar -->
+                <div class="analysis-toolbar">
+                    <div class="toolbar-status">
+                        <div class="indicator"></div>
+                        Ensemble Engine — Standby
                     </div>
-                    
-                    <button id="analyzeBtn" onclick="navigateToResult()" class="btn-primary h-10 px-8 flex items-center gap-2 font-mono text-sm font-semibold tracking-wider group relative overflow-hidden">
-                        <span class="absolute inset-0 w-full h-full bg-v-authentic/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></span>
-                        <span class="material-symbols-outlined text-lg relative z-10 group-hover:animate-spin">bolt</span>
-                        <span class="relative z-10">EXECUTE SCAN</span>
+                    <button class="execute-btn" id="analyzeBtn" onclick="navigateToResult()">
+                        <span class="material-symbols-outlined">bolt</span>
+                        Execute Scan
                     </button>
                 </div>
-            </div>
 
-            <!-- Features Grid (Transformed to Data Blocks) -->
-            <div class="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 pb-12">
-                <a href="VideoResultPage.html" class="panel p-4 flex flex-col gap-3 group hover:border-v-brand transition-colors">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-v-text-muted group-hover:text-v-brand transition-colors text-sm">face</span>
-                        <h3 class="data-label !text-[10px] text-v-text-main">Video Frame Filter</h3>
+            </section>
+
+            <!-- Features Grid -->
+            <div class="features-row">
+                <a href="VideoResultPage.html" class="feat-card c-video">
+                    <div class="feat-card-header">
+                        <span class="material-symbols-outlined">face</span>
+                        <span class="feat-card-title">Video Frame Filter</span>
                     </div>
-                    <p class="text-[11px] text-v-text-muted leading-relaxed font-mono mt-auto">Frame-by-frame synthetics evaluation block.</p>
+                    <p>Frame-by-frame synthetic face evaluation pipeline using FaceForensics++ models.</p>
                 </a>
-                <a href="AudioResultPage.html" class="panel p-4 flex flex-col gap-3 group hover:border-[#9333EA] transition-colors">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-v-text-muted group-hover:text-[#9333EA] transition-colors text-sm">graphic_eq</span>
-                        <h3 class="data-label !text-[10px] text-v-text-main">Acoustic Scout</h3>
+                <a href="AudioResultPage.html" class="feat-card c-audio">
+                    <div class="feat-card-header">
+                        <span class="material-symbols-outlined">graphic_eq</span>
+                        <span class="feat-card-title">Acoustic Scout</span>
                     </div>
-                    <p class="text-[11px] text-v-text-muted leading-relaxed font-mono mt-auto">Sub-audible frequency disruption capture.</p>
+                    <p>Sub-audible frequency disruption capture via Wav2Vec2 and anti-deepfake models.</p>
                 </a>
-                <a href="TextResultPage.html" class="panel p-4 flex flex-col gap-3 group hover:border-v-suspicious transition-colors">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-v-text-muted group-hover:text-v-suspicious transition-colors text-sm">psychology</span>
-                        <h3 class="data-label !text-[10px] text-v-text-main">LLM Classifiers</h3>
+                <a href="TextResultPage.html" class="feat-card c-text">
+                    <div class="feat-card-header">
+                        <span class="material-symbols-outlined">psychology</span>
+                        <span class="feat-card-title">LLM Classifiers</span>
                     </div>
-                    <p class="text-[11px] text-v-text-muted leading-relaxed font-mono mt-auto">Token probability mapping across arrays.</p>
+                    <p>Token probability mapping via Binoculars perplexity and RoBERTa ensemble.</p>
                 </a>
-                <a href="FactCheckPage.html" class="panel p-4 flex flex-col gap-3 group hover:border-red-500 transition-colors">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-v-text-muted group-hover:text-red-500 transition-colors text-sm">fact_check</span>
-                        <h3 class="data-label !text-[10px] text-v-text-main">Fact Engine</h3>
+                <a href="FactCheckPage.html" class="feat-card c-fact">
+                    <div class="feat-card-header">
+                        <span class="material-symbols-outlined">fact_check</span>
+                        <span class="feat-card-title">Fact Engine</span>
                     </div>
-                    <p class="text-[11px] text-v-text-muted leading-relaxed font-mono mt-auto">Real-time DB query and semantic validation.</p>
+                    <p>Real-time DB semantic query, cross-source validation and verdicts.</p>
                 </a>
             </div>
 
         </main>
     </div>
+</div>
 
-    <!-- Hidden File Inputs -->
-    <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
-    <input type="file" id="videoFileInput" accept="video/*" class="hidden" />
-    <input type="file" id="audioFileInput" accept="audio/*" class="hidden" />
-    <input type="file" id="textFileInput" accept=".txt,.doc,.docx,.pdf" class="hidden" />
+<!-- Hidden File Inputs -->
+<input type="file" id="imageFileInput" accept="image/*" style="display:none" />
+<input type="file" id="videoFileInput" accept="video/*" style="display:none" />
+<input type="file" id="audioFileInput" accept="audio/*" style="display:none" />
+<input type="file" id="textFileInput" accept=".txt,.doc,.docx,.pdf" style="display:none" />
 
-    <!-- Storage Utilities -->
-    <script src="../js/storage-utils.js"></script>
-    <script src="../js/theme-toggle.js"></script>
-    <script src="../js/homepage.js"></script>
+<script src="../js/storage-utils.js"></script>
+<script src="../js/theme-toggle.js"></script>
+
+<script>
+    // ────────────────────────────────────────────
+    // TAB SWITCHING
+    // ────────────────────────────────────────────
+    let activeTab = 'image';
+    let activeResultPage = 'ImageResultPage.html';
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            activeTab = btn.dataset.tab;
+            activeResultPage = btn.dataset.page;
+            document.getElementById('tab-' + activeTab).classList.add('active');
+        });
+    });
+
+    // ────────────────────────────────────────────
+    // NAVIGATE TO RESULT
+    // ────────────────────────────────────────────
+    function navigateToResult() {
+        window.location.href = activeResultPage;
+    }
+
+    // ────────────────────────────────────────────
+    // IMAGE: Browse + Preview
+    // ────────────────────────────────────────────
+    const imgBrowse = document.getElementById('imgBrowse');
+    const imageFileInput = document.getElementById('imageFileInput');
+    const imageDropZone = document.getElementById('imageDropZone');
+    const imagePreview = document.getElementById('imagePreview');
+    const imagePreviewImg = document.getElementById('imagePreviewImg');
+    const imageFileName = document.getElementById('imageFileName');
+    const clearImageBtn = document.getElementById('clearImageBtn');
+
+    if (imgBrowse) imgBrowse.addEventListener('click', () => imageFileInput.click());
+
+    imageFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        showImagePreview(file);
+        saveToStorage(file);
+    });
+
+    imageDropZone.addEventListener('dragover', e => { e.preventDefault(); imageDropZone.style.borderColor = 'var(--authentic)'; });
+    imageDropZone.addEventListener('dragleave', () => { imageDropZone.style.borderColor = ''; });
+    imageDropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        imageDropZone.style.borderColor = '';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) { showImagePreview(file); saveToStorage(file); }
+    });
+
+    function showImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreviewImg.src = e.target.result;
+            imageFileName.textContent = file.name;
+            imagePreview.classList.add('visible');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    if (clearImageBtn) clearImageBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        imagePreview.classList.remove('visible');
+        imageFileInput.value = '';
+    });
+
+    // Paste
+    const pasteBtn = document.getElementById('pasteImageBtn');
+    if (pasteBtn) pasteBtn.addEventListener('click', async () => {
+        try {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+                for (const type of item.types) {
+                    if (type.startsWith('image/')) {
+                        const blob = await item.getType(type);
+                        const file = new File([blob], 'pasted_image.png', { type });
+                        showImagePreview(file);
+                        saveToStorage(file);
+                    }
+                }
+            }
+        } catch(e) { console.warn('Clipboard read failed:', e); }
+    });
+
+    function saveToStorage(file) {
+        if (typeof StorageUtils !== 'undefined') {
+            StorageUtils.saveFile(file);
+        }
+    }
+
+    // ────────────────────────────────────────────
+    // TEXT: Doc upload
+    // ────────────────────────────────────────────
+    const textFileInput = document.getElementById('textFileInput');
+    const docFileIndicator = document.getElementById('docFileIndicator');
+    const docFileNameDisplay = document.getElementById('docFileNameDisplay');
+    const docRemoveBtn = document.getElementById('docRemoveBtn');
+
+    if (textFileInput) textFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        docFileNameDisplay.textContent = file.name;
+        docFileIndicator.style.display = 'block';
+    });
+
+    if (docRemoveBtn) docRemoveBtn.addEventListener('click', () => {
+        textFileInput.value = '';
+        docFileIndicator.style.display = 'none';
+    });
+</script>
 
 </body>
 </html>
