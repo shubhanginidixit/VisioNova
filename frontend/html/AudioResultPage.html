@@ -1,552 +1,414 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>VisioNova - Audio Analysis</title>
-  <script>
-    (function () {
-      const theme = localStorage.getItem('visioNova_theme') || 'dark';
-      document.documentElement.classList.add(theme);
-    })();
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap"
-    rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script id="tailwind-config">
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "primary": "#3A8DFF",
-            "accent-success": "#00D991",
-            "accent-warning": "#FFB74A",
-            "accent-danger": "#FF4A4A",
-            "background-light": "#F5F7FA",
-            "background-dark": "#0F121A",
-            "surface-dark": "#0D1B2A",
-            "panel-dark": "#161B2E",
-            "card-dark": "#1E2338",
-          },
-          fontFamily: { "display": ["Inter", "sans-serif"] },
-          borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
-        },
-      },
-    }
-  </script>
-  <link rel="stylesheet" href="../css/common.css">
-  <script src="../js/theme-toggle.js"></script>
-  <!-- WaveSurfer.js for cool waveform visualizations -->
-  <script src="https://unpkg.com/wavesurfer.js@7"></script>
-  <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
-  <style>
-    .bg-hero-gradient {
-      background: radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.08) 0%, transparent 60%);
-    }
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>VisioNova - Audio Forensics</title>
+    <!-- Blocking theme script to prevent FOUC -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('visioNova_theme') || 'dark';
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "v-bg": "#0A0F1A", 
+                        "v-surface": "#0F1626", 
+                        "v-panel": "#141C2F", 
+                        "v-border": "rgba(255, 255, 255, 0.08)",
+                        "v-border-focus": "rgba(100, 255, 218, 0.4)",
+                        "v-text-main": "#F8FAFC",
+                        "v-text-muted": "#94A3B8",
+                        "v-authentic": "#64FFDA", 
+                        "v-suspicious": "#FFB74D", 
+                        "v-brand": "#3B82F6",
+                        "v-danger": "#FF4A4A",
+                        // Mappings for JS compatibility
+                        "accent-emerald": "#64FFDA",
+                        "accent-amber": "#FFB74D",
+                        "accent-red": "#FF4A4A"
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "sans-serif"],
+                        "mono": ["Roboto Mono", "monospace"],
+                    },
+                    boxShadow: {
+                        'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                    }
+                },
+            },
+        }
+    </script>
+    
+    <style>
+        /* Base system overrides */
+        body { background-color: theme('colors.v-bg'); color: theme('colors.v-text-main'); letter-spacing: -0.01em; }
+        .light body { background-color: #F8FAFC; color: #0F172A; }
+        
+        .panel {
+            background-color: theme('colors.v-panel');
+            border: 1px solid theme('colors.v-border');
+            box-shadow: theme('boxShadow.panel');
+        }
+        
+        .structural-grid {
+            background-image: linear-gradient(theme('colors.v-border') 1px, transparent 1px),
+                              linear-gradient(90deg, theme('colors.v-border') 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.15;
+        }
 
-    .shadow-glow {
-      box-shadow: 0 0 20px rgba(58, 141, 255, 0.15);
-    }
+        .data-label { font-family: theme('fontFamily.mono'); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: theme('colors.v-text-muted'); }
+        
+        /* Disable Tailwind opacity overrides injected by JS */
+        #verdictLabel.text-accent-red { color: theme('colors.v-danger') !important; }
+        #verdictLabel.text-accent-emerald { color: theme('colors.v-authentic') !important; }
+        #verdictLabel.text-accent-amber { color: theme('colors.v-suspicious') !important; }
+        
+        /* Enforce JS injected progress bar colors */
+        #scoreProgressBar { border-right: 1px solid theme('colors.v-bg'); }
+        
+        .btn-outline {
+            border: 1px solid theme('colors.v-border');
+            background: theme('colors.v-bg');
+            color: theme('colors.v-text-muted');
+            font-family: theme('fontFamily.mono');
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .btn-outline:hover {
+            border-color: theme('colors.v-authentic');
+            color: theme('colors.v-authentic');
+        }
 
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
-    }
+        /* Audio Player Overrides */
+        audio::-webkit-media-controls-panel {
+            background-color: theme('colors.v-surface');
+            border: 1px solid theme('colors.v-border');
+            border-radius: 0;
+        }
+        audio::-webkit-media-controls-play-button,
+        audio::-webkit-media-controls-mute-button {
+            filter: invert(1);
+        }
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display {
+            color: theme('colors.v-text-muted');
+            font-family: theme('fontFamily.mono');
+            font-size: 10px;
+        }
+    </style>
 
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #1E2338;
-      border-radius: 4px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #3A8DFF;
-      border-radius: 4px;
-    }
-
-    #explanationChevron.rotated,
-    #modelsChevron.rotated {
-      transform: rotate(180deg);
-    }
-
-    /* Segment timeline bar */
-    .seg-block {
-      transition: all 0.2s;
-      cursor: pointer;
-      position: relative;
-    }
-
-    .seg-block:hover {
-      filter: brightness(1.3);
-      transform: scaleY(1.15);
-    }
-
-    .seg-block.active {
-      outline: 2px solid white;
-      outline-offset: 1px;
-      z-index: 2;
-    }
-
-    /* Loading skeleton */
-    .skeleton {
-      background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-
-    @keyframes shimmer {
-      0% {
-        background-position: 200% 0;
-      }
-
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    /* Custom Slider & Waveform Glow */
-    input[type=range]::-webkit-slider-thumb {
-      appearance: none;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ffffff;
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(58, 141, 255, 0.5);
-    }
-
-    #waveform {
-      filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.4));
-    }
-
-    #waveform::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.1);
-      z-index: -1;
-    }
-  </style>
+    <link rel="stylesheet" href="../css/common.css">
+    <script src="../js/layout.js"></script>
 </head>
 
-<body
-  class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
-  <div class="fixed inset-0 z-0 pointer-events-none">
-    <div
-      class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
-    </div>
-    <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
-  </div>
+<body class="relative flex h-screen w-full flex-col overflow-hidden selection:bg-v-brand selection:text-white">
+    <!-- Background Texture -->
+    <div class="absolute inset-0 pointer-events-none structural-grid z-0"></div>
 
-  <!-- Header -->
-  <header
-    class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
-    <div class="flex items-center gap-4 text-white">
-      <div class="size-8 text-primary">
-        <span class="material-symbols-outlined !text-[32px]">hub</span>
-      </div>
-      <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
-    </div>
-    <div class="flex flex-1 justify-center hidden md:flex">
-      <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
-        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-          href="homepage.html">Home</a>
-        <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-          href="AnalysisDashboard.html">Analyze</a>
-        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-          href="FactCheckPage.html">Fact Check</a>
-        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-          href="ReportPage.html">Reports</a>
-        <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-          href="#">API</a>
-      </nav>
-    </div>
-    <div class="flex items-center gap-3">
-      <button
-        class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
-        <span class="material-symbols-outlined !text-[20px]">notifications</span>
-        <span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
-      </button>
-      <button id="themeToggle"
-        class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
-        title="Toggle Dark/Light Mode">
-        <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
-        <span class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
-      </button>
-    </div>
-  </header>
+    <!-- Top Navigation (Injected by layout.js) -->
+    <header class="relative z-20 border-b border-v-border bg-v-bg/90 backdrop-blur-sm"></header>
 
-  <div class="flex flex-1 overflow-hidden">
-    <!-- Sidebar -->
-    <aside
-      class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
-      <div class="flex flex-col gap-6 w-full px-3">
-        <div class="w-full flex flex-col gap-1">
-          <a href="homepage.html"
-            class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
-            <span class="material-symbols-outlined shrink-0">add_circle</span>
-            <span
-              class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
-              Scan</span>
-          </a>
-        </div>
-        <div class="w-full h-px bg-[#1E2338]"></div>
-        <div class="flex flex-col gap-2 w-full">
-          <a href="AnalysisDashboard.html"
-            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-            <span class="material-symbols-outlined shrink-0">dashboard</span>
-            <span
-              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
-          </a>
-          <a href="ReportPage.html"
-            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-            <span class="material-symbols-outlined shrink-0">history</span>
-            <span
-              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
-              Scans</span>
-          </a>
-          <a href="ReportPage.html"
-            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-            <span class="material-symbols-outlined shrink-0">folder_open</span>
-            <span
-              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
-          </a>
-          <a href="FactCheckPage.html"
-            class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-            <span class="material-symbols-outlined shrink-0">shield</span>
-            <span
-              class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
-              Intel</span>
-          </a>
-        </div>
-      </div>
-      <div class="flex flex-col gap-2 w-full px-3">
-        <button
-          class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-          <span class="material-symbols-outlined shrink-0">settings</span>
-          <span
-            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
-        </button>
-        <button
-          class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-          <span class="material-symbols-outlined shrink-0">help</span>
-          <span
-            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
-        </button>
-      </div>
-    </aside>
+    <div class="flex flex-1 overflow-hidden relative z-10 w-full max-w-[1600px] mx-auto">
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside class="border-r border-v-border bg-v-bg/90 backdrop-blur-sm hidden md:block w-64"></aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 md:p-8 lg:px-12">
-      <div class="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
-        </div>
-        <div
-          class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
-        </div>
-      </div>
-
-      <div class="max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
-
-        <!-- Page Heading -->
-        <div class="flex flex-wrap justify-between items-end gap-4 border-b border-white/10 pb-6">
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
-              <span>Analyze</span>
-              <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-              <span>Audio Analysis</span>
-            </div>
-            <h1 id="pageTitle" class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Audio
-              Analysis</h1>
-            <p class="text-[#8da8ce] text-sm font-normal flex items-center gap-3 flex-wrap">
-              <span class="flex items-center gap-1">
-                <span class="material-symbols-outlined text-[18px]">calendar_today</span>
-                <span id="analysisDate">Analyzed just now</span>
-              </span>
-              <span id="fileBadge"
-                class="hidden px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 border border-white/10 uppercase tracking-wide"></span>
-              <span id="durationBadge" class="hidden flex items-center gap-1 text-xs">
-                <span class="material-symbols-outlined text-[16px]">timer</span>
-                <span id="durationText">--</span>
-              </span>
-              <span id="sampleRateBadge" class="hidden flex items-center gap-1 text-xs">
-                <span class="material-symbols-outlined text-[16px]">graphic_eq</span>
-                <span id="sampleRateText">--</span>
-              </span>
-            </p>
-          </div>
-          <div class="flex gap-3">
-            <button id="reanalyzeBtn"
-              class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all">
-              <span class="material-symbols-outlined text-[20px] mr-2">refresh</span>
-              Re-analyze
-            </button>
-            <button id="exportPdfBtn"
-              class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-lg shadow-primary/20 transition-all">
-              <span class="material-symbols-outlined text-[20px] mr-2">download</span>
-              Export Report
-            </button>
-          </div>
-        </div>
-
-        <!-- Scorecard Row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Probability Card -->
-          <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
-            <div class="flex justify-between items-start">
-              <h3 class="text-white/70 text-sm font-medium">Human vs. AI Probability</h3>
-              <span class="material-symbols-outlined text-white/30">mic</span>
-            </div>
-            <div class="flex gap-4 items-end mt-4">
-              <div class="flex flex-col gap-1 w-1/2">
-                <span class="text-xs text-white/50">Human</span>
-                <div class="h-20 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
-                  <div id="humanBar" class="w-full transition-all duration-1000 rounded-t"
-                    style="height: 0%; background: #3A8DFF; opacity: 0.9"></div>
-                  <span id="humanPercent"
-                    class="absolute bottom-1 w-full text-center text-xs font-bold text-white drop-shadow-md">--%</span>
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto w-full px-6 py-8 flex flex-col gap-6 relative">
+            
+            <!-- Context Header -->
+            <div class="flex flex-col gap-4 border border-v-border panel p-6 rounded-none relative z-10">
+                <div class="absolute top-0 right-0 p-2 opacity-50"><span class="material-symbols-outlined text-v-text-muted">graphic_eq</span></div>
+                
+                <div class="flex items-center gap-2 text-v-text-muted font-mono text-[10px] tracking-widest uppercase">
+                    <span>Telemetry</span> <span class="text-v-authentic">></span> <span>Audio Forensics</span>
                 </div>
-              </div>
-              <div class="flex flex-col gap-1 w-1/2">
-                <span class="text-xs text-white/50">AI-Generated</span>
-                <div class="h-20 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
-                  <div id="aiBar" class="w-full transition-all duration-1000 rounded-t"
-                    style="height: 0%; background: #FF4A4A; opacity: 0.85"></div>
-                  <span id="aiPercent"
-                    class="absolute bottom-1 w-full text-center text-xs font-bold text-white/60">--%</span>
+                
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div class="flex flex-col gap-2">
+                        <h1 id="pageTitle" class="text-3xl font-semibold tracking-tight text-white">Acoustic Signature Analysis</h1>
+                        <p class="data-label flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">schedule</span>
+                            <span id="analysisDate">Active Processing Node</span>
+                        </p>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button class="border border-v-border bg-v-surface hover:border-v-authentic text-v-text-muted hover:text-v-authentic transition-colors px-4 py-2 font-mono text-xs flex items-center gap-2 uppercase">
+                            <span class="material-symbols-outlined text-sm">compare_arrows</span> Diff
+                        </button>
+                        <button class="border border-v-authentic bg-v-authentic/10 text-v-authentic hover:bg-v-authentic/20 transition-colors px-4 py-2 font-mono text-xs flex items-center gap-2 uppercase">
+                            <span class="material-symbols-outlined text-sm">download</span> Fetch Report
+                        </button>
+                    </div>
                 </div>
-              </div>
-            </div>
-            <p id="probabilityNote" class="text-xs text-primary mt-3 font-medium flex items-center gap-1">
-              <span class="material-symbols-outlined text-[14px]">trending_up</span>
-              <span id="probabilityText">Analyzing audio patterns...</span>
-            </p>
-          </div>
-
-          <!-- Model Info Card -->
-          <div class="bg-surface-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
-            <div class="flex justify-between items-start">
-              <h3 class="text-white/70 text-sm font-medium">Analysis Mode</h3>
-              <span class="material-symbols-outlined text-white/30">memory</span>
-            </div>
-            <div class="mt-2">
-              <span id="analysisMode" class="text-2xl font-bold text-white block">Loading...</span>
-              <span id="analysisModeInfo" class="text-sm text-white/60 block mt-1">Initializing detector...</span>
-            </div>
-            <div id="modelTags" class="flex gap-2 mt-4 flex-wrap">
-              <!-- Populated dynamically -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Middle Section: Audio Player + Timeline | Key Findings -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[350px]">
-
-          <!-- Audio Player & Segment Timeline -->
-          <div
-            class="lg:col-span-7 flex flex-col bg-[#0D1B2A] rounded-2xl overflow-hidden shadow-xl border border-white/5">
-            <div class="bg-surface-dark px-6 py-3 border-b border-white/10 flex justify-between items-center">
-              <div class="flex gap-2 items-center">
-                <span class="material-symbols-outlined text-white/40">audio_file</span>
-                <span class="text-white/70 font-bold text-sm">Audio Playback &amp; Analysis</span>
-              </div>
-              <div class="flex gap-2">
-                <span id="analysisBadge"
-                  class="hidden flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
-                  <span class="material-symbols-outlined !text-[14px]">assessment</span>
-                  <span id="analysisBadgeText">Single Pass</span>
-                </span>
-                <span id="segmentCountBadge"
-                  class="hidden flex items-center gap-1 text-[10px] uppercase font-bold text-white/50 bg-white/5 px-2 py-1 rounded">
-                  <span class="material-symbols-outlined !text-[14px]">segment</span>
-                  <span id="segmentCountText">--</span>
-                </span>
-              </div>
             </div>
 
-            <!-- Audio Player Area -->
-            <div class="p-4 flex flex-col gap-4 flex-1">
-              <!-- Placeholder / Player -->
-              <div id="audioContainer">
-                <div id="noAudioPlaceholder" class="flex flex-col items-center gap-4 text-white/40 py-8">
-                  <span class="material-symbols-outlined text-6xl opacity-50">mic</span>
-                  <p class="text-sm">No audio uploaded</p>
-                  <a href="homepage.html" class="text-primary hover:underline text-sm">Upload audio to analyze</a>
-                </div>
-                <!-- Custom Waveform Player -->
-                <div id="audioPlayerWrapper" class="hidden flex flex-col gap-4">
-                  <div id="waveform" class="w-full h-32 relative cursor-pointer"></div>
-
-                  <div
-                    class="flex items-center justify-between text-white/70 mt-2 bg-black/20 p-3 rounded-xl border border-white/5">
-                    <div class="flex items-center gap-4">
-                      <button id="playPauseBtn"
-                        class="flex items-center justify-center size-10 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 transition-colors shadow-sm focus:outline-none">
-                        <span id="playIcon" class="material-symbols-outlined !text-[24px]">play_arrow</span>
-                      </button>
-                      <div class="text-xs font-mono tracking-wider opacity-80">
-                        <span id="currentTimeDisplay">0:00</span> / <span id="durationDisplay">0:00</span>
-                      </div>
+            <!-- Dashboard Grid Container -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full pb-12 z-10">
+                
+                <!-- Left Column: Metrics & Architecture -->
+                <div class="xl:col-span-4 flex flex-col gap-6">
+                    
+                    <!-- Verdict Scorecard -->
+                    <div class="panel border border-v-border p-6 flex flex-col relative min-h-[160px]">
+                        <!-- Visual flare for critical scan -->
+                        <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-v-bg via-v-danger to-v-bg opacity-50"></div>
+                        
+                        <h3 class="data-label block mb-4 border-b border-v-border pb-2">Unified Authenticity Index</h3>
+                        
+                        <div class="flex items-baseline gap-3 mb-4">
+                            <span class="text-4xl font-mono font-bold text-white tracking-tighter"><span id="authenticityScore">--</span><span class="text-lg text-v-text-muted ml-1">%</span></span>
+                            <span id="scoreLabel" class="text-v-text-muted font-mono text-xs uppercase tracking-widest">Base Payout</span>
+                        </div>
+                        
+                        <div class="mb-4 w-full">
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="font-mono text-[10px] uppercase tracking-widest text-white border border-v-border bg-v-surface px-2 py-0.5">STATE: <span id="verdictLabel" class="text-v-text-muted">AWAITING</span></span>
+                                <span id="fakeProbability" class="font-mono text-[10px] uppercase tracking-widest text-v-danger">--% SYNTHETIC</span>
+                            </div>
+                            <div class="w-full bg-v-bg border border-v-border h-2 mb-2 relative overflow-hidden">
+                                <!-- Base grid to make progress bar look like LCD meter -->
+                                <div class="absolute inset-0 bg-[linear-gradient(90deg,var(--color-bg)_1px,transparent_1px)] bg-[size:4px_100%] z-10 opacity-30 pointer-events-none"></div>
+                                <div id="scoreProgressBar" class="h-2 transition-all duration-1000 bg-v-danger" style="width: 0%;"></div>
+                            </div>
+                            <p id="verdictDescription" class="text-[9px] uppercase font-mono text-v-text-muted">Initiating spectral trace...</p>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2 mt-2">
+                            <div class="border border-v-border bg-v-surface p-2 flex justify-between items-center group hover:border-v-authentic transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <div class="size-6 bg-v-bg border border-v-border flex flex-col items-center justify-center">
+                                        <span class="material-symbols-outlined !text-[12px] text-v-text-muted group-hover:text-v-authentic">dns</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="data-label !text-[9px]">Model Consensus</span>
+                                        <span id="ensembleModelText" class="font-mono text-[9px] text-v-text-muted">Awaiting array</span>
+                                    </div>
+                                </div>
+                                <span id="ensembleAgreementScore" class="font-mono text-[10px] text-white border border-v-border px-1">--</span>
+                            </div>
+                            
+                            <div class="border border-v-border bg-v-surface p-2 flex justify-between items-center group hover:border-v-suspicious transition-colors">
+                                <div class="flex items-center gap-2">
+                                    <div class="size-6 bg-v-bg border border-v-border flex flex-col items-center justify-center">
+                                        <span class="material-symbols-outlined !text-[12px] text-v-text-muted group-hover:text-v-suspicious">content_copy</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="data-label !text-[9px]">Clone Fingerprint</span>
+                                        <span class="font-mono text-[9px] text-v-text-muted">Database Cross-Ref</span>
+                                    </div>
+                                </div>
+                                <span class="font-mono text-[10px] text-v-suspicious border border-v-suspicious/30 bg-v-suspicious/5 px-1">WARN</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                      <span class="material-symbols-outlined !text-[18px] text-white/50">volume_up</span>
-                      <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1"
-                        class="w-24 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none">
+                    <!-- Audio Metadata -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="panel border border-v-border p-4 flex flex-col justify-between">
+                            <span class="data-label !text-[9px] mb-2 block">Durational Delta</span>
+                            <span class="font-mono text-lg text-white block">03:45.02</span>
+                        </div>
+                        <div class="panel border border-v-border p-4 flex flex-col justify-between">
+                            <span class="data-label !text-[9px] mb-2 block">Sample Freq</span>
+                            <span class="font-mono text-lg text-white block">44.1 kHz</span>
+                        </div>
                     </div>
-                  </div>
                 </div>
-              </div>
 
-              <!-- Segment Timeline (shown for segmented analysis) -->
-              <div id="timelineSection" class="hidden">
-                <div class="flex justify-between items-center mb-2">
-                  <h4 class="text-white/70 text-xs font-semibold uppercase tracking-wider">Segment Timeline</h4>
-                  <div class="flex items-center gap-3 text-[10px] text-white/40">
-                    <span class="flex items-center gap-1"><span
-                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-danger"></span> Likely AI</span>
-                    <span class="flex items-center gap-1"><span
-                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-warning"></span> Uncertain</span>
-                    <span class="flex items-center gap-1"><span
-                        class="inline-block w-2.5 h-2.5 rounded-sm bg-accent-success"></span> Likely Real</span>
-                  </div>
-                </div>
-                <div id="timelineBar" class="flex w-full h-10 rounded-lg overflow-hidden gap-[2px] bg-black/30">
-                  <!-- Segment blocks injected here -->
-                </div>
-                <div class="flex justify-between text-[10px] text-white/30 mt-1 font-mono">
-                  <span>0:00</span>
-                  <span id="timelineEndLabel">--:--</span>
-                </div>
-              </div>
+                <!-- Right Column: Visualizer & Artifacts -->
+                <div class="xl:col-span-8 flex flex-col gap-6">
+                    
+                    <!-- Spectral Visualizer -->
+                    <div class="panel border border-v-border p-1 flex flex-col h-[320px]">
+                        <div class="flex items-center justify-between px-4 py-2 border-b border-v-border bg-v-surface/50">
+                            <h3 class="data-label m-0"><span class="material-symbols-outlined text-[14px] align-text-bottom mr-1">waves</span> Spectrogram Map</h3>
+                            <div class="flex gap-2">
+                                <button class="btn-outline !py-0.5 !px-2 border-v-authentic text-v-authentic bg-v-authentic/5">Thermal</button>
+                                <button class="btn-outline !py-0.5 !px-2">Wave</button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1 relative bg-v-bg m-1 overflow-hidden border border-v-border/50">
+                            <!-- Background Map -->
+                            <div id="spectrogramBg" class="hidden absolute inset-0 bg-cover bg-center opacity-60 mix-blend-screen"
+                                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDLVV8WOTRRDz3dja2PUA4mXuwVLqj33i7j5pqraMDRjuz11tX6rzG38uMLsaVyKwbJG8jxW67CrUEzxN4yfbFzpuHQLriLE6RndTeOrXtxpgHNoWcbIYa9SSu8ySUHp6RkRNefWuLsmRTdGTg1aDOr8h2OIjKtx1Mgf9oHJ8nsqo-HpRryK5pRhrRs6QJkkQpLm64dOGsivUb53qmHy1qWS53d-stIXsubfhQSrTs5X77FFr4vPOKprk6VyYzZc0RjCRcgh9BV_ddX'); filter: grayscale(1) sepia(1) hue-rotate(180deg) saturate(3);">
+                            </div>
+                            
+                            <!-- Grid Overlay -->
+                            <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
+                            <div class="absolute top-1/2 w-full h-px bg-v-border pointer-events-none z-10"></div>
+                            
+                            <!-- Tracking Head -->
+                            <div class="absolute top-0 bottom-0 left-1/3 w-[1px] bg-v-authentic z-20 shadow-[0_0_8px_rgba(100,255,218,0.8)]">
+                                <div class="absolute -top-1 -translate-x-1/2 border-l-4 border-r-4 border-t-8 border-transparent border-t-v-authentic"></div>
+                                <div class="absolute top-2 left-2 text-[9px] font-mono text-v-bg bg-v-authentic px-1 uppercase border border-v-bg">Read</div>
+                            </div>
+                            
+                            <!-- Dynamic Content Container -->
+                            <div id="audioContainer" class="absolute inset-0 flex items-center justify-center z-30 pointer-events-auto">
+                                <div id="noAudioPlaceholder" class="flex flex-col items-center gap-3 bg-v-panel px-6 py-4 border border-v-border">
+                                    <span class="material-symbols-outlined text-3xl text-v-text-muted">mic_off</span>
+                                    <span class="data-label">Empty Buffer</span>
+                                    <p class="font-mono text-[9px] text-v-text-muted uppercase max-w-[200px] text-center tracking-widest">Inject audio payload via main routing interface</p>
+                                </div>
+                                <audio id="uploadedAudio" class="hidden w-full max-w-2xl px-8" controls></audio>
+                            </div>
+                        </div>
+                    </div>
 
-              <!-- Segment Detail Card (appears when clicking a segment) -->
-              <div id="segmentDetail" class="hidden bg-white/5 border border-white/10 rounded-xl p-4">
-                <div class="flex justify-between items-center mb-2">
-                  <h4 id="segmentDetailTitle" class="text-white font-semibold text-sm">Segment 1</h4>
-                  <button id="segmentDetailClose" class="text-white/40 hover:text-white">
-                    <span class="material-symbols-outlined text-[18px]">close</span>
-                  </button>
+                    <!-- Technical Metrics Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Pitch Stability -->
+                        <div class="panel border border-v-border p-5 flex flex-col justify-between group hover:border-v-authentic transition-colors h-40">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="data-label">Pitch Stability</h4>
+                                <span class="material-symbols-outlined text-v-authentic text-[16px] opacity-70">ssid_chart</span>
+                            </div>
+                            <div id="pitchStability" class="text-2xl font-mono text-white mb-1 tracking-tight">--</div>
+                            <p class="font-mono text-[9px] text-v-text-muted uppercase mb-3 truncate">Frequency Variance</p>
+                            
+                            <!-- Brutalist Sparkline -->
+                            <div class="h-6 w-full flex items-end gap-[1px]">
+                                <div class="flex-1 bg-v-surface border-t-2 border-v-border h-[20%]"></div>
+                                <div class="flex-1 bg-v-surface border-t-2 border-v-border h-[40%]"></div>
+                                <div class="flex-1 bg-v-authentic/20 border-t-2 border-v-authentic h-[80%]"></div>
+                                <div class="flex-1 bg-v-surface border-t-2 border-v-border h-[30%]"></div>
+                                <div class="flex-1 bg-v-surface border-t-2 border-v-border h-[50%]"></div>
+                                <div class="flex-1 bg-v-authentic/20 border-t-2 border-v-authentic h-[90%]"></div>
+                                <div class="flex-1 bg-v-authentic/20 border-t-2 border-v-authentic h-[60%]"></div>
+                                <div class="flex-1 bg-v-surface border-t-2 border-v-border h-[40%]"></div>
+                                <div class="flex-1 bg-v-surface border-t-2 border-v-border h-[20%]"></div>
+                            </div>
+                        </div>
+
+                        <!-- Background Noise -->
+                        <div class="panel border border-v-border p-5 flex flex-col justify-between group hover:border-v-danger transition-colors h-40">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="data-label">Floor Noise</h4>
+                                <span class="material-symbols-outlined text-v-danger text-[16px] opacity-70">blur_off</span>
+                            </div>
+                            <div id="bgNoiseLevel" class="text-2xl font-mono text-white mb-1 tracking-tight">--<span class="text-sm">dB</span></div>
+                            <p class="font-mono text-[9px] text-v-text-muted uppercase mb-3 truncate">Artifacts Detected</p>
+                            
+                            <!-- Peak Meter -->
+                            <div class="w-full bg-v-bg border border-v-border h-4 flex overflow-hidden">
+                                <div class="h-full bg-v-danger w-[15%] border-r border-v-bg"></div>
+                            </div>
+                        </div>
+
+                        <!-- Formant Analysis -->
+                        <div class="panel border border-v-border p-5 flex flex-col justify-between group hover:border-v-suspicious transition-colors h-40">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="data-label">Formant Shift</h4>
+                                <span class="material-symbols-outlined text-v-suspicious text-[16px] opacity-70">voice_selection</span>
+                            </div>
+                            <div id="formantAnalysis" class="text-2xl font-mono text-white mb-1 tracking-tight">--</div>
+                            <p class="font-mono text-[9px] text-v-text-muted uppercase mb-3 truncate">Vocal Tract Anomaly</p>
+                            
+                            <!-- Scatter visual -->
+                            <div class="h-6 relative border-l border-b border-v-border">
+                                <div class="absolute bottom-1 left-[10%] size-[3px] bg-v-text-muted"></div>
+                                <div class="absolute bottom-3 left-[30%] size-[3px] bg-v-text-muted"></div>
+                                <div class="absolute bottom-[90%] left-[50%] size-[4px] bg-v-suspicious shadow-[0_0_5px_var(--color-suspicious)]"></div>
+                                <div class="absolute bottom-2 left-[70%] size-[3px] bg-v-text-muted"></div>
+                                <div class="absolute bottom-[80%] left-[90%] size-[4px] bg-v-suspicious"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Diagnostic Modules -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mt-4">
+                        
+                        <!-- Graph Module -->
+                        <div class="panel border border-v-border px-5 py-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h4 class="data-label m-0 text-white flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-v-authentic text-[16px]">show_chart</span>
+                                    Spectral Centroid
+                                </h4>
+                                <button class="font-mono text-[9px] uppercase text-v-text-muted hover:text-white border border-transparent hover:border-v-border px-2 py-0.5">TXT</button>
+                            </div>
+                            <div class="h-40 w-full bg-v-bg border border-v-border relative overflow-hidden">
+                                <!-- Grid -->
+                                <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:10px_20px]"></div>
+                                <!-- Vector Art -->
+                                <svg class="absolute inset-0 w-full h-full text-v-authentic" preserveaspectratio="none">
+                                    <path class="opacity-80 drop-shadow-[0_0_2px_var(--color-authentic)]"
+                                        d="M 10 90 L 30 70 L 50 80 L 70 30 L 90 90 L 110 50 L 130 80 L 150 20 L 170 80 L 190 60 L 210 90 L 230 40 L 250 80 L 270 50 L 290 90" fill="none" stroke="currentColor"
+                                        stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+                                    <path class="opacity-40" d="M 10 70 L 30 60 L 50 65 L 70 40 L 90 75 L 110 55 L 130 70 L 150 35 L 170 65 L 190 50 L 210 75 L 230 45 L 250 65 L 270 55 L 290 80" fill="none"
+                                        stroke="var(--color-suspicious)" stroke-width="1" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"></path>
+                                </svg>
+                                
+                                <div class="absolute bottom-2 right-2 flex flex-col gap-1 text-[8px] font-mono uppercase bg-v-surface/80 p-1 border border-v-border">
+                                    <div class="flex items-center gap-1"><span class="block size-1.5 bg-v-authentic"></span> Measured</div>
+                                    <div class="flex items-center gap-1"><span class="block size-1.5 bg-v-suspicious"></span> Baseline</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Artifact Logs -->
+                        <div class="panel border border-v-border px-5 py-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h4 class="data-label m-0 text-white flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-v-danger text-[16px]">bug_report</span>
+                                    Synthetic Artifacts
+                                </h4>
+                                <span class="font-mono text-[9px] uppercase border border-v-danger text-v-danger px-2 py-0.5 animate-pulse">3 Events</span>
+                            </div>
+                            <div class="flex flex-col gap-2 max-h-[160px] overflow-y-auto custom-scrollbar">
+                                
+                                <div class="bg-v-bg border border-v-danger border-l-2 p-3 flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-[14px] text-v-danger mt-0.5">warning</span>
+                                    <div class="flex-1">
+                                        <p class="font-mono text-[10px] text-white uppercase tracking-wide">Phase Discontinuity</p>
+                                        <p class="font-mono text-[9px] text-v-text-muted mt-1 leading-snug">Vocoder gap detected at 2.4kHz harmonic.</p>
+                                    </div>
+                                    <span class="font-mono text-[9px] text-v-text-muted bg-v-surface border border-v-border px-1">00:42.1</span>
+                                </div>
+                                
+                                <div class="bg-v-bg border border-v-suspicious border-l-2 p-3 flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-[14px] text-v-suspicious mt-0.5">air</span>
+                                    <div class="flex-1">
+                                        <p class="font-mono text-[10px] text-white uppercase tracking-wide">Breath Spacing</p>
+                                        <p class="font-mono text-[9px] text-v-text-muted mt-1 leading-snug">Inhale duration mathematically insufficient for preceding phrase.</p>
+                                    </div>
+                                    <span class="font-mono text-[9px] text-v-text-muted bg-v-surface border border-v-border px-1">01:15.8</span>
+                                </div>
+                                
+                                <div class="bg-v-bg border border-v-border border-l-2 p-3 flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-[14px] text-v-text-muted mt-0.5">info</span>
+                                    <div class="flex-1">
+                                        <p class="font-mono text-[10px] text-white uppercase tracking-wide">Metadata Scrubbed</p>
+                                        <p class="font-mono text-[9px] text-v-text-muted mt-1 leading-snug">Original EXIF/ID3 encoding blocks entirely missing.</p>
+                                    </div>
+                                    <span class="font-mono text-[9px] text-v-text-muted bg-v-surface border border-v-border px-1">Global</span>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3 text-center">
-                  <div>
-                    <p class="text-[10px] text-white/40 uppercase">Time Range</p>
-                    <p id="segDetailTime" class="text-sm font-bold text-white">--</p>
-                  </div>
-                  <div>
-                    <p class="text-[10px] text-white/40 uppercase">Fake Probability</p>
-                    <p id="segDetailFake" class="text-sm font-bold text-accent-danger">--%</p>
-                  </div>
-                  <div>
-                    <p class="text-[10px] text-white/40 uppercase">Verdict</p>
-                    <p id="segDetailVerdict" class="text-sm font-bold text-white">--</p>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
+        </main>
+    </div>
 
-          <!-- Key Findings Column -->
-          <div class="lg:col-span-5 flex flex-col gap-4">
-            <!-- Key Findings -->
-            <div class="bg-surface-dark/40 border border-white/5 rounded-2xl p-5 flex-1 flex flex-col">
-              <div class="flex justify-between items-center mb-4">
-                <div class="flex gap-2 items-center">
-                  <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
-                    <span class="material-symbols-outlined !text-[20px]">lightbulb</span>
-                  </div>
-                  <div>
-                    <h4 class="text-white font-bold text-sm">Key Findings</h4>
-                    <p id="findingsCount" class="text-white/40 text-xs">Analyzing...</p>
-                  </div>
-                </div>
-              </div>
-              <div id="keyFindings" class="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar">
-                <!-- Loading skeletons -->
-                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
-                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
-                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl skeleton h-12"></div>
-              </div>
-            </div>
-
-            <!-- Segment Summary (for segmented analysis) -->
-            <div id="segmentSummaryCard" class="hidden bg-surface-dark/40 border border-white/5 rounded-2xl p-5">
-              <div class="flex justify-between items-center mb-3">
-                <div class="flex gap-2 items-center">
-                  <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
-                    <span class="material-symbols-outlined !text-[20px]">analytics</span>
-                  </div>
-                  <div>
-                    <h4 class="text-white font-bold text-sm">Segment Summary</h4>
-                    <p class="text-white/40 text-xs">Per-segment analysis breakdown</p>
-                  </div>
-                </div>
-              </div>
-              <div id="segmentSummaryContent" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                <!-- Populated dynamically -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- AI Explanation Panel (collapsible) -->
-        <div id="explanationPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
-          <button id="explanationToggle"
-            class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
-            <div class="flex gap-2 items-center">
-              <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
-                <span class="material-symbols-outlined !text-[20px]">smart_toy</span>
-              </div>
-              <div class="text-left">
-                <h4 class="text-white font-bold text-sm">AI Explanation</h4>
-                <p class="text-white/40 text-xs">Why we reached this verdict</p>
-              </div>
-            </div>
-            <span class="material-symbols-outlined text-white/40 transition-transform"
-              id="explanationChevron">expand_more</span>
-          </button>
-          <div id="explanationContent" class="hidden px-5 pb-5">
-            <div id="explanationText"
-              class="text-white/70 text-sm leading-relaxed whitespace-pre-line border-t border-white/5 pt-4"></div>
-          </div>
-        </div>
-
-        <!-- Detection Model Details Panel (collapsible) -->
-        <div id="modelsPanel" class="bg-surface-dark/40 border border-white/5 rounded-2xl overflow-hidden">
-          <button id="modelsToggle"
-            class="w-full px-5 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
-            <div class="flex gap-2 items-center">
-              <div class="p-1.5 rounded-lg bg-accent-warning/10 text-accent-warning">
-                <span class="material-symbols-outlined !text-[20px]">hub</span>
-              </div>
-              <div class="text-left">
-                <h4 class="text-white font-bold text-sm">Detection Model</h4>
-                <p id="modelsSubtitle" class="text-white/40 text-xs">Model that performed this analysis</p>
-              </div>
-            </div>
-            <span class="material-symbols-outlined text-white/40 transition-transform"
-              id="modelsChevron">expand_more</span>
-          </button>
-          <div id="modelsContent" class="hidden px-5 pb-5">
-            <div id="modelsList" class="flex flex-col gap-3 border-t border-white/5 pt-4"></div>
-          </div>
-        </div>
-
-      </div>
-    </main>
-  </div>
-
-  <!-- Storage Utilities -->
-  <script src="../js/storage-utils.js"></script>
-  <!-- Dynamic Content Loading Script -->
-  <script src="../js/audio-result.js"></script>
+    <!-- Storage Utilities -->
+    <script src="../js/storage-utils.js"></script>
+    <script src="../js/audio-result.js"></script>
 </body>
-
 </html>
