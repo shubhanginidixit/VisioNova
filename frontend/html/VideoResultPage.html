@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova - Video Analysis</title>
+    <title>VisioNova - Video Payload Analysis</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
         (function() {
@@ -13,543 +12,383 @@
             document.documentElement.classList.add(theme);
         })();
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-        rel="stylesheet" />
-    <script>
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#3A8DFF",
-                        "accent-success": "#00D991",
-                        "accent-warning": "#FFB74A",
-                        "accent-danger": "#FF4A4A",
-                        "background-light": "#F5F7FA",
-                        "background-dark": "#0F121A",
-                        "surface-dark": "#0D1B2A",
-                        "panel-dark": "#161B2E",
-                        "card-dark": "#1E2338",
+                        "v-bg": "#0A0F1A", 
+                        "v-surface": "#0F1626", 
+                        "v-panel": "#141C2F", 
+                        "v-border": "rgba(255, 255, 255, 0.08)",
+                        "v-border-focus": "rgba(100, 255, 218, 0.4)",
+                        "v-text-main": "#F8FAFC",
+                        "v-text-muted": "#94A3B8",
+                        "v-authentic": "#64FFDA", 
+                        "v-suspicious": "#FFB74D", 
+                        "v-brand": "#3B82F6",
+                        "v-danger": "#FF4A4A",
+                        // Mappings for JS compatibility
+                        "visio-accent-red": "#FF4A4A",
+                        "visio-accent-amber": "#FFB74D",
+                        "visio-accent-blue": "#3B82F6"
                     },
                     fontFamily: {
-                        display: ["Inter", "sans-serif"],
-                        sans: ["Inter", "sans-serif"],
+                        "sans": ["Inter", "sans-serif"],
+                        "mono": ["Roboto Mono", "monospace"],
                     },
                     boxShadow: {
-                        'neon-red': '0 0 20px -5px rgba(255, 74, 74, 0.3)',
-                        'neon-blue': '0 0 20px -5px rgba(58, 141, 255, 0.3)',
+                        'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
                     }
                 },
             },
         }
     </script>
+    
+    <style>
+        /* Base system overrides */
+        body { background-color: theme('colors.v-bg'); color: theme('colors.v-text-main'); letter-spacing: -0.01em; }
+        .light body { background-color: #F8FAFC; color: #0F172A; }
+        
+        .panel {
+            background-color: theme('colors.v-panel');
+            border: 1px solid theme('colors.v-border');
+            box-shadow: theme('boxShadow.panel');
+        }
+        
+        .structural-grid {
+            background-image: linear-gradient(theme('colors.v-border') 1px, transparent 1px),
+                              linear-gradient(90deg, theme('colors.v-border') 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.15;
+        }
+
+        .data-label { font-family: theme('fontFamily.mono'); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: theme('colors.v-text-muted'); }
+        
+        /* Enforce JS injected progress bar colors */
+        #scoreProgressBar { border-right: 1px solid theme('colors.v-bg'); }
+        
+        .btn-outline {
+            border: 1px solid theme('colors.v-border');
+            background: theme('colors.v-bg');
+            color: theme('colors.v-text-muted');
+            font-family: theme('fontFamily.mono');
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .btn-outline:hover {
+            border-color: theme('colors.v-authentic');
+            color: theme('colors.v-authentic');
+        }
+
+        /* Video Player Overrides */
+        video::-webkit-media-controls-panel {
+            background-color: theme('colors.v-surface');
+            border-top: 1px solid theme('colors.v-border');
+            border-radius: 0;
+            padding-bottom: 0;
+        }
+        video::-webkit-media-controls-play-button,
+        video::-webkit-media-controls-mute-button,
+        video::-webkit-media-controls-timeline,
+        video::-webkit-media-controls-fullscreen-button {
+            filter: invert(1);
+        }
+        video::-webkit-media-controls-current-time-display,
+        video::-webkit-media-controls-time-remaining-display {
+            color: theme('colors.v-text-muted');
+            font-family: theme('fontFamily.mono');
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+    </style>
+
     <link rel="stylesheet" href="../css/common.css">
-    <script src="../js/theme-toggle.js"></script>
+    <script src="../js/layout.js"></script>
 </head>
 
-<body
-    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
-    <div class="fixed inset-0 z-0 pointer-events-none">
-        <div
-            class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
-        </div>
-        <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
-    </div>
-    <!-- Top Navigation -->
-    <header
-        class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
-        <div class="flex items-center gap-4 text-white">
-            <div class="size-8 text-primary">
-                <span class="material-symbols-outlined !text-[32px]">hub</ span>
-            </div>
-            <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
-        </div>
-        <div class="flex flex-1 justify-center hidden md:flex">
-            <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="homepage.html">Home</a>
-                <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="AnalysisDashboard.html">Analyze</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="FactCheckPage.html">Fact Check</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="ReportPage.html">Reports</a>
-                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-                    href="#">API</a>
-            </nav>
-        </div>
-        <div class="flex items-center gap-3">
-            <button
-                class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
-                <span class="material-symbols-outlined !text-[20px]">notifications</span>
-                <span
-                    class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
-            </button>
-            <button id="themeToggle"
-                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
-                title="Toggle Dark/Light Mode">
-                <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
-                <span
-                    class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
-            </button>
-        </div>
-    </header>
-    <div class="flex flex-1 overflow-hidden">
-        <!-- Sidebar Navigation -->
-        <aside
-            class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
-            <div class="flex flex-col gap-6 w-full px-3">
-                <div class="w-full flex flex-col gap-1">
-                    <a href="homepage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
-                        <span class="material-symbols-outlined shrink-0">add_circle</span>
-                        <span
-                            class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
-                            Scan</span>
-                    </a>
+<body class="relative flex h-screen w-full flex-col overflow-hidden selection:bg-v-brand selection:text-white">
+    <!-- Background Texture -->
+    <div class="absolute inset-0 pointer-events-none structural-grid z-0"></div>
+
+    <!-- Top Navigation (Injected by layout.js) -->
+    <header class="relative z-20 border-b border-v-border bg-v-bg/90 backdrop-blur-sm"></header>
+
+    <div class="flex flex-1 overflow-hidden relative z-10 w-full max-w-[1600px] mx-auto">
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside class="border-r border-v-border bg-v-bg/90 backdrop-blur-sm hidden md:block w-64"></aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto w-full px-6 py-8 flex flex-col gap-6 relative">
+            
+            <!-- Context Header -->
+            <div class="flex flex-col gap-4 border border-v-border panel p-6 rounded-none relative z-10">
+                <div class="absolute top-0 right-0 p-2 opacity-50"><span class="material-symbols-outlined text-v-text-muted">movie</span></div>
+                
+                <div class="flex items-center gap-2 text-v-text-muted font-mono text-[10px] tracking-widest uppercase">
+                    <span>Telemetry</span> <span class="text-v-authentic">></span> <span>Video Forensics</span>
                 </div>
-                <div class="w-full h-px bg-[#1E2338]"></div>
-                <div class="flex flex-col gap-2 w-full">
-                    <a href="AnalysisDashboard.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">dashboard</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">history</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
-                            Scans</span>
-                    </a>
-                    <a href="ReportPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">folder_open</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
-                    </a>
-                    <a href="FactCheckPage.html"
-                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                        <span class="material-symbols-outlined shrink-0">shield</span>
-                        <span
-                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
-                            Intel</span>
-                    </a>
-                </div>
-            </div>
-            <div class="flex flex-col gap-2 w-full px-3">
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">settings</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
-                </button>
-                <button
-                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
-                    <span class="material-symbols-outlined shrink-0">help</span>
-                    <span
-                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
-                </button>
-            </div>
-        </aside>
-        <!-- Main Content -->
-        <main class="flex-1 flex flex-col overflow-y-auto relative bg-background-dark bg-hero-gradient">
-            <!-- Background Decorative Elements -->
-            <div class="absolute inset-0 pointer-events-none overflow-hidden">
-                <div
-                    class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
-                </div>
-                <div
-                    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
-                </div>
-            </div>
-            <div class="px-8 py-6 w-full max-w-[1600px] mx-auto flex flex-col gap-6 relative z-10">
-                <!-- Page Header -->
-                <div class="flex flex-col gap-2 mb-6 border-b border-white/10 pb-6 relative z-10">
-                    <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
-                        <span>Analyze</span>
-                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                        <span>Video Analysis</span>
+                
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 border border-v-danger bg-v-danger/10 text-v-danger font-mono text-[10px] uppercase tracking-wider animate-pulse">Critical Manipulation Alert</span>
+                            <span class="text-v-text-muted font-mono text-[10px]">HASH: VN-8842-XJ</span>
+                        </div>
+                        <h1 id="pageTitle" class="text-3xl font-semibold tracking-tight text-white">Visual Artifact Demultiplexer</h1>
                     </div>
-                    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span
-                                    class="px-2 py-0.5 rounded text-[10px] font-bold bg-visio-accent-red/20 text-visio-accent-red border border-visio-accent-red/30 uppercase tracking-wide">High
-                                    Risk Detected</span>
-                                <span class="text-gray-500 text-xs">ID: #VN-8842-XJ</span>
-                            </div>
-                            <h1 id="pageTitle"
-                                class="text-white text-3xl md:text-3xl font-black leading-tight tracking-tight">Video
-                                Analysis</h1>
-                        </div>
-                        <div class="flex gap-3">
-                            <button
-                                class="flex items-center gap-2 px-4 py-2 bg-[#212f4a] hover:bg-[#2c3e5e] text-white text-sm font-medium rounded-lg transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">download</span>
-                                Raw Data
-                            </button>
-                            <button
-                                class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-blue-900/40">
-                                <span class="material-symbols-outlined text-[18px]">summarize</span>
-                                Generate Report
-                            </button>
-                        </div>
+                    
+                    <div class="flex gap-3">
+                        <button class="border border-v-border bg-v-surface hover:border-v-authentic text-v-text-muted hover:text-v-authentic transition-colors px-4 py-2 font-mono text-xs flex items-center gap-2 uppercase">
+                            <span class="material-symbols-outlined text-sm">download</span> Fetch Dumps
+                        </button>
+                        <button class="border border-v-authentic bg-v-authentic/10 text-v-authentic hover:bg-v-authentic/20 transition-colors px-4 py-2 font-mono text-xs flex items-center gap-2 uppercase">
+                            <span class="material-symbols-outlined text-sm">summarize</span> Generate Report
+                        </button>
                     </div>
                 </div>
-                <!-- Top Section: Player & Score -->
-                <div class="grid grid-cols-12 gap-6 min-h-[480px]">
-                    <!-- Video Player Column -->
-                    <div class="col-span-12 lg:col-span-8 flex flex-col h-full">
-                        <div class="relative flex-1 bg-black rounded-t-xl overflow-hidden group">
-                            <!-- Dynamic Video Container -->
-                            <div id="videoContainer" class="absolute inset-0 flex items-center justify-center">
-                                <div id="noVideoPlaceholder" class="flex flex-col items-center gap-4 text-gray-400">
-                                    <span class="material-symbols-outlined text-6xl opacity-50">videocam</span>
-                                    <p class="text-sm">No video uploaded</p>
-                                    <a href="homepage.html" class="text-primary hover:underline text-sm">Upload a video
-                                        to analyze</a>
+            </div>
+
+            <!-- Main Layout Grid -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full pb-12 z-10">
+                
+                <!-- Center Stage: Player & Timeline -->
+                <div class="xl:col-span-8 flex flex-col gap-6 h-full">
+                    
+                    <div class="panel border border-v-border p-1 flex flex-col h-[480px]">
+                        <!-- Video Container -->
+                        <div class="relative flex-1 bg-v-bg border border-v-border/50 group overflow-hidden">
+                            <!-- Tactical HUD Overlay -->
+                            <div class="absolute inset-0 pointer-events-none z-10 p-4 flex flex-col justify-between opacity-50">
+                                <div class="flex justify-between w-full font-mono text-[10px] text-v-authentic">
+                                    <span>[REC] <span class="tabular-nums animate-pulse text-v-danger">1080p60</span></span>
+                                    <span>CROSSHAIR: ALIGNED</span>
                                 </div>
-                                <video id="uploadedVideo" class="hidden w-full h-full object-contain" controls></video>
+                                <div class="flex justify-between w-full font-mono text-[10px] text-v-text-muted">
+                                    <span>LATENCY: 12ms</span>
+                                    <span>COORD: V2-D3</span>
+                                </div>
                             </div>
-                            <!-- Top Controls -->
-                            <div class="absolute top-4 right-4 flex gap-2">
-                                <button
-                                    class="bg-black/50 hover:bg-black/70 text-white p-1.5 rounded text-xs backdrop-blur-md">1080p</button>
-                                <button class="bg-black/50 hover:bg-black/70 text-white p-1.5 rounded backdrop-blur-md">
-                                    <span class="material-symbols-outlined text-[16px]">fullscreen</span>
-                                </button>
+                            
+                            <!-- Bounding Box Overlay for Deepfake detection -->
+                            <div class="absolute top-[20%] left-[40%] w-[20%] h-[30%] border border-v-danger bg-v-danger/5 z-10 pointer-events-none hidden group-hover:block mix-blend-screen">
+                                <div class="absolute -top-4 right-0 bg-v-danger text-black font-mono text-[8px] px-1 font-bold">LIPSYNC WARN</div>
+                                <div class="absolute top-0 left-0 w-2 h-2 border-t border-l border-v-danger"></div>
+                                <div class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-v-danger"></div>
+                            </div>
+
+                            <div id="videoContainer" class="absolute inset-0 flex items-center justify-center bg-black">
+                                <div id="noVideoPlaceholder" class="flex flex-col items-center gap-3 bg-v-panel px-6 py-4 border border-v-border">
+                                    <span class="material-symbols-outlined text-3xl text-v-text-muted">videocam_off</span>
+                                    <span class="data-label">Empty Buffer</span>
+                                    <p class="font-mono text-[9px] text-v-text-muted uppercase max-w-[200px] text-center tracking-widest">Inject visual payload via main routing interface</p>
+                                </div>
+                                <video id="uploadedVideo" class="hidden w-full h-full object-contain pointer-events-auto" controls></video>
                             </div>
                         </div>
-                        <!-- Advanced Timeline -->
-                        <div
-                            class="bg-visio-card border border-[#212f4a] border-t-0 rounded-b-xl p-4 flex flex-col gap-2">
-                            <div class="flex items-center justify-between text-xs text-gray-400 font-mono mb-1">
-                                <span>00:14.05</span>
-                                <span>03:42.00</span>
+
+                        <!-- Forensic Timeline UI -->
+                        <div class="bg-v-surface border-t border-v-border p-4 flex flex-col gap-3">
+                            <div class="flex items-center justify-between text-[10px] text-v-text-muted font-mono tracking-widest uppercase">
+                                <span>POS: 00:14.05</span>
+                                <span>END: 03:42.00</span>
                             </div>
+                            
                             <!-- Timeline Track -->
-                            <div
-                                class="relative h-12 bg-[#0f121a] rounded w-full flex items-center px-1 overflow-hidden cursor-pointer group/timeline">
-                                <!-- Progress -->
-                                <div
-                                    class="absolute left-0 top-0 bottom-0 bg-primary/20 w-[35%] border-r-2 border-primary z-10">
-                                </div>
+                            <div class="relative h-10 w-full flex items-center border border-v-border bg-v-bg relative group/timeline cursor-crosshair">
                                 <!-- Grid Lines -->
-                                <div class="absolute inset-0 w-full h-full opacity-20"
-                                    style="background-image: linear-gradient(90deg, #2f446a 1px, transparent 1px); background-size: 20px 100%;">
+                                <div class="absolute inset-0 w-full h-full opacity-20" style="background-image: linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px); background-size: 2% 100%;"></div>
+                                
+                                <div class="absolute left-0 top-0 bottom-0 bg-v-bg border-r border-v-text-muted w-[35%] z-10">
+                                    <div class="absolute top-0 right-0 w-full h-full bg-v-authentic/10 mix-blend-screen"></div>
                                 </div>
+                                
                                 <!-- Markers -->
-                                <div class="absolute left-[15%] top-1/2 -translate-y-1/2 h-8 w-[2px] bg-visio-accent-red shadow-[0_0_8px_rgba(255,74,74,0.8)] z-20 tooltip-trigger"
-                                    title="Lip Sync Mismatch"></div>
-                                <div
-                                    class="absolute left-[34%] top-1/2 -translate-y-1/2 h-8 w-[2px] bg-visio-accent-red shadow-[0_0_8px_rgba(255,74,74,0.8)] z-20">
-                                </div>
-                                <div
-                                    class="absolute left-[62%] top-1/2 -translate-y-1/2 h-6 w-[2px] bg-visio-accent-amber opacity-70 z-20">
-                                </div>
-                                <!-- Hover effect playhead -->
-                                <div
-                                    class="hidden group-hover/timeline:block absolute top-0 bottom-0 w-[1px] bg-white opacity-50 pointer-events-none left-[50%]">
+                                <div class="absolute left-[15%] top-0 bottom-0 w-[1px] bg-v-danger z-20 shadow-[0_0_8px_rgba(255,74,74,0.8)]" title="Frame Blending Anomaly"></div>
+                                <div class="absolute left-[15%] top-1 bg-v-danger text-black font-mono font-bold text-[8px] px-1 z-30">ERR 1</div>
+                                
+                                <div class="absolute left-[34%] top-0 bottom-0 w-[1px] bg-v-danger z-20 shadow-[0_0_8px_rgba(255,74,74,0.8)]"></div>
+                                <div class="absolute left-[34%] top-1 bg-v-danger text-black font-mono font-bold text-[8px] px-1 z-30">ERR 2</div>
+                                
+                                <div class="absolute left-[62%] top-1/4 bottom-1/4 w-[1px] bg-v-suspicious z-20"></div>
+                                
+                                <!-- Playhead -->
+                                <div class="hidden group-hover/timeline:block absolute top-[10%] bottom-[10%] w-0.5 bg-white z-30 pointer-events-none left-[50%]">
+                                    <div class="absolute -top-1 left-1.5 font-mono text-[8px] text-white">01:45.30</div>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-center mt-1">
-                                <div class="flex gap-4 text-xs text-gray-400">
-                                    <div class="flex items-center gap-1">
-                                        <div class="size-2 rounded-full bg-visio-accent-red"></div>Critical
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <div class="size-2 rounded-full bg-visio-accent-amber"></div>Warning
-                                    </div>
+                            
+                            <div class="flex justify-between items-center mt-1 border-t border-v-border/50 pt-3">
+                                <div class="flex gap-4 font-mono text-[9px] uppercase tracking-widest text-v-text-muted">
+                                    <div class="flex items-center gap-1"><div class="size-1.5 bg-v-danger"></div>Critical Anomaly</div>
+                                    <div class="flex items-center gap-1"><div class="size-1.5 bg-v-suspicious"></div>Deviation</div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <button class="text-gray-400 hover:text-white"><span
-                                            class="material-symbols-outlined text-[20px]">skip_previous</span></button>
-                                    <button class="text-white"><span
-                                            class="material-symbols-outlined text-[24px]">pause</span></button>
-                                    <button class="text-gray-400 hover:text-white"><span
-                                            class="material-symbols-outlined text-[20px]">skip_next</span></button>
+                                <div class="flex items-center gap-2">
+                                    <button class="border border-transparent hover:border-v-border text-v-text-muted hover:text-white px-2 py-1"><span class="material-symbols-outlined text-[16px] block">skip_previous</span></button>
+                                    <button class="border border-v-border bg-v-text-muted/10 text-white px-4 py-1 hover:bg-v-text-muted/20"><span class="material-symbols-outlined text-[16px] block">pause</span></button>
+                                    <button class="border border-transparent hover:border-v-border text-v-text-muted hover:text-white px-2 py-1"><span class="material-symbols-outlined text-[16px] block">skip_next</span></button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <!-- Credibility Scorecard Column -->
-                    <div class="col-span-12 lg:col-span-4 flex flex-col h-full gap-4">
-                        <div
-                            class="bg-visio-card border border-[#212f4a] rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-lg relative flex-1">
-                            <!-- Background glow -->
-                            <div
-                                class="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-visio-accent-red/5 to-transparent pointer-events-none">
-                            </div>
-                            <h3 class="text-gray-400 text-sm font-medium uppercase tracking-widest mb-6">Unified
-                                Credibility Score</h3>
-                            <div class="relative size-48 mb-6">
-                                <!-- Circular Progress SVG -->
-                                <svg class="size-full rotate-[-90deg]" viewbox="0 0 100 100">
-                                    <circle class="text-[#212f4a]" cx="50" cy="50" fill="transparent" r="42"
-                                        stroke="currentColor" stroke-width="8"></circle>
-                                    <circle class="text-visio-accent-red drop-shadow-[0_0_10px_rgba(255,74,74,0.5)]"
-                                        cx="50" cy="50" fill="transparent" r="42" stroke="currentColor"
-                                        stroke-dasharray="264" stroke-dashoffset="26" stroke-linecap="round"
-                                        stroke-width="8"></circle>
+                </div>
+                
+                <!-- Right Column: System Verdict -->
+                <div class="col-span-12 lg:col-span-4 flex flex-col gap-6 max-h-[480px]">
+                    <div class="panel border border-v-danger bg-v-surface p-6 flex flex-col relative flex-1">
+                        <!-- Visual flare for critical scan -->
+                        <div class="absolute top-0 left-0 w-full h-[1px] bg-v-danger stroke-v-danger shadow-[0_0_15px_var(--color-danger)]"></div>
+                        <div class="absolute top-0 right-0 p-2 opacity-10"><span class="material-symbols-outlined text-[60px] text-v-danger">warning</span></div>
+                        
+                        <h3 class="data-label block mb-6 text-v-danger border-b border-v-danger/30 pb-2 flex items-center justify-between">
+                            Unified Credibility Score
+                            <span class="material-symbols-outlined text-[16px] animate-pulse">emergency</span>
+                        </h3>
+                        
+                        <div class="flex flex-col items-center justify-center flex-1 my-4">
+                            <div class="relative size-32 mb-4">
+                                <!-- Brutalist Square Progress -->
+                                <svg class="size-full rotate-[-90deg]" viewBox="0 0 100 100">
+                                    <path class="text-v-bg border-v-border" d="M10,10 L90,10 L90,90 L10,90 Z" fill="transparent" stroke="currentColor" stroke-width="4"></path>
+                                    <path class="text-v-danger drop-shadow-[0_0_8px_rgba(255,74,74,0.6)]" d="M10,10 L90,10 L90,90 L10,90 Z" fill="transparent" stroke="currentColor" stroke-dasharray="320" stroke-dashoffset="30" stroke-width="4"></path>
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span class="text-5xl font-bold text-white tracking-tighter">92%</span>
-                                    <span class="text-xs text-visio-accent-red font-bold uppercase mt-1">Fake
-                                        Probability</span>
+                                    <span class="text-4xl font-mono border-b border-v-danger pb-1 text-white tracking-tighter">92%</span>
                                 </div>
                             </div>
-                            <div class="w-full bg-[#0f121a] rounded-lg p-3 border border-[#212f4a]">
-                                <p class="text-sm text-gray-300">
-                                    <span class="text-visio-accent-red font-bold">Manipulated Content:</span> Deepfake
-                                    algorithms detected in facial region (frames 142-450).
-                                </p>
-                            </div>
+                            <span class="text-[10px] font-mono text-v-danger bg-v-danger/10 border border-v-danger/30 px-3 py-1 uppercase tracking-widest mt-2">Synthetic Probability</span>
                         </div>
-                        <!-- Quick Stats -->
-                        <div
-                            class="bg-visio-card border border-[#212f4a] rounded-xl p-4 flex flex-col justify-between flex-1">
-                            <h4 class="text-xs text-gray-400 font-bold uppercase mb-2">Metadata Analysis</h4>
-                            <div class="space-y-3">
-                                <div class="flex justify-between items-center text-sm border-b border-[#212f4a] pb-2">
-                                    <span class="text-gray-400">Source</span>
-                                    <span class="text-white">YouTube (Verified)</span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm border-b border-[#212f4a] pb-2">
-                                    <span class="text-gray-400">Resolution</span>
-                                    <span class="text-white">1920x1080 (Upscaled)</span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm">
-                                    <span class="text-gray-400">Audio Codec</span>
-                                    <span class="text-white">AAC-LC (Re-encoded)</span>
-                                </div>
-                            </div>
+
+                        <div class="w-full bg-v-bg border border-v-border p-3 mt-auto">
+                            <p class="font-mono text-[10px] text-v-text-muted leading-relaxed uppercase tracking-wide">
+                                <span class="text-v-danger bg-v-danger/10 px-1 border border-v-danger/30 font-bold block mb-1">Vector Compromised:</span>
+                                Generative adversarial topology detected in region targeting cranium mapping (Frames 142-450).
+                            </p>
                         </div>
                     </div>
                 </div>
-                <!-- Metrics Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <!-- Card 1 -->
-                    <div
-                        class="bg-visio-card border border-[#212f4a] rounded-xl p-4 shadow-neon-red relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <span class="material-symbols-outlined text-[40px] text-visio-accent-red">face</span>
+
+                <!-- Metrics Grid Array -->
+                <div class="col-span-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+                    
+                    <!-- Metric Card 1 -->
+                    <div class="panel border border-v-danger p-4 flex flex-col hover:bg-v-surface transition-colors">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="data-label m-0 text-v-danger">Topology Substitution</p>
+                            <span class="material-symbols-outlined text-[16px] text-v-danger">face</span>
                         </div>
-                        <p class="text-gray-400 text-xs font-medium uppercase mb-1">Deepfake Likelihood</p>
-                        <h3 class="text-2xl font-bold text-white mb-2">High <span
-                                class="text-lg text-visio-accent-red">94%</span></h3>
-                        <div class="w-full bg-[#0f121a] h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-visio-accent-red h-full rounded-full" style="width: 94%"></div>
+                        <h3 class="text-3xl font-mono text-white mb-2 tracking-tight">94<span class="text-sm border-l border-v-danger ml-1 pl-1 text-v-danger">%</span></h3>
+                        <div class="w-full h-1 bg-v-bg border border-v-border">
+                            <div class="h-full bg-v-danger w-[94%]"></div>
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2">Face swapping artifacts detected.</p>
+                        <p class="font-mono text-[9px] text-v-text-muted mt-2 uppercase">Facial mesh discontinuity</p>
                     </div>
-                    <!-- Card 2 -->
-                    <div
-                        class="bg-visio-card border border-[#212f4a] rounded-xl p-4 shadow-neon-red relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <span
-                                class="material-symbols-outlined text-[40px] text-visio-accent-red">record_voice_over</span>
+
+                    <!-- Metric Card 2 -->
+                    <div class="panel border border-v-danger p-4 flex flex-col hover:bg-v-surface transition-colors">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="data-label m-0 text-v-danger">Audio-Visual Drift</p>
+                            <span class="material-symbols-outlined text-[16px] text-v-danger">sync_problem</span>
                         </div>
-                        <p class="text-gray-400 text-xs font-medium uppercase mb-1">Lip-sync Mismatch</p>
-                        <h3 class="text-2xl font-bold text-white mb-2">Severe <span
-                                class="text-lg text-visio-accent-red">85%</span></h3>
-                        <div class="w-full bg-[#0f121a] h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-visio-accent-red h-full rounded-full" style="width: 85%"></div>
+                        <h3 class="text-3xl font-mono text-white mb-2 tracking-tight">85<span class="text-sm border-l border-v-danger ml-1 pl-1 text-v-danger">%</span></h3>
+                        <div class="w-full h-1 bg-v-bg border border-v-border">
+                            <div class="h-full bg-v-danger w-[85%]"></div>
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2">Audio precedes visual by 120ms.</p>
+                        <p class="font-mono text-[9px] text-v-text-muted mt-2 uppercase">120ms spectral desync</p>
                     </div>
-                    <!-- Card 3 -->
-                    <div class="bg-visio-card border border-[#212f4a] rounded-xl p-4 relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <span
-                                class="material-symbols-outlined text-[40px] text-visio-accent-blue">motion_mode</span>
+
+                    <!-- Metric Card 3 -->
+                    <div class="panel border border-v-border p-4 flex flex-col hover:bg-v-surface transition-colors">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="data-label m-0">Kinematic Flow</p>
+                            <span class="material-symbols-outlined text-[16px] text-v-authentic">psychology</span>
                         </div>
-                        <p class="text-gray-400 text-xs font-medium uppercase mb-1">Motion Consistency</p>
-                        <h3 class="text-2xl font-bold text-white mb-2">Normal <span
-                                class="text-lg text-visio-accent-blue">12%</span></h3>
-                        <div class="w-full bg-[#0f121a] h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-visio-accent-blue h-full rounded-full" style="width: 12%"></div>
+                        <h3 class="text-3xl font-mono text-white mb-2 tracking-tight">12<span class="text-sm border-l border-v-authentic ml-1 pl-1 text-v-authentic">%</span></h3>
+                        <div class="w-full h-1 bg-v-bg border border-v-border">
+                            <div class="h-full bg-v-authentic w-[12%]"></div>
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2">Natural head movement patterns.</p>
+                        <p class="font-mono text-[9px] text-v-text-muted mt-2 uppercase">Joint trajectory normal</p>
                     </div>
-                    <!-- Card 4 -->
-                    <div class="bg-visio-card border border-[#212f4a] rounded-xl p-4 relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                            <span
-                                class="material-symbols-outlined text-[40px] text-visio-accent-amber">graphic_eq</span>
+
+                    <!-- Metric Card 4 -->
+                    <div class="panel border border-v-border p-4 flex flex-col hover:bg-v-surface transition-colors">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="data-label m-0">Encoding Anomalies</p>
+                            <span class="material-symbols-outlined text-[16px] text-v-suspicious">compress</span>
                         </div>
-                        <p class="text-gray-400 text-xs font-medium uppercase mb-1">Audio Synthesis</p>
-                        <h3 class="text-2xl font-bold text-white mb-2">Medium <span
-                                class="text-lg text-visio-accent-amber">45%</span></h3>
-                        <div class="w-full bg-[#0f121a] h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-visio-accent-amber h-full rounded-full" style="width: 45%"></div>
+                        <h3 class="text-3xl font-mono text-white mb-2 tracking-tight">45<span class="text-sm border-l border-v-suspicious ml-1 pl-1 text-v-suspicious">%</span></h3>
+                        <div class="w-full h-1 bg-v-bg border border-v-border">
+                            <div class="h-full bg-v-suspicious w-[45%]"></div>
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2">Spectral noise in higher frequencies.</p>
+                        <p class="font-mono text-[9px] text-v-text-muted mt-2 uppercase">Macroblock padding issues</p>
                     </div>
                 </div>
-                <!-- Tabbed Forensic Detail Section -->
-                <div
-                    class="flex-1 min-h-[400px] flex flex-col bg-visio-card border border-[#212f4a] rounded-xl overflow-hidden">
-                    <!-- Tabs -->
-                    <div class="flex items-center border-b border-[#212f4a] bg-[#121824]">
-                        <button
-                            class="px-6 py-4 text-sm font-medium text-white border-b-2 border-primary bg-[#1e293b]/50">Frame
-                            Forensics</button>
-                        <button
-                            class="px-6 py-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#1e293b]/30 transition-colors">Landmark
-                            Instability</button>
-                        <button
-                            class="px-6 py-4 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#1e293b]/30 transition-colors">Spectral
-                            Analysis</button>
-                    </div>
-                    <!-- Content -->
-                    <div class="p-6 flex flex-col gap-6">
-                        <!-- Heatmap Strip -->
-                        <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <h4 class="text-sm font-bold text-white">Pixel-Level Manipulation Heatmap</h4>
-                                <div class="flex gap-2 text-[10px] uppercase text-gray-400 font-bold">
-                                    <span class="flex items-center gap-1"><span
-                                            class="block size-2 bg-visio-accent-blue rounded-full"></span>
-                                        Original</span>
-                                    <span class="flex items-center gap-1"><span
-                                            class="block size-2 bg-visio-accent-red rounded-full"></span> Forged</span>
-                                </div>
-                            </div>
-                            <!-- Fake Heatmap Visualization -->
-                            <div
-                                class="h-24 w-full rounded-lg bg-[#0f121a] border border-[#212f4a] relative overflow-hidden flex">
-                                <!-- We create a visual representation of frames with varying "heat" -->
-                                <div
-                                    class="flex-1 h-full bg-gradient-to-r from-blue-900/20 via-blue-900/20 to-transparent">
-                                </div>
-                                <div
-                                    class="flex-[2] h-full bg-gradient-to-r from-red-900/80 via-red-600/60 to-red-900/80 border-l border-r border-red-500/30 relative group">
-                                    <div
-                                        class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                        <span class="bg-black/80 text-white text-[10px] px-2 py-1 rounded">High
-                                            Confidence Region</span>
-                                    </div>
-                                </div>
-                                <div
-                                    class="flex-1 h-full bg-gradient-to-r from-transparent via-blue-900/20 to-blue-900/20">
-                                </div>
-                            </div>
-                            <div class="flex justify-between text-xs text-gray-500 mt-1 font-mono">
-                                <span>Frame 0</span>
-                                <span>Frame 300</span>
-                                <span>Frame 600</span>
-                                <span>Frame 900</span>
+
+                <!-- Technical Output Log Grid -->
+                <div class="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    
+                    <!-- Heatmap Dump -->
+                    <div class="panel border border-v-border p-5">
+                        <div class="flex justify-between items-center mb-4 border-b border-v-border pb-3">
+                            <h4 class="data-label m-0">Temporal Heatmap Vector</h4>
+                            <div class="flex gap-3 text-[9px] font-mono uppercase text-v-text-muted">
+                                <span class="flex items-center gap-1 border border-v-border p-1 bg-v-bg"><span class="block size-1.5 bg-v-authentic"></span> Baseline</span>
+                                <span class="flex items-center gap-1 border border-v-border p-1 bg-v-bg"><span class="block size-1.5 bg-v-danger"></span> Forged</span>
                             </div>
                         </div>
-                        <!-- Timeline Events List -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
-                            <div>
-                                <h4 class="text-sm font-bold text-white mb-3">Detected Anomalies</h4>
-                                <div class="space-y-2">
-                                    <!-- Anomaly Item -->
-                                    <div
-                                        class="flex items-center gap-3 p-3 rounded-lg bg-[#0f121a] border border-[#212f4a] hover:border-primary/50 transition-colors cursor-pointer group">
-                                        <div class="text-visio-accent-red bg-visio-accent-red/10 p-2 rounded-lg">
-                                            <span class="material-symbols-outlined text-[20px]">warning</span>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="flex justify-between">
-                                                <p class="text-sm font-medium text-white group-hover:text-primary">
-                                                    Inconsistent Blinking Pattern</p>
-                                                <span class="text-xs text-gray-400 font-mono">00:14.05</span>
-                                            </div>
-                                            <p class="text-xs text-gray-500">Eye aspect ratio variance exceeds natural
-                                                threshold.</p>
-                                        </div>
-                                        <div class="text-xs font-bold text-visio-accent-red">98%</div>
-                                    </div>
-                                    <!-- Anomaly Item -->
-                                    <div
-                                        class="flex items-center gap-3 p-3 rounded-lg bg-[#0f121a] border border-[#212f4a] hover:border-primary/50 transition-colors cursor-pointer group">
-                                        <div class="text-visio-accent-red bg-visio-accent-red/10 p-2 rounded-lg">
-                                            <span class="material-symbols-outlined text-[20px]">graphic_eq</span>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="flex justify-between">
-                                                <p class="text-sm font-medium text-white group-hover:text-primary">Audio
-                                                    Spectral Gap</p>
-                                                <span class="text-xs text-gray-400 font-mono">00:22.18</span>
-                                            </div>
-                                            <p class="text-xs text-gray-500">High frequency cut-off typical of
-                                                text-to-speech engines.</p>
-                                        </div>
-                                        <div class="text-xs font-bold text-visio-accent-red">92%</div>
-                                    </div>
-                                    <!-- Anomaly Item -->
-                                    <div
-                                        class="flex items-center gap-3 p-3 rounded-lg bg-[#0f121a] border border-[#212f4a] hover:border-primary/50 transition-colors cursor-pointer group">
-                                        <div class="text-visio-accent-amber bg-visio-accent-amber/10 p-2 rounded-lg">
-                                            <span
-                                                class="material-symbols-outlined text-[20px]">face_retouching_off</span>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="flex justify-between">
-                                                <p class="text-sm font-medium text-white group-hover:text-primary">
-                                                    Facial Boundary Artifacts</p>
-                                                <span class="text-xs text-gray-400 font-mono">01:05.40</span>
-                                            </div>
-                                            <p class="text-xs text-gray-500">Blending irregularities on jawline.</p>
-                                        </div>
-                                        <div class="text-xs font-bold text-visio-accent-amber">76%</div>
-                                    </div>
+                        <div class="bg-v-bg border border-v-border h-24 relative p-1">
+                            <!-- Heatmap Blocks -->
+                            <div class="flex h-full gap-0.5">
+                                <div class="w-1/6 bg-v-authentic border border-v-authentic/30 opacity-20 hover:opacity-100 transition-opacity"></div>
+                                <div class="w-1/6 bg-v-authentic border border-v-authentic/30 opacity-40 hover:opacity-100 transition-opacity"></div>
+                                <div class="w-1/6 bg-v-suspicious border border-v-suspicious/30 opacity-60 hover:opacity-100 transition-opacity"></div>
+                                <div class="w-1/6 bg-v-danger border border-v-danger/30 opacity-90 hover:opacity-100 transition-opacity relative group/block">
+                                    <div class="absolute -top-7 left-1/2 -translate-x-1/2 bg-v-danger text-black font-mono font-bold text-[8px] px-2 py-1 hidden group-hover/block:block whitespace-nowrap z-10 border border-black">PEAK CORRUPTION</div>
                                 </div>
+                                <div class="w-1/6 bg-v-danger border border-v-danger/30 opacity-70 hover:opacity-100 transition-opacity"></div>
+                                <div class="w-1/6 bg-v-authentic border border-v-authentic/30 opacity-20 hover:opacity-100 transition-opacity"></div>
                             </div>
-                            <!-- Mini Graph -->
-                            <div class="flex flex-col h-full">
-                                <h4 class="text-sm font-bold text-white mb-3">Compression Error Rate</h4>
-                                <div
-                                    class="flex-1 bg-[#0f121a] rounded-lg border border-[#212f4a] p-4 relative flex items-end justify-between gap-1 overflow-hidden">
-                                    <!-- Fake bar chart using divs -->
-                                    <div
-                                        class="w-full h-[30%] bg-visio-accent-blue/30 hover:bg-visio-accent-blue/50 rounded-t-sm transition-all">
-                                    </div>
-                                    <div
-                                        class="w-full h-[45%] bg-visio-accent-blue/30 hover:bg-visio-accent-blue/50 rounded-t-sm transition-all">
-                                    </div>
-                                    <div
-                                        class="w-full h-[35%] bg-visio-accent-blue/30 hover:bg-visio-accent-blue/50 rounded-t-sm transition-all">
-                                    </div>
-                                    <div
-                                        class="w-full h-[90%] bg-visio-accent-red hover:bg-red-500 rounded-t-sm transition-all shadow-[0_0_10px_rgba(255,74,74,0.4)]">
-                                    </div>
-                                    <div
-                                        class="w-full h-[85%] bg-visio-accent-red hover:bg-red-500 rounded-t-sm transition-all shadow-[0_0_10px_rgba(255,74,74,0.4)]">
-                                    </div>
-                                    <div
-                                        class="w-full h-[40%] bg-visio-accent-blue/30 hover:bg-visio-accent-blue/50 rounded-t-sm transition-all">
-                                    </div>
-                                    <div
-                                        class="w-full h-[25%] bg-visio-accent-blue/30 hover:bg-visio-accent-blue/50 rounded-t-sm transition-all">
-                                    </div>
-                                    <div
-                                        class="w-full h-[30%] bg-visio-accent-blue/30 hover:bg-visio-accent-blue/50 rounded-t-sm transition-all">
-                                    </div>
-                                    <!-- Background grid lines -->
-                                    <div
-                                        class="absolute inset-0 w-full h-full pointer-events-none flex flex-col justify-between p-4 opacity-10">
-                                        <div class="w-full h-px bg-white"></div>
-                                        <div class="w-full h-px bg-white"></div>
-                                        <div class="w-full h-px bg-white"></div>
-                                        <div class="w-full h-px bg-white"></div>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="flex justify-between font-mono text-[9px] text-v-text-muted mt-2 uppercase">
+                            <span>F_0000</span>
+                            <span>F_0300</span>
+                            <span>F_0600</span>
+                            <span>F_0900</span>
+                        </div>
+                    </div>
+
+                    <!-- Meta Tags -->
+                    <div class="panel border border-v-border p-5">
+                        <div class="flex justify-between items-center mb-4 border-b border-v-border pb-3">
+                            <h4 class="data-label m-0">Header Demux</h4>
+                            <span class="font-mono text-[9px] uppercase border border-v-border bg-v-bg px-2 py-0.5 text-v-text-muted">EXIF/XMP</span>
+                        </div>
+                        
+                        <div class="flex flex-col gap-1 font-mono text-[10px] bg-v-bg border border-v-border p-3 overflow-y-auto max-h-32 custom-scrollbar">
+                            <div class="flex">
+                                <span class="text-v-text-muted w-1/3 border-b border-v-border/30 pb-1">Primary Feed</span>
+                                <span class="text-white w-2/3 border-b border-v-border/30 pb-1 pl-2 border-l border-v-border/30">HLS (Decrypted)</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-v-text-muted w-1/3 border-b border-v-border/30 py-1">Spatial Res</span>
+                                <span class="text-white w-2/3 border-b border-v-border/30 py-1 pl-2 border-l border-v-border/30">1920x1080 (Upscaled)</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-v-text-muted w-1/3 border-b border-v-border/30 py-1">Codec Matrix</span>
+                                <span class="text-white w-2/3 border-b border-v-border/30 py-1 pl-2 border-l border-v-border/30">H.264 (High Profile)</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-v-text-muted w-1/3 py-1">Audio Stream</span>
+                                <span class="text-white w-2/3 py-1 pl-2 border-l border-v-border/30">AAC-LC (Re-encoded)</span>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </main>
@@ -557,9 +396,6 @@
 
     <!-- Storage Utilities -->
     <script src="../js/storage-utils.js"></script>
-
-    <!-- Dynamic Content Loading Script -->
     <script src="../js/video-result.js"></script>
 </body>
-
 </html>
