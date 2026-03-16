@@ -1,18 +1,17 @@
-/* VisioNova - Analysis Dashboard Styles */
+/* VisioNova — Analysis Dashboard Styles v3.0 */
 
+/* ── Scanning radar ── */
 .scanning-radar {
-    background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.2) 0%, rgba(13, 27, 42, 0) 70%);
+    background: radial-gradient(circle,
+            rgba(200, 255, 87, 0.10) 0%,
+            rgba(10, 11, 13, 0) 70%);
 }
 
-.light .scanning-radar {
-    background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.15) 0%, rgba(245, 247, 250, 0) 70%) !important;
-}
-
-/* Scanning line animation */
+/* ── Scan line animation ── */
 @keyframes scan {
     0% {
-        left: 10%;
-        opacity: 0.7;
+        left: 5%;
+        opacity: 0.6;
     }
 
     50% {
@@ -21,237 +20,162 @@
 
     100% {
         left: 90%;
-        opacity: 0.7;
+        opacity: 0.6;
     }
 }
 
 .scan-line {
     animation: scan 2s linear infinite alternate;
-    background-color: var(--color-accent-success) !important;
-    box-shadow: 0 0 20px var(--color-accent-success), 0 0 40px rgba(0, 217, 145, 0.5) !important;
+    background-color: var(--signal) !important;
+    box-shadow: 0 0 12px rgba(200, 255, 87, 0.4), 0 0 28px rgba(200, 255, 87, 0.2) !important;
 }
 
-/* Progress bar glow effects */
-.bg-accent-green {
-    background-color: var(--color-accent-success) !important;
+/* ── Progress bar track ── */
+.bg-\[\#1E293B\],
+.progress-track {
+    background-color: var(--ink-4) !important;
+    border: 1px solid var(--color-border) !important;
 }
 
-.bg-accent-blue {
-    background-color: var(--color-primary) !important;
-}
-
-/* Step bar styles */
+/* ── Step bar states ── */
 .step-bar {
-    min-height: 8px;
+    min-height: 6px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.3s ease;
 }
 
 .step-bar.bg-accent-green {
-    background-color: var(--color-accent-success) !important;
-    box-shadow: 0 0 10px rgba(0, 217, 145, 0.6) !important;
+    background-color: var(--signal) !important;
+    box-shadow: 0 0 8px rgba(200, 255, 87, 0.35) !important;
 }
 
 .step-bar.bg-accent-blue {
-    background-color: var(--color-primary) !important;
-    box-shadow: 0 0 10px rgba(58, 141, 255, 0.6) !important;
+    background-color: var(--brand) !important;
+    box-shadow: 0 0 8px rgba(77, 144, 255, 0.35) !important;
+    background-image: linear-gradient(90deg,
+            rgba(255, 255, 255, 0.07) 25%,
+            transparent 25%,
+            transparent 50%,
+            rgba(255, 255, 255, 0.07) 50%,
+            rgba(255, 255, 255, 0.07) 75%,
+            transparent 75%,
+            transparent) !important;
+    background-size: 20px 20px !important;
+    animation: progress-stripe 0.8s linear infinite !important;
 }
 
-/* Progress bar track */
-.bg-\[\#1E293B\] {
-    background-color: #1E293B;
+@keyframes progress-stripe {
+    from {
+        background-position: 0 0;
+    }
+
+    to {
+        background-position: 20px 0;
+    }
 }
 
-.light .bg-\[\#1E293B\] {
-    background-color: #cbd5e1 !important;
+/* Step pending */
+.step-bar.bg-slate-700 {
+    background-color: var(--ghost) !important;
 }
 
-/* Visualizer Box */
-.visualizer-box {
-    background-color: #080b12 !important;
-    /* Keep dark regardless of theme for contrast */
-    border-color: var(--color-border) !important;
-}
-
-.light .visualizer-box {
-    background-color: #e2e8f0 !important;
-    border-color: #cbd5e1 !important;
-}
-
-/* Text Colors */
+/* ── Text accent colors ── */
 .text-accent-green {
-    color: var(--color-accent-success) !important;
+    color: var(--signal) !important;
 }
 
 .text-accent-blue {
-    color: var(--color-primary) !important;
+    color: var(--brand) !important;
 }
 
-
-.scanning-radar {
-    background: radial-gradient(circle, rgba(58, 141, 255, 0.2) 0%, rgba(13, 27, 42, 0) 70%);
-}
-
-/* Scanning line animation */
-@keyframes scan {
-    0% {
-        left: 10%;
-        opacity: 0.7;
-    }
-
-    50% {
-        opacity: 1;
-    }
-
-    100% {
-        left: 90%;
-        opacity: 0.7;
-    }
-}
-
-.scan-line {
-    animation: scan 2s linear infinite alternate;
-    background-color: #00D991 !important;
-    box-shadow: 0 0 20px #00D991, 0 0 40px rgba(0, 217, 145, 0.5) !important;
-}
-
-/* Progress bar glow effects */
-.bg-accent-green {
-    background-color: #00D991 !important;
-}
-
-.bg-accent-blue {
-    background-color: #3A8DFF !important;
-}
-
-/* Step bar styles - ensure visibility */
-.step-bar {
-    min-height: 8px;
-}
-
-.step-bar.bg-accent-green {
-    background-color: #00D991 !important;
-    box-shadow: 0 0 10px rgba(0, 217, 145, 0.6) !important;
-}
-
-.step-bar.bg-accent-blue {
-    background-color: #3A8DFF !important;
-    box-shadow: 0 0 10px rgba(58, 141, 255, 0.6) !important;
-}
-
-/* Progress bar track */
-.bg-\[#1E293B\] {
-    background-color: #1E293B;
-}
-
-/* ============================================
-   LIGHT MODE OVERRIDES
-   ============================================ */
-
-.light .scanning-radar {
-    background: radial-gradient(circle, rgba(58, 141, 255, 0.15) 0%, rgba(245, 247, 250, 0) 70%) !important;
-}
-
-/* Keep visualizer dark in both modes for contrast */
+/* ── Visualizer box ── */
 .visualizer-box {
-    background-color: #080b12 !important;
-    border-color: #1E293B !important;
+    background-color: #07080A !important;
+    border-color: var(--color-border) !important;
 }
 
-.light .visualizer-box {
-    background-color: #e2e8f0 !important;
-    border-color: #cbd5e1 !important;
+/* ── Pending step labels ── */
+.step-name {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.65rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.09em !important;
+    color: var(--paper-3) !important;
 }
 
-/* Keep scan line green and glowing in both modes */
-.light .scan-line {
-    background-color: #00D991 !important;
-    box-shadow: 0 0 20px #00D991, 0 0 40px rgba(0, 217, 145, 0.5) !important;
+.step-status {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.62rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
 }
 
-/* Progress bar track styling */
-.progress-track {
-    background-color: #1E293B;
-}
-
-.light .progress-track {
-    background-color: #cbd5e1 !important;
-}
-
-/* Progress bar track in light mode */
-.light .bg-\[#1E293B\] {
-    background-color: #cbd5e1 !important;
-}
-
-/* Also target the progress bar tracks specifically */
-.light .rounded-full.overflow-hidden .bg-\[#1E293B\],
-.light .h-2.bg-\[#1E293B\],
-.light .h-2.w-full.bg-\[#1E293B\] {
-    background-color: #cbd5e1 !important;
-}
-
-/* Pending step bars (slate-700) in light mode */
-.light .step-bar.bg-slate-700,
-.light .bg-slate-700 {
-    background-color: #cbd5e1 !important;
-}
-
-/* Step name text in light mode */
-.light .step-name,
-.light .text-slate-300 {
-    color: #334155 !important;
-}
-
-/* Ensure accent colors stay vibrant in light mode */
-.light .step-bar.bg-accent-green,
-.light .bg-accent-green {
-    background-color: #00D991 !important;
-    box-shadow: 0 0 10px rgba(0, 217, 145, 0.6) !important;
-}
-
-.light .step-bar.bg-accent-blue,
-.light .bg-accent-blue {
-    background-color: #3A8DFF !important;
-    box-shadow: 0 0 10px rgba(58, 141, 255, 0.6) !important;
-}
-
-/* Accent text colors in light mode */
-.light .text-accent-green {
-    color: #00D991 !important;
-}
-
-.light .text-accent-blue {
-    color: #3A8DFF !important;
-}
-
-/* Badge in visualizer */
-.light .bg-accent-green\/10 {
-    background-color: rgba(0, 217, 145, 0.1) !important;
-}
-
-.light .border-accent-green\/20 {
-    border-color: rgba(0, 217, 145, 0.2) !important;
-}
-
-/* Waveform bars in light mode - make them darker for visibility */
-.light .visualizer-box .bg-accent-blue,
-.light .visualizer-box .bg-accent-blue\/60,
-.light .visualizer-box .bg-accent-blue\/40 {
-    background-color: #3A8DFF !important;
-}
-
-/* Waveform bars in dark mode - ensure all bars are visible */
-.visualizer-box .bg-accent-blue\/40 {
-    background-color: rgba(58, 141, 255, 0.6) !important;
+/* ── Waveform bars ── */
+.visualizer-box .bg-accent-blue {
+    background-color: var(--brand) !important;
 }
 
 .visualizer-box .bg-accent-blue\/60 {
-    background-color: rgba(58, 141, 255, 0.8) !important;
+    background-color: rgba(77, 144, 255, 0.6) !important;
 }
 
-.visualizer-box .bg-accent-blue {
-    background-color: #3A8DFF !important;
+.visualizer-box .bg-accent-blue\/40 {
+    background-color: rgba(77, 144, 255, 0.4) !important;
 }
 
-/* Processing badge in light mode */
-.light .visualizer-box .bg-accent-green\/10 {
-    background-color: rgba(0, 217, 145, 0.15) !important;
+/* ── Accent text ── */
+.text-accent-green {
+    color: var(--signal) !important;
+}
+
+.text-accent-blue {
+    color: var(--brand) !important;
+}
+
+/* ── Light mode overrides ── */
+.light .scanning-radar {
+    background: radial-gradient(circle, rgba(100, 160, 30, 0.1) 0%, rgba(244, 242, 237, 0) 70%) !important;
+}
+
+.light .visualizer-box {
+    background-color: #E4E1D9 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.light .bg-\[\#1E293B\],
+.light .progress-track {
+    background-color: #D6D3CB !important;
+}
+
+.light .step-name {
+    color: #4A4E5A !important;
+}
+
+.light .step-status {
+    color: #6E7280 !important;
+}
+
+.light .step-bar.bg-accent-green {
+    background-color: #5A9A20 !important;
+}
+
+.light .step-bar.bg-accent-blue {
+    background-color: #2A70E0 !important;
+}
+
+.light .step-bar.bg-slate-700 {
+    background-color: #C8C5BE !important;
+}
+
+.light .text-accent-green {
+    color: #5A9A20 !important;
+}
+
+.light .text-accent-blue {
+    color: #2A70E0 !important;
+}
+
+.light .scan-line {
+    background-color: #5A9A20 !important;
+    box-shadow: 0 0 10px rgba(90, 154, 32, 0.3) !important;
 }
