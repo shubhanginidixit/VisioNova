@@ -68,20 +68,19 @@ class EnsembleDetector:
     """
     
     # Default weights for each detector (sum to 1.0)
-    # Updated weights (Feb 2026) — RECENT MODELS ONLY
-    # Only models trained on 2024-2026 generators (Flux, DALL-E 3, MJ v6,
-    # GPT-Image-1, SDXL) are given weight. Outdated and broken models zeroed.
-    DEFAULT_WEIGHTS: Dict[str, float] = {
-        # ═══ Tier 1: Best recent models (2025-2026, verified accuracy) ═══
-        'ateeqq': 0.31,             # Ateeqq SigLIP2 (99.23% acc, 46K downloads, Dec 2025)
-        'siglip_dinov2': 0.31,      # Bombek1 SigLIP2+DINOv2 (99.97% AUC, 25+ generators, Jan 2026)
-        
-        # ═══ Tier 2: Strong recent models ═══
-        'deepfake': 0.19,           # dima806 ViT (98.25% acc, 50K downloads, Jan 2025)
-        'sdxl': 0.19,               # Organika/sdxl-detector (98.1% acc, SDXL/Flux specialist)
-        
-        # REMOVED: dinov2 (0.10) — redundant with siglip_dinov2 which uses DINOv2 backbone
-        # REMOVED: frequency (0.04) — FFT heuristic, only detects old GAN artifacts, not modern diffusion
+    # Updated weights (Feb 2026) with new high-accuracy detectors
+    DEFAULT_WEIGHTS = {
+        'statistical': 0.05,        # Basic statistical analysis
+        'deepfake': 0.08,           # dima806 ViT detector (98.25% accuracy)
+        'clip': 0.08,               # UniversalFakeDetect SwinV2 (98.1% accuracy)
+        'sdxl': 0.08,               # Organika/sdxl-detector (98.1% F1, diffusion specialist)
+        'sbi': 0.07,                # SBI Diffusion detector (99.95% AUC)
+        'bombek1': 0.20,            # NEW: Bombek1 SigLIP2+DINOv2 (99.97% AUC, 25+ generators)
+        'siglip2_deepfake': 0.12,   # NEW: SigLIP2 deepfake binary
+        'three_class': 0.05,        # NEW: 3-class AI/Deepfake/Real
+        'dinov2': 0.12,             # NEW: DINOv2 degradation-resilient
+        'frequency': 0.05,          # FFT/DCT analysis
+        'watermark': 0.10,          # Watermark detection contribution
     }
     
     # Override weights when certain signals are strong
@@ -103,16 +102,39 @@ class EnsembleDetector:
             weights: Custom weights for score fusion
         """
         self.use_gpu = use_gpu
-        self.weights: Dict[str, float] = weights or self.DEFAULT_WEIGHTS.copy()
+        self.weights = weights or self.DEFAULT_WEIGHTS.copy()
         self.device = "cuda" if use_gpu else "cpu"
         
+        # Component detectors
+        self.statistical_detector = None
+        self.nyuad_detector = None
+        self.clip_detector = None
+        self.frequency_analyzer = None
+        self.watermark_detector = None
+        self.metadata_analyzer = None
+        self.ela_analyzer = None
+        self.c2pa_detector = None
+        self.deepfake_detector = None
+        
+        # Accuracy improvement detectors (Phase 1)
+        self.sbi_detector = None          # SBI diffusion detection (99.95% AUC)
+        self.forgery_detector = None      # Copy-move forgery detection (98.98%)
+        self.calibrator = None            # Confidence calibration
+        
+        # High-value detectors (Phase 2)
+        self.dire_detector = None         # DIRE - Diffusion Reconstruction Error (99.7%)
+        self.npr_detector = None          # NPR - Neighboring Pixel Relationships (99.1%)
+        self.face_detector = None         # Face consistency analysis
+        self.edge_analyzer = None         # Edge coherence analysis
+        
         # Pretrained HuggingFace detectors
-        self.deepfake_detector = None     # dima806 ViT (98.25% accuracy)
         self.sdxl_detector = None         # Organika/sdxl-detector (98.1% for modern diffusion)
         
-        # 2025-2026 high-accuracy detectors
-        self.ateeqq_detector = None        # Ateeqq SigLIP2 (99.23% acc, Dec 2025)
-        self.siglip_dinov2_detector = None  # Bombek1 SigLIP2+DINOv2 (97.15% cross-dataset)
+        # NEW 2026: Latest high-accuracy HuggingFace detectors
+        self.bombek1_detector = None      # Bombek1 SigLIP2+DINOv2 (99.97% AUC, 25+ generators)
+        self.siglip2_deepfake_detector = None  # prithivMLmods Deepfake-Detect-Siglip2
+        self.three_class_detector = None   # prithivMLmods AI-vs-Deepfake-vs-Real-Siglip2
+        self.dinov2_detector = None        # WpythonW DINOv2 deepfake detector
         
         # Load detectors
         self._initialize_detectors(load_ml_models)
@@ -120,17 +142,15 @@ class EnsembleDetector:
         logger.info(f"EnsembleDetector initialized (GPU: {use_gpu}, ML models: {load_ml_models})")
     
     def _initialize_detectors(self, load_ml_models: bool):
-        """Initialize all component detectors.
+        """Initialize all component detectors."""
         
-        Detectors with weight == 0 are SKIPPED to save memory and prevent
-        false-positive bias from heuristic/outdated models.
-        """
-        
-        # Helper: should we load a detector given its weight key?
-        def _should_load(key: str) -> bool:
-            return self.weights.get(key, 0) > 0
-        
-        # ── Always load lightweight utility detectors ──
+        # Always load lightweight detectors
+        try:
+            from .detector import ImageDetector
+            self.statistical_detector = ImageDetector(use_gpu=self.use_gpu)
+            logger.info("Statistical detector loaded")
+        except Exception as e:
+            logger.warning(f"Could not load statistical detector: {e}")
         
         try:
             from .watermark_detector import WatermarkDetector
@@ -160,11 +180,23 @@ class EnsembleDetector:
         except Exception as e:
             logger.warning(f"Could not load C2PA detector: {e}")
         
-        # ── Heuristic detectors: ONLY load when weight > 0 ──
-        # These are hand-coded approximations, NOT real ML models.
-        # They cause false AI classifications on real images.
+        # NEW: Load SBI diffusion detector (99.95% AUC on diffusion images)
+        try:
+            from .sbi_detector import SBIDetector
+            self.sbi_detector = SBIDetector()
+            logger.info("SBI Diffusion detector loaded (99.95% AUC)")
+        except Exception as e:
+            logger.warning(f"Could not load SBI detector: {e}")
         
-        # Confidence calibrator (always useful)
+        # NEW: Load copy-move forgery detector (98.98% accuracy)
+        try:
+            from .forgery_detector import CopyMoveForgeryDetector
+            self.forgery_detector = CopyMoveForgeryDetector()
+            logger.info("Copy-Move Forgery detector loaded (98.98% accuracy)")
+        except Exception as e:
+            logger.warning(f"Could not load forgery detector: {e}")
+        
+        # NEW: Load confidence calibrator
         try:
             from .confidence_calibrator import ConfidenceCalibrator
             self.calibrator = ConfidenceCalibrator()
@@ -172,57 +204,111 @@ class EnsembleDetector:
         except Exception as e:
             logger.warning(f"Could not load calibrator: {e}")
         
-        # ── Load ML models if requested ──
+        # NEW: Load DIRE detector (99.7% accuracy)
+        try:
+            from .dire_detector import DIREDetector
+            self.dire_detector = DIREDetector()
+            logger.info("DIRE Diffusion detector loaded (99.7%)")
+        except Exception as e:
+            logger.warning(f"Could not load DIRE detector: {e}")
+        
+        # NEW: Load NPR detector (99.1% accuracy)
+        try:
+            from .npr_detector import NPRDetector
+            self.npr_detector = NPRDetector()
+            logger.info("NPR detector loaded (99.1%)")
+        except Exception as e:
+            logger.warning(f"Could not load NPR detector: {e}")
+        
+        # NEW: Load Face Consistency detector
+        try:
+            from .face_consistency_detector import FaceConsistencyDetector
+            self.face_detector = FaceConsistencyDetector()
+            logger.info("Face Consistency detector loaded")
+        except Exception as e:
+            logger.warning(f"Could not load Face detector: {e}")
+        
+        # NEW: Load Edge Coherence analyzer
+        try:
+            from .edge_coherence_analyzer import EdgeCoherenceAnalyzer
+            self.edge_analyzer = EdgeCoherenceAnalyzer()
+            logger.info("Edge Coherence analyzer loaded")
+        except Exception as e:
+            logger.warning(f"Could not load Edge analyzer: {e}")
+
+        
+        # Load ML models if requested
         if load_ml_models:
             try:
-                from .ml_detector import create_ml_detectors
-                ml_models = create_ml_detectors(device=self.device, load_all=True)
+                from .ml_detector import NYUADDetector, UniversalFakeDetector, SDXLDetector, FrequencyAnalyzer, DeepfakeDetector
                 
-                # ── Tier 1: Best recent detectors (2025-2026) ──
-                if _should_load('ateeqq'):
-                    self.ateeqq_detector = ml_models.get('ateeqq')
-                    if self.ateeqq_detector and getattr(self.ateeqq_detector, 'model_loaded', False):
-                        logger.info("Ateeqq SigLIP2 detector loaded (99.23% acc, Dec 2025)")
-                        
-                if _should_load('siglip_dinov2'):
-                    self.siglip_dinov2_detector = ml_models.get('siglip_dinov2')
-                    if self.siglip_dinov2_detector and getattr(self.siglip_dinov2_detector, 'model_loaded', False):
-                        logger.info("SigLIP2+DINOv2 detector loaded (97.15% cross-dataset)")
-                        
-                # ── Tier 2: Strong recent models ──
-                if _should_load('deepfake'):
-                    self.deepfake_detector = ml_models.get('deepfake')
-                    if self.deepfake_detector and getattr(self.deepfake_detector, 'model_loaded', False):
-                        logger.info("Deepfake detector loaded (dima806, 98.25%)")
-                        
-                if _should_load('sdxl'):
-                    self.sdxl_detector = ml_models.get('sdxl')
-                    if self.sdxl_detector and getattr(self.sdxl_detector, 'model_loaded', False):
-                        logger.info("SDXL detector loaded (Organika/sdxl-detector)")
-                        
+                # Frequency analyzer (lightweight)
+                self.frequency_analyzer = FrequencyAnalyzer()
+                logger.info("Frequency analyzer loaded")
+                
+                # NYUAD ViT (primary ML detector)
+                self.nyuad_detector = NYUADDetector(device=self.device)
+                if self.nyuad_detector.model_loaded:
+                    logger.info("NYUAD ViT detector loaded")
+                else:
+                    logger.warning("NYUAD detector failed to load model")
+                
+                # UniversalFakeDetect (SwinV2 pretrained - 98.1% accuracy)
+                self.clip_detector = UniversalFakeDetector(device=self.device)
+                if self.clip_detector.model_loaded:
+                    logger.info("UniversalFakeDetect (SwinV2) loaded")
+                else:
+                    logger.warning("SwinV2 detector failed to load model")
+                
+                # SDXL Detector (Organika/sdxl-detector - 98.1% for modern diffusion)
+                self.sdxl_detector = SDXLDetector(device=self.device)
+                if self.sdxl_detector.model_loaded:
+                    logger.info("SDXL detector loaded (Organika/sdxl-detector)")
+                else:
+                    logger.warning("SDXL detector failed to load model")
+                
+                # Deepfake detector (optional, for face images)
+                self.deepfake_detector = DeepfakeDetector(device=self.device)
+                if self.deepfake_detector.model_loaded:
+                    logger.info("Deepfake detector loaded")
+                
+                # NEW 2026: Bombek1 SigLIP2+DINOv2 (best overall, 99.97% AUC)
+                from .ml_detector import Bombek1SigLIPDINOv2Detector
+                self.bombek1_detector = Bombek1SigLIPDINOv2Detector(device=self.device)
+                if self.bombek1_detector.model_loaded:
+                    logger.info("Bombek1 SigLIP2+DINOv2 loaded (99.97% AUC, 25+ generators)")
+                else:
+                    logger.warning("Bombek1 detector failed to load model")
+                
+                # NEW 2026: Deepfake SigLIP2
+                from .ml_detector import DeepfakeSigLIP2Detector
+                self.siglip2_deepfake_detector = DeepfakeSigLIP2Detector(device=self.device)
+                if self.siglip2_deepfake_detector.model_loaded:
+                    logger.info("Deepfake SigLIP2 loaded")
+                else:
+                    logger.warning("Deepfake SigLIP2 failed to load model")
+                
+                # NEW 2026: 3-Class SigLIP2
+                from .ml_detector import ThreeClassSigLIP2Detector
+                self.three_class_detector = ThreeClassSigLIP2Detector(device=self.device)
+                if self.three_class_detector.model_loaded:
+                    logger.info("3-Class SigLIP2 loaded (AI/Deepfake/Real)")
+                else:
+                    logger.warning("3-Class SigLIP2 failed to load model")
+                
+                # NEW 2026: DINOv2 Deepfake (degradation-resilient)
+                from .ml_detector import DINOv2DeepfakeDetector
+                self.dinov2_detector = DINOv2DeepfakeDetector(device=self.device)
+                if self.dinov2_detector.model_loaded:
+                    logger.info("DINOv2 deepfake detector loaded (degradation-resilient)")
+                else:
+                    logger.warning("DINOv2 deepfake failed to load model")
+                    
             except ImportError as e:
                 logger.warning(f"ML detectors not available: {e}")
             except Exception as e:
                 logger.warning(f"Error loading ML detectors: {e}")
-
-    @staticmethod
-    def _downscale_image(image: Image.Image, max_dimension: int = 4096) -> Image.Image:
-        """Downscale image so its longest side ≤ max_dimension, preserving aspect ratio.
-
-        Prevents OOM on large RAW/TIFF/PNG files (50 MP+). Detection quality is
-        unaffected: all ML models resize to 224–512 px internally. Metadata,
-        watermark, and C2PA checks receive original bytes, so they are unaffected.
-        """
-        w, h = image.size
-        if max(w, h) <= max_dimension:
-            return image
-        if w >= h:
-            new_w, new_h = max_dimension, int(h * max_dimension / w)
-        else:
-            new_w, new_h = int(w * max_dimension / h), max_dimension
-        logger.info("Downscaling image from %dx%d to %dx%d for ML analysis", w, h, new_w, new_h)
-        return image.resize((new_w, new_h), Image.LANCZOS)
-
+    
     def detect(self, image_data: bytes, filename: str = "image") -> Dict[str, Any]:
         """
         Perform ensemble detection on an image.
@@ -234,15 +320,8 @@ class EnsembleDetector:
         Returns:
             Comprehensive detection result with combined verdict
         """
-        # Check if any ML models are active for analysis mode reporting
-        ml_active = (getattr(self, 'ateeqq_detector', None) and self.ateeqq_detector.model_loaded) or \
-                    (getattr(self, 'deepfake_detector', None) and self.deepfake_detector.model_loaded) or \
-                    (getattr(self, 'sdxl_detector', None) and self.sdxl_detector.model_loaded) or \
-                    (getattr(self, 'siglip_dinov2_detector', None) and self.siglip_dinov2_detector.model_loaded)
-
-        result: Dict[str, Any] = {
+        result = {
             'success': True,
-            'analysis_mode': 'Multi-Model Ensemble' if ml_active else 'Statistical Analysis (Fallback)',
             'filename': filename,
             'ensemble_verdict': None,
             'ai_probability': 50.0,
@@ -260,20 +339,16 @@ class EnsembleDetector:
             image = Image.open(io.BytesIO(image_data))
             if image.mode != 'RGB':
                 image = image.convert('RGB')
-
-            # Downscale huge images to prevent OOM; ML models resize to ≤512px internally
-            original_dimensions = {'width': image.width, 'height': image.height}
-            image = self._downscale_image(image)
-
+            
             img_array = np.array(image)
-            result['dimensions'] = original_dimensions
+            result['dimensions'] = {'width': image.width, 'height': image.height}
             result['file_size_bytes'] = len(image_data)
             
             # Run all detectors
             scores = {}
             
-            # 1. Statistical analysis (only if detector was loaded)
-            if getattr(self, 'statistical_detector', None):
+            # 1. Statistical analysis
+            if self.statistical_detector:
                 stat_result = self.statistical_detector.detect(image_data, filename)
                 result['individual_results']['statistical'] = stat_result
                 scores['statistical'] = stat_result.get('ai_probability', 50)
@@ -285,23 +360,34 @@ class EnsembleDetector:
                 if df_result.get('success', False):
                     scores['deepfake'] = df_result.get('ai_probability', 50)
             
-            # 3. Ateeqq SigLIP2 detector (99.23% accuracy, incredibly low FPR)
-            if self.ateeqq_detector and self.ateeqq_detector.model_loaded:
-                ateeqq_result = self.ateeqq_detector.predict(image)
-                result['individual_results']['ateeqq'] = ateeqq_result
-                if ateeqq_result.get('success', False):
-                    scores['ateeqq'] = ateeqq_result.get('ai_probability', 50)
+            # 3. NYUAD ViT detector (fallback if loaded)
+            if self.nyuad_detector and self.nyuad_detector.model_loaded:
+                nyuad_result = self.nyuad_detector.predict(image)
+                result['individual_results']['nyuad'] = nyuad_result
+                scores['nyuad'] = nyuad_result.get('ai_probability', 50)
             
-            # 4. SDXL Detector (Organika/sdxl-detector - modern diffusion specialist)
+            # 4. UniversalFakeDetect (SwinV2)
+            if self.clip_detector and self.clip_detector.model_loaded:
+                clip_result = self.clip_detector.predict(image)
+                result['individual_results']['clip'] = clip_result
+                scores['clip'] = clip_result.get('ai_probability', 50)
+            
+            # 4b. SDXL Detector (Organika/sdxl-detector - modern diffusion specialist)
             if self.sdxl_detector and self.sdxl_detector.model_loaded:
                 sdxl_result = self.sdxl_detector.predict(image)
                 result['individual_results']['sdxl'] = sdxl_result
                 if sdxl_result.get('success', False):
                     scores['sdxl'] = sdxl_result.get('ai_probability', 50)
             
-            # 5. Watermark detection
+            # 5. Frequency analysis
+            if self.frequency_analyzer:
+                freq_result = self.frequency_analyzer.analyze(image)
+                result['individual_results']['frequency'] = freq_result
+                scores['frequency'] = freq_result.get('ai_probability_contribution', 0)
+            
+            # 6. Watermark detection
             watermark_boost = 0
-            if getattr(self, 'watermark_detector', None):
+            if self.watermark_detector:
                 wm_result = self.watermark_detector.analyze(image_data)
                 result['individual_results']['watermark'] = wm_result
                 
@@ -313,7 +399,7 @@ class EnsembleDetector:
                 scores['watermark'] = watermark_boost
             
             # 7. Metadata analysis
-            if getattr(self, 'metadata_analyzer', None):
+            if self.metadata_analyzer:
                 meta_result = self.metadata_analyzer.analyze(image_data)
                 result['individual_results']['metadata'] = meta_result
                 
@@ -325,7 +411,7 @@ class EnsembleDetector:
             
             # 8. C2PA/Content Credentials
             c2pa_override = False
-            if getattr(self, 'c2pa_detector', None):
+            if self.c2pa_detector:
                 c2pa_result = self.c2pa_detector.analyze(image_data, filename)
                 result['individual_results']['c2pa'] = c2pa_result
                 
@@ -336,21 +422,92 @@ class EnsembleDetector:
                     )
             
             # 9. ELA analysis (for manipulation detection)
-            if getattr(self, 'ela_analyzer', None):
+            if self.ela_analyzer:
                 ela_result = self.ela_analyzer.analyze(image_data)
                 result['individual_results']['ela'] = ela_result
             
-            # 14. Bombek1 SigLIP2+DINOv2 (best overall - 99.97% AUC, 25+ generators)
-            if self.siglip_dinov2_detector and self.siglip_dinov2_detector.model_loaded:
+            # 10. DIRE Diffusion Reconstruction Error (99.7% accuracy)
+            if self.dire_detector:
                 try:
-                    siglip_dinov2_result = self.siglip_dinov2_detector.predict(image)
-                    result['individual_results']['siglip_dinov2'] = siglip_dinov2_result
-                    if siglip_dinov2_result.get('success', False):
-                        scores['siglip_dinov2'] = siglip_dinov2_result.get('ai_probability', 50)
+                    dire_result = self.dire_detector.analyze(image)
+                    result['individual_results']['dire'] = dire_result
+                    if dire_result.get('success'):
+                        scores['dire'] = dire_result.get('ai_probability', 50)
                 except Exception as e:
-                    logger.warning(f"SigLIP2+DINOv2 detector error: {e}")
+                    logger.warning(f"DIRE detector error: {e}")
             
-
+            # 11. NPR Neighboring Pixel Relationships (99.1% accuracy)
+            if self.npr_detector:
+                try:
+                    npr_result = self.npr_detector.analyze(image)
+                    result['individual_results']['npr'] = npr_result
+                    if npr_result.get('success'):
+                        scores['npr'] = npr_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"NPR detector error: {e}")
+            
+            # 12. Face Consistency Analysis
+            if self.face_detector:
+                try:
+                    face_result = self.face_detector.analyze(image)
+                    result['individual_results']['face_consistency'] = face_result
+                    if face_result.get('success') and face_result.get('applicable'):
+                        scores['face'] = face_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"Face detector error: {e}")
+            
+            # 13. Edge Coherence Analysis
+            if self.edge_analyzer:
+                try:
+                    edge_result = self.edge_analyzer.analyze(image)
+                    result['individual_results']['edge_coherence'] = edge_result
+                    if edge_result.get('success'):
+                        scores['edge'] = edge_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"Edge analyzer error: {e}")
+            
+            # 14. Bombek1 SigLIP2+DINOv2 (best overall - 99.97% AUC, 25+ generators)
+            if self.bombek1_detector and self.bombek1_detector.model_loaded:
+                try:
+                    bombek1_result = self.bombek1_detector.predict(image)
+                    result['individual_results']['bombek1'] = bombek1_result
+                    if bombek1_result.get('success', False):
+                        scores['bombek1'] = bombek1_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"Bombek1 detector error: {e}")
+            
+            # 15. Deepfake SigLIP2 (binary deepfake detection)
+            if self.siglip2_deepfake_detector and self.siglip2_deepfake_detector.model_loaded:
+                try:
+                    siglip2_df_result = self.siglip2_deepfake_detector.predict(image)
+                    result['individual_results']['siglip2_deepfake'] = siglip2_df_result
+                    if siglip2_df_result.get('success', False):
+                        scores['siglip2_deepfake'] = siglip2_df_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"Deepfake SigLIP2 error: {e}")
+            
+            # 16. 3-Class SigLIP2 (AI-Generated vs Deepfake vs Real)
+            if self.three_class_detector and self.three_class_detector.model_loaded:
+                try:
+                    tc_result = self.three_class_detector.predict(image)
+                    result['individual_results']['three_class'] = tc_result
+                    if tc_result.get('success', False):
+                        scores['three_class'] = tc_result.get('ai_probability', 50)
+                        # Add 3-class breakdown to result for extra info
+                        if tc_result.get('class_breakdown'):
+                            result['three_class_breakdown'] = tc_result['class_breakdown']
+                except Exception as e:
+                    logger.warning(f"3-Class SigLIP2 error: {e}")
+            
+            # 17. DINOv2 Deepfake (degradation-resilient, best for social media)
+            if self.dinov2_detector and self.dinov2_detector.model_loaded:
+                try:
+                    dinov2_result = self.dinov2_detector.predict(image)
+                    result['individual_results']['dinov2'] = dinov2_result
+                    if dinov2_result.get('success', False):
+                        scores['dinov2'] = dinov2_result.get('ai_probability', 50)
+                except Exception as e:
+                    logger.warning(f"DINOv2 deepfake error: {e}")
             
             # Calculate weighted ensemble score
             final_score = self._calculate_ensemble_score(scores)
@@ -359,40 +516,6 @@ class EnsembleDetector:
                 'weights_used': self.weights,
                 'weighted_score': final_score
             }
-            
-            # ── MAJORITY-VOTE SAFEGUARD ──
-            # Prevents false AI classification when most real ML models vote "real".
-            # Only considers models with non-zero weight to avoid heuristic bias.
-            weighted_ml_votes = []
-            for det_name, score in scores.items():
-                w = self.weights.get(det_name, 0)
-                if w > 0 and score is not None:
-                    weighted_ml_votes.append(score)
-            
-            if len(weighted_ml_votes) >= 3:
-                real_votes = sum(1 for s in weighted_ml_votes if s < 40)
-                ai_votes = sum(1 for s in weighted_ml_votes if s >= 60)
-                total = len(weighted_ml_votes)
-                
-                # If 60%+ of weighted models say REAL (< 40% AI), cap score
-                if real_votes / total >= 0.6 and final_score > 55:
-                    old_score = final_score
-                    final_score = min(final_score, 45.0)
-                    result['overrides_applied'].append(
-                        f"Majority-vote safeguard: {real_votes}/{total} models vote real "
-                        f"(score capped from {old_score:.1f}% to {final_score:.1f}%)"
-                    )
-                    logger.info(f"Majority-vote safeguard activated: {real_votes}/{total} "
-                              f"models vote real, score {old_score:.1f}→{final_score:.1f}")
-                
-                # If 60%+ of weighted models say AI (>= 60% AI), ensure minimum score  
-                elif ai_votes / total >= 0.6 and final_score < 55:
-                    old_score = final_score
-                    final_score = max(final_score, 60.0)
-                    result['overrides_applied'].append(
-                        f"Majority-vote boost: {ai_votes}/{total} models vote AI "
-                        f"(score raised from {old_score:.1f}% to {final_score:.1f}%)"
-                    )
             
             # Apply overrides
             if c2pa_override:
@@ -418,11 +541,10 @@ class EnsembleDetector:
                         pass
             
             # Calculate detection agreement
-            agreement_result = self._calculate_agreement(scores)
-            result['detection_agreement'] = agreement_result
+            result['detection_agreement'] = self._calculate_agreement(scores)
             
             # Apply agreement bonus/penalty
-            agreement = agreement_result
+            agreement = result['detection_agreement']
             if agreement['agreement_level'] == 'STRONG':
                 # High agreement → boost confidence
                 pass  # Already reflected in weighted score
@@ -430,14 +552,6 @@ class EnsembleDetector:
                 # Low agreement → reduce confidence slightly
                 final_score = final_score * 0.95
             
-            # Snap final score to 100% AI or 100% Human (0% AI probability)
-            if final_score > 50.0:
-                final_score = 100.0
-                result['overrides_applied'].append("Forced output: Leans AI, so set to 100% AI")
-            else:
-                final_score = 0.0
-                result['overrides_applied'].append("Forced output: Leans Human, so set to 100% Human")
-
             # Determine final verdict
             result['ai_probability'] = round(final_score, 2)
             result['confidence'] = self._calculate_confidence(scores, agreement)
@@ -488,29 +602,20 @@ class EnsembleDetector:
         Returns:
             Weighted average AI probability
         """
-        total_weight: float = 0.0
-        weighted_sum: float = 0.0
+        total_weight = 0
+        weighted_sum = 0
         
         for detector, score in scores.items():
             if detector in self.weights and score is not None:
                 weight = self.weights[detector]
-                # Skip zero-weighted detectors entirely — they should not
-                # influence the final score under any circumstance.
-                if weight <= 0:
-                    continue
                 weighted_sum += score * weight
                 total_weight += weight
         
         if total_weight > 0:
             return weighted_sum / total_weight
         else:
-            # Fallback: only average scores from detectors with non-zero weight.
-            # This prevents zero-weighted heuristic detectors from biasing the
-            # result when they're the only ones that loaded.
-            valid_scores = [
-                s for det, s in scores.items()
-                if s is not None and self.weights.get(det, 0) > 0
-            ]
+            # Fallback: simple average of available scores
+            valid_scores = [s for s in scores.values() if s is not None]
             return sum(valid_scores) / len(valid_scores) if valid_scores else 50.0
     
     def _calculate_agreement(self, scores: Dict[str, float]) -> Dict[str, Any]:
@@ -519,11 +624,7 @@ class EnsembleDetector:
         
         Returns analysis of how much detectors agree.
         """
-        # Only consider detectors with non-zero weight for agreement
-        valid_scores = [
-            s for det, s in scores.items()
-            if s is not None and s > 0 and self.weights.get(det, 0) > 0
-        ]
+        valid_scores = [s for s in scores.values() if s is not None and s > 0]
         
         if len(valid_scores) < 2:
             return {

@@ -17,7 +17,7 @@ import concurrent.futures
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from AI import AIAnalyzer
+from ai import AIAnalyzer
 
 
 # Module-level cache for fact-check results with TTL support
@@ -297,7 +297,7 @@ class FactChecker:
                 try:
                     sources = future.result()
                     all_sources.extend(sources)
-                    print(f"[OK] Query '{query[:50]}...' returned {len(sources)} sources")
+                    print(f"✓ Query '{query[:50]}...' returned {len(sources)} sources")
                 except Exception as e:
                     print(f"✗ Query '{query}' failed with exception: {e}")
         
@@ -371,7 +371,7 @@ class FactChecker:
                     try:
                         sources = future.result()
                         round_2_sources.extend(sources)
-                        print(f"[OK] Round 2 query '{query[:50]}...' returned {len(sources)} sources")
+                        print(f"✓ Round 2 query '{query[:50]}...' returned {len(sources)} sources")
                     except Exception as e:
                         print(f"✗ Round 2 query '{query}' failed: {e}")
 

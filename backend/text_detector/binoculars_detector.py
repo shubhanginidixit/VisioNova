@@ -238,4 +238,4 @@ if __name__ == "__main__":
             print(f"Confidence: {result['confidence']:.2%}")
             print(f"Score: {result['score']:.4f}")
     else:
-        print("\n[WARN] Binoculars not available (GPU required)")
+        print("\n⚠️  Binoculars not available (GPU required)")
