@@ -1,778 +1,914 @@
 <!DOCTYPE html>
-
 <html lang="en" class="dark">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova - Telemetry Processing</title>
-    <!-- Blocking theme script to prevent FOUC -->
-    <script>
-        (function () {
-            const theme = localStorage.getItem('visioNova_theme') || 'dark';
-            document.documentElement.classList.add(theme);
-        })();
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "v-bg": "#0A0F1A", 
-                        "v-surface": "#0F1626", 
-                        "v-panel": "#141C2F", 
-                        "v-border": "rgba(255, 255, 255, 0.08)",
-                        "v-text-main": "#F8FAFC",
-                        "v-text-muted": "#94A3B8",
-                        "v-authentic": "#64FFDA", 
-                        "v-suspicious": "#FFB74D", 
-                        "v-brand": "#3B82F6",
-                        "v-danger": "#FF4A4A",
-                        // Mappings for JS compatibility
-                        "accent-blue": "#3B82F6",
-                        "accent-green": "#64FFDA"
-                    },
-                    fontFamily: {
-                        "sans": ["Inter", "sans-serif"],
-                        "mono": ["Roboto Mono", "monospace"],
-                    },
-                    boxShadow: {
-                        'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-                    }
-                },
-            },
-        }
-    </script>
-    
+    <title>VisioNova — Processing</title>
+    <script>(function () { const t = localStorage.getItem('visioNova_theme') || 'dark'; document.documentElement.classList.add(t); })();</script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Archivo:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Base system overrides */
-        body { background-color: #0A0F1A !important; color: #F8FAFC !important; letter-spacing: -0.01em; }
-        .light body { background-color: #F8FAFC; color: #0F172A; }
-        
-        .panel {
-            background-color: theme('colors.v-panel');
-            border: 1px solid theme('colors.v-border');
-            box-shadow: theme('boxShadow.panel');
-        }
-        
-        .structural-grid {
-            background-image: linear-gradient(theme('colors.v-border') 1px, transparent 1px),
-                              linear-gradient(90deg, theme('colors.v-border') 1px, transparent 1px);
-            background-size: 40px 40px;
-            opacity: 0.15;
+        :root {
+            --ink: #0A0B0D;
+            --ink-2: #111318;
+            --ink-3: #181C22;
+            --ink-4: #1F242D;
+            --paper: #F4F2ED;
+            --paper-2: #EBE8E2;
+            --paper-3: #D6D3CB;
+            --muted: #5C6270;
+            --ghost: #3A3F4A;
+            --signal: #C8FF57;
+            --signal-dim: rgba(200, 255, 87, 0.08);
+            --brand: #4D90FF;
+            --danger: #FF3B3B;
+            --suspicious: #FFB347;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-2: rgba(255, 255, 255, 0.10);
+            --font-display: 'Archivo Black', sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --font-ui: 'Archivo', sans-serif;
         }
 
-        .data-label { font-family: theme('fontFamily.mono'); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: theme('colors.v-text-muted'); }
-        
-        /* Retheme Javascript Injected Dynamic Elements */
-        #analysisSteps [data-step] .progress-track {
-            border-radius: 0 !important;
-            background-color: theme('colors.v-bg') !important;
-            border: 1px solid theme('colors.v-border') !important;
-            height: 12px !important;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5) !important;
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--ink);
+            color: var(--paper);
+            font-family: var(--font-ui);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.07) 2px, rgba(0, 0, 0, 0.07) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 32px 32px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Topbar ── */
+        .topbar {
+            height: 46px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: var(--ink-2);
+            border-bottom: 1px solid var(--border-2);
+            position: relative;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .brand-mark {
+            width: 22px;
+            height: 22px;
+            border: 1.5px solid var(--signal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-mark-inner {
+            width: 8px;
+            height: 8px;
+            background: var(--signal);
+        }
+
+        .brand-name {
+            font-family: var(--font-display);
+            font-size: 13px;
+            color: var(--paper);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .brand-tag {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--signal);
+            border: 1px solid rgba(200, 255, 87, 0.3);
+            padding: 1px 5px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .topnav {
+            display: flex;
+        }
+
+        .topnav a {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-decoration: none;
+            padding: 0 14px;
+            height: 46px;
+            line-height: 46px;
+            border-left: 1px solid var(--border);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .topnav a:hover {
+            color: var(--paper);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .sys-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--signal);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border: 1px solid rgba(200, 255, 87, 0.2);
+            background: rgba(200, 255, 87, 0.06);
+        }
+
+        .sys-dot {
+            width: 5px;
+            height: 5px;
+            background: var(--signal);
+            border-radius: 50%;
+            animation: blink 2.8s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.2
+            }
+        }
+
+        /* ── Body layout ── */
+        .body-row {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 48px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-2);
+            background: var(--ink-2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 0;
+            gap: 2px;
+            overflow: hidden;
+            transition: width 0.22s ease;
+        }
+
+        .sidebar:hover {
+            width: 180px;
+        }
+
+        .sb-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 14px;
+            text-decoration: none;
+            color: var(--ghost);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            transition: all 0.15s;
+            border-left: 2px solid transparent;
+        }
+
+        .sb-item:hover {
+            color: var(--paper);
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .sb-item.active {
+            color: var(--signal);
+            border-left-color: var(--signal);
+            background: var(--signal-dim);
+        }
+
+        .sb-item .material-symbols-outlined {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .sb-label {
+            opacity: 0;
+            transition: opacity 0.18s;
+        }
+
+        .sidebar:hover .sb-label {
+            opacity: 1;
+        }
+
+        /* ── Main ── */
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+        }
+
+        /* ── Processing console ── */
+        .console {
+            width: 100%;
+            max-width: 680px;
+            background: var(--ink-2);
+            border: 1px solid var(--border-2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated top beam */
+        .console::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            right: 100%;
+            height: 1px;
+            background: var(--signal);
+            animation: beam 2.4s ease-in-out infinite;
+            box-shadow: 0 0 8px rgba(200, 255, 87, 0.6);
+        }
+
+        @keyframes beam {
+            0% {
+                left: -100%;
+                right: 100%
+            }
+
+            100% {
+                left: 100%;
+                right: -100%
+            }
+        }
+
+        .console-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .console-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .pulse-ring {
+            position: relative;
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        .pulse-ring::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--signal);
+            border-radius: 50%;
+            animation: ring-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+            opacity: 0.6;
+        }
+
+        .pulse-ring::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            background: var(--signal);
+            border-radius: 50%;
+        }
+
+        @keyframes ring-ping {
+
+            75%,
+            100% {
+                transform: scale(2.2);
+                opacity: 0
+            }
+        }
+
+        .console-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            color: var(--paper);
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+
+        .console-sub {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            padding-left: 22px;
+        }
+
+        .status-badge {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--signal);
+            border: 1px solid rgba(200, 255, 87, 0.3);
+            background: rgba(200, 255, 87, 0.06);
+            padding: 3px 9px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            animation: blink 1.8s ease-in-out infinite;
+        }
+
+        /* ── Tactical visualizer ── */
+        .visualizer {
+            margin: 20px 24px;
+            height: 100px;
+            background: var(--ink);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 14px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--ghost);
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        /* Inner grid */
+        .visualizer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 12px 12px;
+            pointer-events: none;
+        }
+
+        .viz-top,
+        .viz-bot {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+
+        .viz-scan-wrap {
+            position: absolute;
+            left: 14px;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 3px;
+            background: var(--ink-4);
+            overflow: hidden;
+        }
+
+        .viz-scan-bar {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 25%;
+            background: var(--signal);
+            box-shadow: 0 0 12px rgba(200, 255, 87, 0.5);
+            animation: scan-bar 1.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes scan-bar {
+            from {
+                left: 0;
+                right: 75%
+            }
+
+            to {
+                left: 75%;
+                right: 0
+            }
+        }
+
+        #loadingStatus {
+            color: var(--signal);
+        }
+
+        /* ── Steps ── */
+        .steps {
+            padding: 0 24px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Injected by JS — these styles shape what JS produces */
+        .step-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .step-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .step-name-text {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--paper-3);
+        }
+
+        .step-status-text {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--ghost);
+        }
+
+        .step-track {
+            height: 4px;
+            background: var(--ink-4);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .step-bar-el {
+            height: 100%;
+            transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ============================================
+   DASHBOARD CSS OVERRIDES for JS-injected steps
+   ============================================ */
         #analysisSteps [data-step] .step-bar {
+            height: 4px !important;
             border-radius: 0 !important;
+            transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s !important;
             box-shadow: none !important;
-            border-right: 2px solid theme('colors.v-bg') !important;
-            background-image: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent);
-            background-size: 20px 20px;
-            animation: move-bg 1s linear infinite;
-        }
-        
-        @keyframes move-bg {
-            0% { background-position: 0 0; }
-            100% { background-position: 20px 0; }
         }
 
-        /* Processing Colors (Blue) -> brand */
-        #analysisSteps [data-step] .step-status.text-accent-blue { color: theme('colors.v-brand') !important; }
-        #analysisSteps [data-step] .step-bar.bg-accent-blue { background-color: theme('colors.v-brand') !important; }
+        #analysisSteps [data-step] .progress-track {
+            height: 4px !important;
+            border-radius: 0 !important;
+            background: var(--ink-4) !important;
+            border: 1px solid var(--border) !important;
+            overflow: hidden;
+        }
 
-        /* Complete Colors (Green) -> authentic */
-        #analysisSteps [data-step] .step-status.text-accent-green { color: theme('colors.v-authentic') !important; }
-        #analysisSteps [data-step] .step-bar.bg-accent-green { 
-            background-color: theme('colors.v-authentic') !important; 
-            animation: none !important;
+        #analysisSteps [data-step] .step-bar.bg-accent-blue {
+            background: var(--brand) !important;
+            box-shadow: 0 0 6px rgba(77, 144, 255, 0.4) !important;
+            background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.08) 75%, transparent 75%) !important;
+            background-size: 16px 100% !important;
+            animation: stripe-move 0.7s linear infinite !important;
+        }
+
+        @keyframes stripe-move {
+            from {
+                background-position: 0 0
+            }
+
+            to {
+                background-position: 16px 0
+            }
+        }
+
+        #analysisSteps [data-step] .step-bar.bg-accent-green {
+            background: var(--signal) !important;
             background-image: none !important;
+            animation: none !important;
+            box-shadow: 0 0 6px rgba(200, 255, 87, 0.3) !important;
+        }
+
+        #analysisSteps [data-step] .step-bar.bg-slate-700 {
+            background: var(--ghost) !important;
         }
 
         #analysisSteps [data-step] .step-name {
-            font-family: theme('fontFamily.mono') !important;
-            font-size: 0.65rem !important;
+            font-family: var(--font-mono) !important;
+            font-size: 10px !important;
+            letter-spacing: 0.07em !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.1em !important;
-            color: #E2E8F0 !important;
+            color: var(--paper-3) !important;
         }
+
         #analysisSteps [data-step] .step-status {
-            font-size: 0.65rem !important;
+            font-family: var(--font-mono) !important;
+            font-size: 9px !important;
+            letter-spacing: 0.07em !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.1em !important;
+        }
+
+        #analysisSteps [data-step] .step-status.text-accent-blue {
+            color: var(--brand) !important;
+        }
+
+        #analysisSteps [data-step] .step-status.text-accent-green {
+            color: var(--signal) !important;
+        }
+
+        #analysisSteps [data-step] .step-status.text-slate-500 {
+            color: var(--ghost) !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--ink);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--ghost);
         }
     </style>
 
     <link rel="stylesheet" href="../css/common.css">
-    <!-- Storage Utilities - must load before inline scripts -->
     <script src="../js/storage-utils.js"></script>
     <script src="../js/theme-toggle.js"></script>
     <script src="../js/layout.js"></script>
 </head>
 
-<body class="relative flex h-screen w-full flex-col overflow-hidden selection:bg-v-brand selection:text-white">
-    <!-- Background Texture -->
-    <div class="absolute inset-0 pointer-events-none structural-grid z-0"></div>
+<body>
+    <div class="app">
 
-    <!-- Top Navigation (Injected by layout.js) -->
-    <header class="relative z-20 border-b border-v-border bg-v-bg/90 backdrop-blur-sm"></header>
+        <!-- Top bar -->
+        <header class="topbar">
+            <div style="display:flex;align-items:center;gap:20px;">
+                <a class="brand" href="homepage.html">
+                    <div class="brand-mark">
+                        <div class="brand-mark-inner"></div>
+                    </div>
+                    <span class="brand-name">VisioNova</span>
+                    <span class="brand-tag">v2.1</span>
+                </a>
+                <nav class="topnav">
+                    <a href="homepage.html">Home</a>
+                    <a href="AnalysisDashboard.html">Analyze</a>
+                    <a href="FactCheckPage.html">Fact Check</a>
+                    <a href="ReportPage.html">Reports</a>
+                </nav>
+            </div>
+            <div class="sys-status">
+                <div class="sys-dot"></div>
+                Processing
+            </div>
+        </header>
 
-    <div class="flex flex-1 overflow-hidden relative z-10 w-full max-w-[1600px] mx-auto">
-        <!-- Sidebar Navigation (Injected by layout.js) -->
-        <aside class="border-r border-v-border bg-v-bg/90 backdrop-blur-sm hidden md:block w-64"></aside>
+        <div class="body-row">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <a class="sb-item" href="homepage.html"><span class="material-symbols-outlined">add_circle</span><span
+                        class="sb-label">New Scan</span></a>
+                <div style="width:28px;height:1px;background:var(--border);margin:4px auto;"></div>
+                <a class="sb-item active" href="AnalysisDashboard.html"><span
+                        class="material-symbols-outlined">dashboard</span><span class="sb-label">Dashboard</span></a>
+                <a class="sb-item" href="FactCheckPage.html"><span class="material-symbols-outlined">shield</span><span
+                        class="sb-label">Fact Check</span></a>
+                <a class="sb-item" href="ReportPage.html"><span
+                        class="material-symbols-outlined">description</span><span class="sb-label">Reports</span></a>
+            </aside>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto w-full px-6 py-8 flex items-center justify-center relative">
-            <div class="w-full max-w-3xl flex flex-col gap-6 relative z-10">
-                
-                <!-- Main Processing Console -->
-                <div class="panel border border-v-border p-8 relative flex flex-col">
-                    <!-- Scanner beam effect -->
-                    <div class="absolute top-0 left-0 w-full h-[1px] bg-v-brand stroke-v-brand shadow-[0_0_15px_var(--color-brand)] animate-pulse"></div>
-                    
-                    <div class="flex justify-between items-start mb-8 border-b border-v-border pb-6">
+            <!-- Main -->
+            <main class="main">
+                <div class="console">
+
+                    <!-- Header -->
+                    <div class="console-header">
                         <div>
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="material-symbols-outlined text-v-brand animate-spin" style="animation-duration: 3s;">memory</span>
-                                <h3 class="text-xl font-bold text-white tracking-tight m-0">
-                                    <span class="relative flex h-3 w-3 inline-block -translate-y-0.5 mr-2">
-                                        <span class="animate-ping absolute inline-flex h-full w-full bg-v-brand opacity-75"></span>
-                                        <span class="relative inline-flex h-3 w-3 bg-v-brand"></span>
-                                    </span>
-                                    Analyzing Media
-                                </h3>
+                            <div class="console-title-row">
+                                <div class="pulse-ring"></div>
+                                <h2 class="console-title" id="consoleTitle">Analyzing Media</h2>
                             </div>
-                            <p class="font-mono text-[10px] text-v-text-muted uppercase tracking-widest pl-9 m-0">Processing multi-modal vectors...</p>
+                            <p class="console-sub" id="consoleSub">Processing multi-modal vectors...</p>
                         </div>
-                        <span class="font-mono text-v-brand border border-v-brand/30 bg-v-brand/10 px-2 py-1 text-[10px] uppercase tracking-widest animate-pulse">
-                            Processing
-                        </span>
+                        <div class="status-badge" id="consoleBadge">Processing</div>
                     </div>
 
-                    <!-- Tactical Visualizer -->
-                    <div class="h-32 bg-v-bg border border-v-border relative flex flex-col items-center justify-center mb-10 overflow-hidden font-mono text-[9px] text-v-text-muted uppercase tracking-widest p-4">
-                        <!-- Data Rain / Grid -->
-                        <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none opacity-50"></div>
-                        
-                        <div class="flex justify-between w-full z-10 opacity-70">
+                    <!-- Visualizer -->
+                    <div class="visualizer">
+                        <div class="viz-top">
                             <span>Hash: VN-ACTIVE-SCAN</span>
                             <span>Node 14 Online</span>
                         </div>
-                        
-                        <!-- Animated Core -->
-                        <div class="flex-1 flex w-full items-center justify-center relative z-10 my-2">
-                            <div class="w-full h-1 bg-v-surface border border-v-border relative overflow-hidden">
-                                <div class="absolute inset-y-0 left-0 bg-v-brand w-[20%] opacity-50 animate-[pulse_1s_ease-in-out_infinite]" style="animation: scan 1.5s ease-in-out infinite alternate;"></div>
-                            </div>
+                        <div class="viz-scan-wrap">
+                            <div class="viz-scan-bar"></div>
                         </div>
-
-                        <div class="flex justify-between w-full z-10 opacity-70">
-                            <span id="loadingStatus" class="text-v-brand">establishing secure connection...</span>
+                        <div class="viz-bot">
+                            <span id="loadingStatus">Establishing secure connection...</span>
                             <span>Awaiting Sequence</span>
                         </div>
-                        
-                        <!-- Internal scan line -->
-                        <style>
-                            @keyframes scan {
-                                0% { left: 0%; right: 80%; }
-                                100% { left: 80%; right: 0%; }
-                            }
-                        </style>
                     </div>
 
-                    <!-- Progress Bars - Dynamically populated based on media type -->
-                    <div id="analysisSteps" class="flex flex-col gap-6">
-                        <!-- Populated by JS -->
-                    </div>
+                    <!-- Steps (JS-populated) -->
+                    <div id="analysisSteps" class="steps"></div>
+
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
-    <!-- Dynamic Analysis Script -->
     <script>
-                    // Analysis steps configuration by media type
-                    const ANALYSIS_CONFIGS = {
-                        image: {
-                            title: 'Analyzing Image',
-                            subtitle: 'Processing pixel patterns and metadata...',
-                            badge: 'SCANNING_PIXELS',
-                            steps: [
-                                { name: 'Pixel Pattern Analysis', description: 'Detecting unnatural pixel distributions' },
-                                { name: 'Metadata Extraction', description: 'Analyzing EXIF data and file signatures' },
-                                { name: 'AI Artifact Detection', description: 'Identifying GAN fingerprints and artifacts' }
-                            ],
-                            statusMessages: [
-                                'Analyzing pixel distributions...',
-                                'Extracting metadata signatures...',
-                                'Scanning for AI-generated artifacts...',
-                                'Finalizing image analysis...'
-                            ]
-                        },
-                        video: {
-                            title: 'Analyzing Video',
-                            subtitle: 'Processing frames and audio tracks...',
-                            badge: 'PROCESSING_FRAMES',
-                            steps: [
-                                { name: 'Frame-by-Frame Analysis', description: 'Detecting temporal inconsistencies' },
-                                { name: 'Audio Track Verification', description: 'Checking audio-visual sync' },
-                                { name: 'Deepfake Detection', description: 'Identifying face manipulation artifacts' }
-                            ],
-                            statusMessages: [
-                                'Extracting video frames...',
-                                'Analyzing frame consistency...',
-                                'Verifying audio synchronization...',
-                                'Running deepfake detection models...'
-                            ]
-                        },
-                        audio: {
-                            title: 'Analyzing Audio',
-                            subtitle: 'Processing voice patterns and frequencies...',
-                            badge: 'ANALYZING_WAVEFORM',
-                            steps: [
-                                { name: 'Voice Pattern Analysis', description: 'Analyzing vocal characteristics' },
-                                { name: 'Frequency Spectrum Check', description: 'Detecting unnatural frequencies' },
-                                { name: 'Speech Synthesis Detection', description: 'Identifying AI-generated speech' }
-                            ],
-                            statusMessages: [
-                                'Extracting audio waveform...',
-                                'Analyzing voice patterns...',
-                                'Checking frequency spectrum...',
-                                'Detecting synthetic speech markers...'
-                            ]
-                        },
-                        text: {
-                            title: 'Analyzing Text',
-                            subtitle: 'Processing linguistic patterns...',
-                            badge: 'PARSING_TEXT',
-                            steps: [
-                                { name: 'Linguistic Pattern Analysis', description: 'Detecting writing style anomalies' },
-                                { name: 'Source Attribution', description: 'Checking for plagiarism and sources' },
-                                { name: 'AI Writing Detection', description: 'Identifying machine-generated text' }
-                            ],
-                            statusMessages: [
-                                'Tokenizing text content...',
-                                'Analyzing linguistic patterns...',
-                                'Checking source attribution...',
-                                'Running AI detection models...'
-                            ]
-                        },
-                        url: {
-                            title: 'Analyzing URL',
-                            subtitle: 'Extracting and verifying content...',
-                            badge: 'FETCHING_CONTENT',
-                            steps: [
-                                { name: 'Content Extraction', description: 'Fetching and parsing page content' },
-                                { name: 'Source Credibility Check', description: 'Verifying domain reputation' },
-                                { name: 'Claim Verification', description: 'Cross-referencing with fact-check sources' }
-                            ],
-                            statusMessages: [
-                                'Fetching URL content...',
-                                'Extracting main article...',
-                                'Checking source credibility...',
-                                'Verifying claims against trusted sources...'
-                            ]
-                        }
-                    };
-
-                    // Default fallback config
-                    const DEFAULT_CONFIG = {
-                        title: 'Analyzing Media',
-                        subtitle: 'Processing multi-modal vectors...',
-                        badge: 'PROCESSING',
-                        steps: [
-                            { name: 'Content Analysis', description: 'Analyzing content structure' },
-                            { name: 'Metadata Verification', description: 'Verifying file metadata' },
-                            { name: 'Authenticity Check', description: 'Checking for manipulation' }
-                        ],
-                        statusMessages: [
-                            'Initializing analysis...',
-                            'Processing content...',
-                            'Verifying authenticity...',
-                            'Finalizing results...'
-                        ]
-                    };
-
-                    function renderAnalysisSteps(steps) {
-                        const container = document.getElementById('analysisSteps');
-                        container.innerHTML = steps.map((step, index) => `
-                            <div data-step="${index}">
-                                <div class="flex justify-between text-xs mb-2 font-medium">
-                                    <span class="step-name text-slate-300">${step.name}</span>
-                                    <span class="step-status text-slate-500 font-mono">${index === 0 ? 'Processing...' : 'Pending'}</span>
-                                </div>
-                                <div class="progress-track h-2 w-full rounded-full overflow-hidden">
-                                    <div class="step-bar h-full ${index === 0 ? 'bg-accent-blue w-[30%] shadow-[0_0_10px_rgba(58,141,255,0.4)]' : 'bg-slate-700 w-0'} rounded-full transition-all duration-1000"></div>
-                                </div>
-                            </div>
-                        `).join('');
-                    }
-
-                    function updateHeader(config) {
-                        const titleEl = document.querySelector('h3');
-                        const subtitleEl = document.querySelector('h3 + p');
-                        const badgeEl = document.querySelector('.font-mono.text-accent-green');
-
-                        if (titleEl) {
-                            titleEl.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-blue opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-accent-blue"></span></span> ${config.title}`;
-                        }
-                        if (subtitleEl) {
-                            subtitleEl.textContent = config.subtitle;
-                        }
-                        if (badgeEl) {
-                            badgeEl.textContent = config.badge;
-                        }
-                    }
-
-                    function animateProgress(config, onComplete) {
-                        const steps = document.querySelectorAll('[data-step]');
-                        const statusText = document.getElementById('loadingStatus');
-                        let currentStep = 0;
-                        const stepDuration = 1200;
-
-                        function updateStep() {
-                            if (currentStep >= steps.length) {
-                                if (onComplete) onComplete();
-                                return;
-                            }
-
-                            const stepEl = steps[currentStep];
-                            const bar = stepEl.querySelector('.step-bar');
-                            const status = stepEl.querySelector('.step-status');
-
-                            // Update status message
-                            if (statusText && config.statusMessages[currentStep]) {
-                                statusText.textContent = config.statusMessages[currentStep];
-                            }
-
-                            // Animate current step to 100%
-                            bar.className = 'step-bar h-full bg-accent-blue w-full rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-1000';
-                            status.textContent = 'Processing...';
-                            status.className = 'step-status text-accent-blue font-mono';
-
-                            setTimeout(() => {
-                                // Mark as complete
-                                bar.classList.replace('bg-accent-blue', 'bg-accent-green');
-                                bar.classList.replace('shadow-[0_0_10px_rgba(58,141,255,0.4)]', 'shadow-[0_0_10px_rgba(0,217,145,0.4)]');
-                                status.textContent = 'Complete';
-                                status.className = 'step-status text-accent-green font-mono';
-
-                                // Start next step
-                                currentStep++;
-                                if (currentStep < steps.length) {
-                                    const nextBar = steps[currentStep].querySelector('.step-bar');
-                                    const nextStatus = steps[currentStep].querySelector('.step-status');
-                                    nextBar.className = 'step-bar h-full bg-accent-blue w-[30%] rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-500';
-                                    nextStatus.textContent = 'Processing...';
-                                    nextStatus.className = 'step-status text-accent-blue font-mono';
-                                }
-
-                                setTimeout(updateStep, 300);
-                            }, stepDuration);
-                        }
-
-                        updateStep();
-                    }
-
-                    // API configuration
-                    const API_BASE_URL = 'http://localhost:5000';
-
-                    // Logging helper
-                    function logDebug(message, data = null) {
-                        console.log(`[VisioNova] ${message}`, data || '');
-                    }
-
-                    // Progress tracking
-                    let progressCallbacks = {};
-
-                    // Update a specific step's progress
-                    function updateStepProgress(stepIndex, status, progress) {
-                        const steps = document.querySelectorAll('[data-step]');
-                        if (stepIndex >= steps.length) return;
-
-                        const step = steps[stepIndex];
-                        const bar = step.querySelector('.step-bar');
-                        const statusEl = step.querySelector('.step-status');
-
-                        if (status === 'processing') {
-                            bar.className = 'step-bar h-full bg-accent-blue rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-500';
-                            bar.style.width = `${progress}%`;
-                            statusEl.textContent = 'Processing...';
-                            statusEl.className = 'step-status text-accent-blue font-mono';
-                        } else if (status === 'complete') {
-                            bar.className = 'step-bar h-full bg-accent-green rounded-full shadow-[0_0_10px_rgba(0,217,145,0.4)] transition-all duration-500';
-                            bar.style.width = '100%';
-                            statusEl.textContent = 'Complete';
-                            statusEl.className = 'step-status text-accent-green font-mono';
-                        }
-                    }
-
-                    // Update loading status text
-                    function updateLoadingStatus(text) {
-                        const statusEl = document.getElementById('loadingStatus');
-                        if (statusEl) statusEl.textContent = text;
-                    }
-
-                    // Call actual analysis API with progress updates
-                    async function performAnalysisWithProgress(mediaType, config) {
-                        // Get stored input data
-                        if (typeof VisioNovaStorage === 'undefined') {
-                            logDebug('ERROR: VisioNovaStorage not available');
-                            updateLoadingStatus('Error: Storage module not loaded');
-                            return null;
-                        }
-
-                        const inputData = VisioNovaStorage.getFile(mediaType);
-                        logDebug(`Input data for ${mediaType}:`, inputData);
-
-                        // For document uploads (PDF/DOCX), data is in IndexedDB, not sessionStorage
-                        const isDocumentUpload = mediaType === 'text' && sessionStorage.getItem('visioNova_isDocument') === 'true';
-
-                        if (!isDocumentUpload && (!inputData || !inputData.data)) {
-                            logDebug(`No input data found for: ${mediaType}`);
-                            updateLoadingStatus('Error: No input data found. Please go back and upload/enter data.');
-                            return null;
-                        }
-
-                        logDebug(`Performing analysis for: ${mediaType}`);
-
-                        try {
-                            if (mediaType === 'url') {
-                                // Step 1: Content Extraction - Start
-                                updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Fetching content...');
-
-                                // Animate progress while waiting for API
-                                let progressValue = 30;
-                                const progressInterval = setInterval(() => {
-                                    if (progressValue < 75) {
-                                        progressValue += 3;
-                                        updateStepProgress(0, 'processing', progressValue);
-                                    }
-                                }, 500);
-
-                                // Call fact-check API with timeout
-                                const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-
-                                try {
-                                    const response = await fetch(`${API_BASE_URL}/api/fact-check`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ input: inputData.data }),
-                                        signal: controller.signal
-                                    });
-
-                                    clearTimeout(timeoutId);
-                                    clearInterval(progressInterval);
-
-                                    // Step 1: Got response
-                                    updateStepProgress(0, 'processing', 90);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
-
-                                    if (!response.ok) {
-                                        const errorText = await response.text();
-                                        logDebug(`API error response: ${response.status}`, errorText);
-                                        throw new Error(`API error: ${response.status} - ${errorText}`);
-                                    }
-
-                                    // Step 1: Got response
-                                    updateStepProgress(0, 'processing', 90);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
-
-                                    // Parse response
-                                    const result = await response.json();
-                                    logDebug('Fact-check result received:', result);
-
-                                    // Step 2: Processing
-                                    updateStepProgress(1, 'processing', 70);
-                                    await new Promise(r => setTimeout(r, 300)); // Brief pause for visual
-
-                                    // Step 2: Complete
-                                    updateStepProgress(1, 'complete', 100);
-
-                                    // Step 3: Claim Verification - Start
-                                    updateStepProgress(2, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[3] || 'Verifying claims...');
-
-                                    // Store the result
-                                    sessionStorage.setItem('visioNova_factcheck_result', JSON.stringify(result));
-                                    VisioNovaStorage.clearFile('url');
-
-                                    await new Promise(r => setTimeout(r, 400)); // Brief pause for visual
-
-                                    // Step 3: Complete
-                                    updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete!');
-
-                                    return result;
-                                } catch (fetchError) {
-                                    clearInterval(progressInterval);
-                                    throw fetchError; // Re-throw to be caught by outer catch
-                                }
-                            } else if (mediaType === 'text') {
-                                // Handle text analysis with backend API
-                                const isDocument = sessionStorage.getItem('visioNova_isDocument') === 'true';
-
-                                // Step 1: Linguistic Pattern Analysis
-                                updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Processing document...');
-
-                                let progressValue = 30;
-                                const progressInterval = setInterval(() => {
-                                    if (progressValue < 75) {
-                                        progressValue += 5;
-                                        updateStepProgress(0, 'processing', progressValue);
-                                    }
-                                }, 400);
-
-                                try {
-                                    const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s for large docs
-
-                                    let response;
-
-                                    if (isDocument) {
-                                        // PDF/DOCX - use file upload endpoint with actual File object
-                                        updateLoadingStatus('Extracting text from document...');
-
-                                        const docFile = await VisioNovaStorage.getDocumentFile();
-                                        if (!docFile || !docFile.file) {
-                                            throw new Error('Document file not found. Please re-upload.');
-                                        }
-
-                                        console.log('[Dashboard] Retrieved document file from IndexedDB:', docFile.fileName);
-
-                                        // Create FormData with the actual File
-                                        const formData = new FormData();
-                                        formData.append('file', docFile.file, docFile.fileName);
-                                        formData.append('explain', 'true');
-
-                                        response = await fetch(`${API_BASE_URL}/api/detect-ai/upload`, {
-                                            method: 'POST',
-                                            body: formData,
-                                            signal: controller.signal
-                                        });
-
-                                        // Clear the document file after upload
-                                        await VisioNovaStorage.clearDocumentFile();
-                                    } else {
-                                        // Plain text - use regular text endpoint
-                                        const textContent = inputData.data;
-                                        response = await fetch(`${API_BASE_URL}/api/detect-ai`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ text: textContent, explain: true }),
-                                            signal: controller.signal
-                                        });
-                                    }
-
-                                    clearTimeout(timeoutId);
-                                    clearInterval(progressInterval);
-
-                                    if (!response.ok) {
-                                        const errorText = await response.text();
-                                        logDebug(`Text API error: ${response.status}`, errorText);
-                                        throw new Error(`Text analysis failed: ${response.status}`);
-                                    }
-
-                                    // Step 1: Complete
-                                    updateStepProgress(0, 'complete', 100);
-
-                                    // Step 2: Source Attribution
-                                    updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Analyzing patterns...');
-
-                                    const result = await response.json();
-                                    logDebug('Text analysis result:', result);
-                                    logDebug('Storing result in sessionStorage');
-
-                                    await new Promise(r => setTimeout(r, 400));
-                                    updateStepProgress(1, 'complete', 100);
-
-                                    // Step 3: AI Writing Detection
-                                    updateStepProgress(2, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Running AI detection...');
-
-                                    // Store result for TextResultPage to use
-                                    sessionStorage.setItem('visioNova_text_result', JSON.stringify(result));
-                                    logDebug('Result stored. Keys:', Object.keys(result));
-                                    logDebug('isDocument flag:', sessionStorage.getItem('visioNova_isDocument'));
-                                    logDebug('documentFileName:', sessionStorage.getItem('visioNova_documentFileName'));
-
-                                    // Don't remove isDocument flag yet - result page needs it
-                                    // sessionStorage.removeItem('visioNova_isDocument');
-
-                                    await new Promise(r => setTimeout(r, 500));
-                                    updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete! Redirecting...');
-
-                                    logDebug('About to redirect to result page');
-
-                                    return result;
-                                } catch (fetchError) {
-                                    clearInterval(progressInterval);
-                                    logDebug('Text API error, will use client-side analysis:', fetchError);
-                                    // Continue to result page - it will use client-side fallback
-                                    for (let i = 0; i < config.steps.length; i++) {
-                                        updateStepProgress(i, 'complete', 100);
-                                    }
-                                    updateLoadingStatus('Preparing results...');
-                                    return null;
-                                }
-                            } else if (mediaType === 'image') {
-                                // Handle image analysis with backend API
-                                logDebug('Starting image analysis...');
-
-                                // Step 1: Pixel Pattern Analysis
-                                updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing pixel patterns...');
-
-                                let progressValue = 30;
-                                const progressInterval = setInterval(() => {
-                                    if (progressValue < 80) {
-                                        progressValue += 2;
-                                        updateStepProgress(0, 'processing', progressValue);
-                                    }
-                                }, 300);
-
-                                try {
-                                    const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s for image processing
-
-                                    const response = await fetch(`${API_BASE_URL}/api/detect-image`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            image: inputData.data,
-                                            filename: inputData.fileName,
-                                            include_ela: true,
-                                            include_metadata: true,
-                                            include_watermark: true,
-                                            include_c2pa: true,
-                                            include_ai_analysis: true
-                                        }),
-                                        signal: controller.signal
-                                    });
-
-                                    clearTimeout(timeoutId);
-                                    clearInterval(progressInterval);
-
-                                    if (!response.ok) {
-                                        const errorText = await response.text();
-                                        logDebug(`Image API error: ${response.status}`, errorText);
-                                        throw new Error(`Image analysis failed: ${response.status}`);
-                                    }
-
-                                    // Step 1: Complete
-                                    updateStepProgress(0, 'complete', 100);
-
-                                    // Step 2: Metadata Extraction
-                                    updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting metadata...');
-
-                                    const result = await response.json();
-                                    logDebug('Image analysis result:', result);
-
-                                    await new Promise(r => setTimeout(r, 400));
-                                    updateStepProgress(1, 'complete', 100);
-
-                                    // Step 3: AI Artifact Detection
-                                    updateStepProgress(2, 'processing', 60);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting AI artifacts...');
-
-                                    // Store result for ImageResultPage to use
-                                    sessionStorage.setItem('visioNova_image_result', JSON.stringify(result));
-                                    logDebug('Image result stored in sessionStorage');
-
-                                    await new Promise(r => setTimeout(r, 600));
-                                    updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete! Redirecting...');
-
-                                    return result;
-                                } catch (fetchError) {
-                                    clearInterval(progressInterval);
-                                    logDebug('Image API error:', fetchError);
-                                    throw fetchError;
-                                }
-                            } else {
-                                // For other media types (video, audio), simulate progress
-                                for (let i = 0; i < config.steps.length; i++) {
-                                    updateStepProgress(i, 'processing', 30);
-                                    updateLoadingStatus(config.statusMessages[i] || 'Processing...');
-                                    await new Promise(r => setTimeout(r, 600));
-                                    updateStepProgress(i, 'processing', 70);
-                                    await new Promise(r => setTimeout(r, 400));
-                                    updateStepProgress(i, 'complete', 100);
-                                }
-                                return null;
-                            }
-                        } catch (error) {
-                            console.error('[Dashboard] Analysis error:', error);
-                            updateLoadingStatus('Analysis failed: ' + error.message);
-                            sessionStorage.setItem('visioNova_analysis_error', error.message);
-                            return null;
-                        }
-                    }
-
-                    document.addEventListener('DOMContentLoaded', async () => {
-                        logDebug('AnalysisDashboard loaded');
-                        const params = new URLSearchParams(window.location.search);
-                        const isAnalyzing = params.get('analyzing') === 'true';
-                        const nextUrl = params.get('next');
-                        const mediaType = params.get('media')?.toLowerCase() || 'default';
-
-                        logDebug(`URL params: analyzing=${isAnalyzing}, media=${mediaType}, next=${nextUrl}`);
-
-                        // Get config for this media type
-                        const config = ANALYSIS_CONFIGS[mediaType] || DEFAULT_CONFIG;
-
-                        // Render the UI
-                        updateHeader(config);
-                        renderAnalysisSteps(config.steps);
-
-                        if (isAnalyzing) {
-                            logDebug(`Starting analysis for media type: ${mediaType}`);
-                            // Run analysis with real progress updates
-                            const analysisResult = await performAnalysisWithProgress(mediaType, config);
-
-                            if (analysisResult !== null) {
-                                // Redirect after successful completion
-                                logDebug(`Analysis complete, redirecting to: ${nextUrl || 'ImageResultPage.html'}`);
-                                setTimeout(() => {
-                                    if (nextUrl) {
-                                        window.location.href = decodeURIComponent(nextUrl);
-                                    } else {
-                                        window.location.href = 'ImageResultPage.html';
-                                    }
-                                }, 500);
-                            } else {
-                                // Analysis failed — show error and offer retry
-                                logDebug('Analysis failed, staying on dashboard');
-                                updateLoadingStatus('Analysis failed. Please go back and try again.');
-                            }
+        const ANALYSIS_CONFIGS = {
+            image: {
+                title: 'Analyzing Image', subtitle: 'Processing pixel patterns and metadata...', badge: 'SCAN_PIXELS',
+                steps: [{ name: 'Pixel Pattern Analysis', description: 'Detecting unnatural pixel distributions' }, { name: 'Metadata Extraction', description: 'Analyzing EXIF data and file signatures' }, { name: 'AI Artifact Detection', description: 'Identifying GAN fingerprints and artifacts' }],
+                statusMessages: ['Analyzing pixel distributions...', 'Extracting metadata signatures...', 'Scanning for AI-generated artifacts...', 'Finalizing image analysis...']
+            },
+            video: {
+                title: 'Analyzing Video', subtitle: 'Processing frames and audio tracks...', badge: 'PROCESSING_FRAMES',
+                steps: [{ name: 'Frame-by-Frame Analysis', description: 'Detecting temporal inconsistencies' }, { name: 'Audio Track Verification', description: 'Checking audio-visual sync' }, { name: 'Deepfake Detection', description: 'Identifying face manipulation artifacts' }],
+                statusMessages: ['Extracting video frames...', 'Analyzing frame consistency...', 'Verifying audio synchronization...', 'Running deepfake detection models...']
+            },
+            audio: {
+                title: 'Analyzing Audio', subtitle: 'Processing voice patterns and frequencies...', badge: 'ANALYZING_WAVEFORM',
+                steps: [{ name: 'Voice Pattern Analysis', description: 'Analyzing vocal characteristics' }, { name: 'Frequency Spectrum Check', description: 'Detecting unnatural frequencies' }, { name: 'Speech Synthesis Detection', description: 'Identifying AI-generated speech' }],
+                statusMessages: ['Extracting audio waveform...', 'Analyzing voice patterns...', 'Checking frequency spectrum...', 'Detecting synthetic speech markers...']
+            },
+            text: {
+                title: 'Analyzing Text', subtitle: 'Processing linguistic patterns...', badge: 'PARSING_TEXT',
+                steps: [{ name: 'Linguistic Pattern Analysis', description: 'Detecting writing style anomalies' }, { name: 'Source Attribution', description: 'Checking for plagiarism and sources' }, { name: 'AI Writing Detection', description: 'Identifying machine-generated text' }],
+                statusMessages: ['Tokenizing text content...', 'Analyzing linguistic patterns...', 'Checking source attribution...', 'Running AI detection models...']
+            },
+            url: {
+                title: 'Analyzing URL', subtitle: 'Extracting and verifying content...', badge: 'FETCHING_CONTENT',
+                steps: [{ name: 'Content Extraction', description: 'Fetching and parsing page content' }, { name: 'Source Credibility Check', description: 'Verifying domain reputation' }, { name: 'Claim Verification', description: 'Cross-referencing with fact-check sources' }],
+                statusMessages: ['Fetching URL content...', 'Extracting main article...', 'Checking source credibility...', 'Verifying claims against trusted sources...']
+            }
+        };
+
+        const DEFAULT_CONFIG = {
+            title: 'Analyzing Media', subtitle: 'Processing multi-modal vectors...', badge: 'PROCESSING',
+            steps: [{ name: 'Content Analysis', description: 'Analyzing content structure' }, { name: 'Metadata Verification', description: 'Verifying file metadata' }, { name: 'Authenticity Check', description: 'Checking for manipulation' }],
+            statusMessages: ['Initializing analysis...', 'Processing content...', 'Verifying authenticity...', 'Finalizing results...']
+        };
+
+        const API_BASE_URL = 'http://localhost:5000';
+
+        function log(msg, data) { console.log(`[VisioNova] ${msg}`, data || ''); }
+
+        function renderSteps(steps) {
+            const container = document.getElementById('analysisSteps');
+            container.innerHTML = steps.map((step, i) => `
+    <div data-step="${i}">
+      <div class="flex justify-between text-xs mb-1.5">
+        <span class="step-name">${step.name}</span>
+        <span class="step-status ${i === 0 ? 'text-accent-blue' : 'text-slate-500'}">${i === 0 ? 'Processing...' : 'Pending'}</span>
+      </div>
+      <div class="progress-track h-2 w-full">
+        <div class="step-bar h-full ${i === 0 ? 'bg-accent-blue w-[30%]' : 'bg-slate-700 w-0'} transition-all duration-1000"></div>
+      </div>
+    </div>
+  `).join('');
+        }
+
+        function updateHeader(config) {
+            const t = document.getElementById('consoleTitle');
+            const s = document.getElementById('consoleSub');
+            const b = document.getElementById('consoleBadge');
+            if (t) t.textContent = config.title;
+            if (s) s.textContent = config.subtitle;
+            if (b) b.textContent = config.badge;
+        }
+
+        function updateStepProgress(idx, status, progress) {
+            const steps = document.querySelectorAll('[data-step]');
+            if (idx >= steps.length) return;
+            const bar = steps[idx].querySelector('.step-bar');
+            const statusEl = steps[idx].querySelector('.step-status');
+            if (status === 'processing') {
+                bar.className = 'step-bar h-full bg-accent-blue transition-all duration-500';
+                bar.style.width = progress + '%';
+                if (statusEl) { statusEl.textContent = 'Processing...'; statusEl.className = 'step-status text-accent-blue'; }
+            } else if (status === 'complete') {
+                bar.className = 'step-bar h-full bg-accent-green transition-all duration-500';
+                bar.style.width = '100%';
+                if (statusEl) { statusEl.textContent = 'Complete'; statusEl.className = 'step-status text-accent-green'; }
+            }
+        }
+
+        function updateLoadingStatus(text) {
+            const el = document.getElementById('loadingStatus');
+            if (el) el.textContent = text;
+        }
+
+        async function performAnalysis(mediaType, config) {
+            if (typeof VisioNovaStorage === 'undefined') {
+                updateLoadingStatus('Error: Storage module not loaded');
+                return null;
+            }
+            const inputData = VisioNovaStorage.getFile(mediaType);
+            const isDocumentUpload = mediaType === 'text' && sessionStorage.getItem('visioNova_isDocument') === 'true';
+            if (!isDocumentUpload && (!inputData || !inputData.data)) {
+                updateLoadingStatus('Error: No input data found. Please go back and upload/enter data.');
+                return null;
+            }
+
+            try {
+                if (mediaType === 'url') {
+                    updateStepProgress(0, 'processing', 30);
+                    updateLoadingStatus(config.statusMessages[0]);
+                    let pv = 30;
+                    const pi = setInterval(() => { if (pv < 75) { pv += 3; updateStepProgress(0, 'processing', pv); } }, 500);
+                    const ctrl = new AbortController();
+                    const tid = setTimeout(() => ctrl.abort(), 60000);
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/fact-check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: inputData.data }), signal: ctrl.signal });
+                        clearTimeout(tid); clearInterval(pi);
+                        if (!res.ok) throw new Error(`API error: ${res.status}`);
+                        updateStepProgress(0, 'processing', 90);
+                        const result = await res.json();
+                        updateStepProgress(1, 'processing', 70);
+                        await new Promise(r => setTimeout(r, 300));
+                        updateStepProgress(1, 'complete', 100);
+                        updateStepProgress(2, 'processing', 50);
+                        updateLoadingStatus(config.statusMessages[3]);
+                        sessionStorage.setItem('visioNova_factcheck_result', JSON.stringify(result));
+                        VisioNovaStorage.clearFile('url');
+                        await new Promise(r => setTimeout(r, 400));
+                        updateStepProgress(2, 'complete', 100);
+                        updateLoadingStatus('Analysis complete!');
+                        return result;
+                    } catch (e) { clearInterval(pi); throw e; }
+
+                } else if (mediaType === 'text') {
+                    updateStepProgress(0, 'processing', 30);
+                    updateLoadingStatus(config.statusMessages[0]);
+                    let pv = 30;
+                    const pi = setInterval(() => { if (pv < 75) { pv += 5; updateStepProgress(0, 'processing', pv); } }, 400);
+                    try {
+                        const ctrl = new AbortController();
+                        const tid = setTimeout(() => ctrl.abort(), 60000);
+                        let response;
+                        if (isDocumentUpload) {
+                            updateLoadingStatus('Extracting text from document...');
+                            const docFile = await VisioNovaStorage.getDocumentFile();
+                            if (!docFile || !docFile.file) throw new Error('Document file not found.');
+                            const formData = new FormData();
+                            formData.append('file', docFile.file, docFile.fileName);
+                            formData.append('explain', 'true');
+                            response = await fetch(`${API_BASE_URL}/api/detect-ai/upload`, { method: 'POST', body: formData, signal: ctrl.signal });
+                            await VisioNovaStorage.clearDocumentFile();
                         } else {
-                            logDebug('Not analyzing, just displaying dashboard');
+                            response = await fetch(`${API_BASE_URL}/api/detect-ai`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: inputData.data, explain: true }), signal: ctrl.signal });
                         }
-                    });
-                </script>
-            </div>
-    </div>
-    </main>
-    </div>
+                        clearTimeout(tid); clearInterval(pi);
+                        if (!response.ok) throw new Error(`Text analysis failed: ${response.status}`);
+                        updateStepProgress(0, 'complete', 100);
+                        updateStepProgress(1, 'processing', 50);
+                        updateLoadingStatus(config.statusMessages[1]);
+                        const result = await response.json();
+                        await new Promise(r => setTimeout(r, 400));
+                        updateStepProgress(1, 'complete', 100);
+                        updateStepProgress(2, 'processing', 50);
+                        updateLoadingStatus(config.statusMessages[2]);
+                        sessionStorage.setItem('visioNova_text_result', JSON.stringify(result));
+                        await new Promise(r => setTimeout(r, 500));
+                        updateStepProgress(2, 'complete', 100);
+                        updateLoadingStatus('Analysis complete! Redirecting...');
+                        return result;
+                    } catch (e) { clearInterval(pi); for (let i = 0; i < config.steps.length; i++) updateStepProgress(i, 'complete', 100); updateLoadingStatus('Preparing results...'); return null; }
+
+                } else if (mediaType === 'image') {
+                    updateStepProgress(0, 'processing', 30);
+                    updateLoadingStatus(config.statusMessages[0]);
+                    let pv = 30;
+                    const pi = setInterval(() => { if (pv < 80) { pv += 2; updateStepProgress(0, 'processing', pv); } }, 300);
+                    try {
+                        const ctrl = new AbortController();
+                        const tid = setTimeout(() => ctrl.abort(), 120000);
+                        const res = await fetch(`${API_BASE_URL}/api/detect-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: inputData.data, filename: inputData.fileName, include_ela: true, include_metadata: true, include_watermark: true, include_c2pa: true, include_ai_analysis: true }), signal: ctrl.signal });
+                        clearTimeout(tid); clearInterval(pi);
+                        if (!res.ok) throw new Error(`Image analysis failed: ${res.status}`);
+                        updateStepProgress(0, 'complete', 100);
+                        updateStepProgress(1, 'processing', 50);
+                        updateLoadingStatus(config.statusMessages[1]);
+                        const result = await res.json();
+                        await new Promise(r => setTimeout(r, 400));
+                        updateStepProgress(1, 'complete', 100);
+                        updateStepProgress(2, 'processing', 60);
+                        updateLoadingStatus(config.statusMessages[2]);
+                        sessionStorage.setItem('visioNova_image_result', JSON.stringify(result));
+                        await new Promise(r => setTimeout(r, 600));
+                        updateStepProgress(2, 'complete', 100);
+                        updateLoadingStatus('Analysis complete! Redirecting...');
+                        return result;
+                    } catch (e) { clearInterval(pi); throw e; }
+
+                } else {
+                    for (let i = 0; i < config.steps.length; i++) {
+                        updateStepProgress(i, 'processing', 30);
+                        updateLoadingStatus(config.statusMessages[i] || 'Processing...');
+                        await new Promise(r => setTimeout(r, 600));
+                        updateStepProgress(i, 'processing', 70);
+                        await new Promise(r => setTimeout(r, 400));
+                        updateStepProgress(i, 'complete', 100);
+                    }
+                    return null;
+                }
+            } catch (error) {
+                console.error('[Dashboard] Analysis error:', error);
+                updateLoadingStatus('Analysis failed: ' + error.message);
+                sessionStorage.setItem('visioNova_analysis_error', error.message);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const isAnalyzing = params.get('analyzing') === 'true';
+            const nextUrl = params.get('next');
+            const mediaType = params.get('media')?.toLowerCase() || 'default';
+            const config = ANALYSIS_CONFIGS[mediaType] || DEFAULT_CONFIG;
+            updateHeader(config);
+            renderSteps(config.steps);
+            if (isAnalyzing) {
+                const result = await performAnalysis(mediaType, config);
+                if (result !== null) {
+                    setTimeout(() => {
+                        window.location.href = nextUrl ? decodeURIComponent(nextUrl) : 'ImageResultPage.html';
+                    }, 500);
+                } else {
+                    updateLoadingStatus('Analysis failed. Please go back and try again.');
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>
