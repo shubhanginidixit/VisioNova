@@ -1,143 +1,149 @@
 /**
  * VisioNova Layout Manager v3.0
- * Forensic Intelligence Dashboard — injects header + sidebar
+ * Injects the top navigation header and collapsible sidebar.
+ * Typography: Archivo Black / DM Mono / Archivo
  */
 
 const Layout = {
-    init: function () {
+    init() {
+        this.injectFonts();
         this.injectHeader();
         this.injectSidebar();
         this.highlightCurrentNav();
     },
 
-    injectHeader: function () {
+    injectFonts() {
+        if (document.getElementById('vn-fonts')) return;
+        const link = document.createElement('link');
+        link.id = 'vn-fonts';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Archivo:wght@400;500;600&display=swap';
+        document.head.appendChild(link);
+    },
+
+    injectHeader() {
         const el = document.querySelector('header[data-inject], header:empty');
         if (!el) return;
 
         el.style.cssText = `
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 52px;
-            padding: 0 24px;
-            background: var(--header-bg);
-            border-bottom: 1px solid var(--color-border);
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            flex-shrink: 0;
-        `;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 46px;
+      padding: 0 20px;
+      background: var(--header-bg, #111318);
+      border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.06));
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      flex-shrink: 0;
+    `;
 
         el.innerHTML = `
-            <a href="homepage.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--color-text-main);">
-                <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--color-brand,#4B8EF5),var(--color-accent-success));clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;">
-                    <span class="material-symbols-outlined" style="font-size:13px;color:#fff;">blur_on</span>
-                </div>
-                <span style="font-size:15px;font-weight:700;letter-spacing:-0.02em;">VisioNova</span>
-                <span style="font-family:'Roboto Mono',monospace;font-size:10px;color:var(--color-accent-success);background:rgba(71,229,188,0.1);border:1px solid rgba(71,229,188,0.2);padding:1px 6px;">v2.1</span>
-            </a>
+      <div style="display:flex;align-items:center;gap:20px;">
+        <a href="homepage.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+          <div style="width:22px;height:22px;border:1.5px solid var(--signal,#C8FF57);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <div style="width:8px;height:8px;background:var(--signal,#C8FF57);"></div>
+          </div>
+          <span style="font-family:'Archivo Black',sans-serif;font-size:13px;color:var(--paper,#F4F2ED);letter-spacing:0.06em;text-transform:uppercase;">VisioNova</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--signal,#C8FF57);border:1px solid rgba(200,255,87,0.3);padding:1px 5px;letter-spacing:0.08em;text-transform:uppercase;">v2.1</span>
+        </a>
+        <nav style="display:flex;align-items:center;">
+          <a class="vn-nav-link" href="homepage.html"   style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted,#5C6270);text-decoration:none;padding:0 14px;height:46px;line-height:46px;border-left:1px solid var(--color-border);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;">Home</a>
+          <a class="vn-nav-link" href="AnalysisDashboard.html" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted,#5C6270);text-decoration:none;padding:0 14px;height:46px;line-height:46px;border-left:1px solid var(--color-border);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;">Analyze</a>
+          <a class="vn-nav-link" href="FactCheckPage.html"     style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted,#5C6270);text-decoration:none;padding:0 14px;height:46px;line-height:46px;border-left:1px solid var(--color-border);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;">Fact Check</a>
+          <a class="vn-nav-link" href="ReportPage.html"        style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted,#5C6270);text-decoration:none;padding:0 14px;height:46px;line-height:46px;border-left:1px solid var(--color-border);letter-spacing:0.06em;text-transform:uppercase;transition:all 0.15s;">Reports</a>
+        </nav>
+      </div>
 
-            <nav style="display:flex;align-items:center;gap:2px;">
-                <a class="nav-link" href="homepage.html" style="font-family:'Roboto Mono',monospace;font-size:11px;font-weight:500;color:var(--color-text-muted);text-decoration:none;padding:5px 14px;border:1px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s;">Home</a>
-                <a class="nav-link" href="AnalysisDashboard.html" style="font-family:'Roboto Mono',monospace;font-size:11px;font-weight:500;color:var(--color-text-muted);text-decoration:none;padding:5px 14px;border:1px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s;">Analyze</a>
-                <a class="nav-link" href="FactCheckPage.html" style="font-family:'Roboto Mono',monospace;font-size:11px;font-weight:500;color:var(--color-text-muted);text-decoration:none;padding:5px 14px;border:1px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s;">Fact Check</a>
-                <a class="nav-link" href="ReportPage.html" style="font-family:'Roboto Mono',monospace;font-size:11px;font-weight:500;color:var(--color-text-muted);text-decoration:none;padding:5px 14px;border:1px solid transparent;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s;">Reports</a>
-            </nav>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:9px;color:var(--signal,#C8FF57);padding:4px 10px;border:1px solid rgba(200,255,87,0.2);background:rgba(200,255,87,0.06);letter-spacing:0.08em;text-transform:uppercase;">
+          <div style="width:5px;height:5px;background:var(--signal,#C8FF57);border-radius:50%;animation:vn-blink 2.8s ease-in-out infinite;"></div>
+          Online
+        </div>
+        <button id="themeToggle" style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:transparent;border:1px solid var(--color-border);color:var(--muted,#5C6270);cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;transition:all 0.15s;" title="Toggle Theme">
+          <span class="material-symbols-outlined theme-icon-dark" style="font-size:13px;color:#FFCC44;">light_mode</span>
+          <span class="material-symbols-outlined theme-icon-light" style="font-size:13px;display:none;">dark_mode</span>
+          Theme
+        </button>
+      </div>
 
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="display:flex;align-items:center;gap:6px;font-family:'Roboto Mono',monospace;font-size:10px;color:var(--color-accent-success);padding:4px 10px;border:1px solid rgba(71,229,188,0.2);background:rgba(71,229,188,0.08);">
-                    <div style="width:6px;height:6px;background:var(--color-accent-success);border-radius:50%;animation:vn-pulse 2s infinite;"></div>
-                    ONLINE
-                </div>
-                <button id="themeToggle" style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--color-bg-card);border:1px solid var(--color-border);color:var(--color-text-muted);cursor:pointer;font-family:'Roboto Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;transition:all 0.15s;" title="Toggle Theme">
-                    <span class="material-symbols-outlined theme-icon-dark" style="font-size:14px;color:#FBBF24;">light_mode</span>
-                    <span class="material-symbols-outlined theme-icon-light" style="font-size:14px;display:none;">dark_mode</span>
-                    Theme
-                </button>
-            </div>
-            <style>
-                @keyframes vn-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-                .nav-link:hover { color: var(--color-text-main) !important; border-color: var(--color-border-hover) !important; background: var(--color-bg-panel) !important; }
-            </style>
-        `;
+      <style>
+        @keyframes vn-blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        .vn-nav-link:hover { color: var(--paper,#F4F2ED) !important; background: rgba(255,255,255,0.025) !important; }
+        .vn-nav-link.active { color: var(--signal,#C8FF57) !important; border-bottom: 2px solid var(--signal,#C8FF57) !important; }
+      </style>
+    `;
     },
 
-    injectSidebar: function () {
+    injectSidebar() {
         const el = document.querySelector('aside[data-inject], aside:empty');
         if (!el) return;
 
         el.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 56px;
-            background: var(--sidebar-bg);
-            border-right: 1px solid var(--color-border);
-            padding: 20px 0;
-            gap: 4px;
-            flex-shrink: 0;
-            overflow: hidden;
-            transition: width 0.25s ease;
-            position: relative;
-            z-index: 40;
-        `;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 48px;
+      background: var(--sidebar-bg, #111318);
+      border-right: 1px solid var(--color-border, rgba(255,255,255,0.06));
+      padding: 16px 0;
+      gap: 2px;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: width 0.22s ease;
+      position: relative;
+      z-index: 40;
+    `;
 
-        el.addEventListener('mouseenter', () => el.style.width = '200px');
-        el.addEventListener('mouseleave', () => el.style.width = '56px');
+        el.addEventListener('mouseenter', () => { el.style.width = '180px'; });
+        el.addEventListener('mouseleave', () => { el.style.width = '48px'; });
 
-        const linkStyle = `display:flex;align-items:center;gap:12px;width:100%;padding:11px 18px;text-decoration:none;color:var(--color-text-muted);font-size:12px;font-weight:500;white-space:nowrap;transition:all 0.15s;`;
+        const itemBase = `
+      display:flex;align-items:center;gap:10px;width:100%;
+      padding:9px 14px;text-decoration:none;
+      color:var(--ghost,#3A3F4A);
+      font-family:'DM Mono',monospace;font-size:10px;white-space:nowrap;
+      letter-spacing:0.05em;text-transform:uppercase;
+      transition:all 0.15s;border-left:2px solid transparent;
+    `;
 
         el.innerHTML = `
-            <a class="sidebar-link" href="homepage.html" style="${linkStyle}">
-                <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">add_circle</span>
-                <span style="opacity:0;transition:opacity 0.2s;" class="sidebar-label">New Scan</span>
-            </a>
-            <div style="width:70%;height:1px;background:var(--color-border);margin:4px 0;"></div>
-            <a class="sidebar-link" href="AnalysisDashboard.html" style="${linkStyle}">
-                <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">dashboard</span>
-                <span style="opacity:0;transition:opacity 0.2s;" class="sidebar-label">Dashboard</span>
-            </a>
-            <a class="sidebar-link" href="FactCheckPage.html" style="${linkStyle}">
-                <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">shield</span>
-                <span style="opacity:0;transition:opacity 0.2s;" class="sidebar-label">Fact Check</span>
-            </a>
-            <a class="sidebar-link" href="ReportPage.html" style="${linkStyle}">
-                <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">description</span>
-                <span style="opacity:0;transition:opacity 0.2s;" class="sidebar-label">Reports</span>
-            </a>
-            <style>
-                .sidebar-link:hover { color: var(--color-text-main) !important; background: var(--color-bg-panel) !important; }
-            </style>
-        `;
+      <a class="vn-sb-link" href="homepage.html"           style="${itemBase}"><span class="material-symbols-outlined" style="font-size:16px;flex-shrink:0;">add_circle</span><span class="vn-sb-label" style="opacity:0;transition:opacity 0.18s;">New Scan</span></a>
+      <div style="width:28px;height:1px;background:var(--color-border);margin:4px auto;transition:width 0.22s ease;" class="vn-sb-divider"></div>
+      <a class="vn-sb-link" href="AnalysisDashboard.html"  style="${itemBase}"><span class="material-symbols-outlined" style="font-size:16px;flex-shrink:0;">dashboard</span><span class="vn-sb-label" style="opacity:0;transition:opacity 0.18s;">Dashboard</span></a>
+      <a class="vn-sb-link" href="FactCheckPage.html"      style="${itemBase}"><span class="material-symbols-outlined" style="font-size:16px;flex-shrink:0;">shield</span><span class="vn-sb-label" style="opacity:0;transition:opacity 0.18s;">Fact Check</span></a>
+      <a class="vn-sb-link" href="ReportPage.html"         style="${itemBase}"><span class="material-symbols-outlined" style="font-size:16px;flex-shrink:0;">description</span><span class="vn-sb-label" style="opacity:0;transition:opacity 0.18s;">Reports</span></a>
+      <style>
+        .vn-sb-link:hover { color:var(--paper,#F4F2ED)!important; background:rgba(255,255,255,0.025)!important; }
+        .vn-sb-link.active { color:var(--signal,#C8FF57)!important; border-left-color:var(--signal,#C8FF57)!important; background:rgba(200,255,87,0.06)!important; }
+      </style>
+    `;
 
-        // Fade labels on hover via parent expand
         el.addEventListener('mouseenter', () => {
-            el.querySelectorAll('.sidebar-label').forEach(l => l.style.opacity = '1');
+            el.querySelectorAll('.vn-sb-label').forEach(l => l.style.opacity = '1');
+            el.querySelectorAll('.vn-sb-divider').forEach(d => d.style.width = '148px');
         });
         el.addEventListener('mouseleave', () => {
-            el.querySelectorAll('.sidebar-label').forEach(l => l.style.opacity = '0');
+            el.querySelectorAll('.vn-sb-label').forEach(l => l.style.opacity = '0');
+            el.querySelectorAll('.vn-sb-divider').forEach(d => d.style.width = '28px');
         });
     },
 
-    highlightCurrentNav: function () {
+    highlightCurrentNav() {
         const current = window.location.pathname.split('/').pop();
-        document.querySelectorAll('.nav-link').forEach(link => {
+        document.querySelectorAll('.vn-nav-link').forEach(link => {
             if (link.getAttribute('href') === current) {
-                link.style.color = 'var(--color-accent-success)';
-                link.style.borderColor = 'rgba(71,229,188,0.3)';
-                link.style.background = 'rgba(71,229,188,0.08)';
+                link.style.color = 'var(--signal, #C8FF57)';
+                link.style.borderBottom = '2px solid var(--signal, #C8FF57)';
             }
         });
-        document.querySelectorAll('.sidebar-link').forEach(link => {
+        document.querySelectorAll('.vn-sb-link').forEach(link => {
             if (link.getAttribute('href') === current) {
-                link.style.color = 'var(--color-accent-success)';
-                link.style.background = 'rgba(71,229,188,0.08)';
+                link.classList.add('active');
             }
         });
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => Layout.init());
-
-
-// (duplicate removed - new Layout defined above)
