@@ -3,7 +3,7 @@
  * Performs client-side text analysis and displays results
  */
 
-const API_BASE_URL = '';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Analysis state
 let textData = null;
@@ -84,12 +84,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             displayText(textData.data);
         }
         await analyzeText(textData.data, preloadedResult);
-
+        
         // Re-render with highlighting if we got sentence analysis from the backend
         if (analysisResults?.sentenceAnalysis?.length > 0) {
             displayTextWithHighlighting(textData.data, analysisResults.sentenceAnalysis);
         }
-
+        
         VisioNovaStorage.clearFile('text');
     } else {
         console.warn('[TextResult] No data found!');
@@ -160,34 +160,34 @@ function displayTextWithHighlighting(text, sentenceAnalysis) {
         formattedHtml += '<p class="mb-4">';
         // Split paragraph into sentences
         const sentences = paragraph.split(/(?<=[.!?])\s+/);
-
+        
         sentences.forEach(sentence => {
             const trimmed = sentence.trim();
             if (!trimmed) return;
 
             // Look up this sentence in analysis data
             const analysis = sentenceMap.get(trimmed.toLowerCase());
-
+            
             if (analysis) {
                 const aiScore = analysis.ai_score || 0;
+                const humanScore = analysis.human_score || 0;
+                let highlightClass, tooltipClass, tooltipText;
 
-                // Only highlight AI or Uncertain sentences. Short sentences naturally
-                // score as "human" statistically, which causes massive false-green blocks
-                // that contradict the overall document ML score.
                 if (aiScore > 60) {
-                    const highlightClass = 'sentence-ai';
-                    const tooltipClass = 'sentence-tooltip-ai';
-                    const tooltipText = `AI: ${aiScore.toFixed(0)}%`;
-                    formattedHtml += `<span class="sentence-highlight ${highlightClass}">${escapeHtml(trimmed)}<span class="sentence-tooltip ${tooltipClass}">${tooltipText}</span></span> `;
+                    highlightClass = 'sentence-ai';
+                    tooltipClass = 'sentence-tooltip-ai';
+                    tooltipText = `AI: ${aiScore.toFixed(0)}%`;
                 } else if (aiScore > 40) {
-                    const highlightClass = 'sentence-uncertain';
-                    const tooltipClass = 'sentence-tooltip-uncertain';
-                    const tooltipText = `Uncertain (AI: ${aiScore.toFixed(0)}%)`;
-                    formattedHtml += `<span class="sentence-highlight ${highlightClass}">${escapeHtml(trimmed)}<span class="sentence-tooltip ${tooltipClass}">${tooltipText}</span></span> `;
+                    highlightClass = 'sentence-uncertain';
+                    tooltipClass = 'sentence-tooltip-uncertain';
+                    tooltipText = `Uncertain (AI: ${aiScore.toFixed(0)}%)`;
                 } else {
-                    // Do not highlight 'Human' sentences to prevent visual clutter
-                    formattedHtml += escapeHtml(trimmed) + ' ';
+                    highlightClass = 'sentence-human';
+                    tooltipClass = 'sentence-tooltip-human';
+                    tooltipText = `Human: ${humanScore.toFixed(0)}%`;
                 }
+
+                formattedHtml += `<span class="sentence-highlight ${highlightClass}">${escapeHtml(trimmed)}<span class="sentence-tooltip ${tooltipClass}">${tooltipText}</span></span> `;
             } else {
                 formattedHtml += escapeHtml(trimmed) + ' ';
             }
@@ -345,8 +345,7 @@ function renderPatterns(detectedPatterns) {
 }
 
 /**
- * Render AI explanation in the explanation panel.
- * Auto-expands the panel and positions it at the top of the metrics column.
+ * Render AI explanation in the explanation panel
  * @param {string|object} explanation - Explanation text or structured object
  */
 function renderExplanation(explanation) {
@@ -358,6 +357,7 @@ function renderExplanation(explanation) {
     if (typeof explanation === 'string') {
         htmlContent = `<p class="text-white/70 text-sm leading-relaxed">${escapeHtml(explanation)}</p>`;
     } else if (typeof explanation === 'object') {
+        // Structured explanation from Groq/Llama
         htmlContent = buildExplanationHTML(explanation);
     }
 
@@ -368,14 +368,11 @@ function renderExplanation(explanation) {
     const textEl = document.getElementById('explanationText');
     if (textEl) textEl.innerHTML = htmlContent;
 
-    // Auto-expand the content (no longer hidden by default)
+    // Toggle collapse/expand
+    const toggleBtn = document.getElementById('explanationToggle');
     const content = document.getElementById('explanationContent');
     const chevron = document.getElementById('explanationChevron');
-    if (content) content.classList.remove('hidden');
-    if (chevron) chevron.style.transform = 'rotate(180deg)';
 
-    // Toggle collapse/expand on click
-    const toggleBtn = document.getElementById('explanationToggle');
     if (toggleBtn && content && chevron) {
         toggleBtn.addEventListener('click', () => {
             const isHidden = content.classList.contains('hidden');
@@ -386,124 +383,79 @@ function renderExplanation(explanation) {
 }
 
 /**
- * Build formatted HTML from a structured explanation object.
- * Compact, easy-to-read layout: verdict → clues → writing style → tips → note.
+ * Build formatted HTML from a structured explanation object
  */
 function buildExplanationHTML(expl) {
     let html = '';
-    const isAI = (expl.verdict_explanation || '').toLowerCase().includes('ai-generated');
-    const accent = isAI ? 'accent-danger' : 'accent-success';
-    const icon = isAI ? 'smart_toy' : 'verified_user';
 
-    // ── Verdict ─────────────────────────────────────────────────────────
-    if (expl.summary) {
-        html += `<div class="flex items-start gap-2.5 p-3 rounded-xl border mb-2.5 bg-${accent}/5 border-${accent}/20">
-            <span class="material-symbols-outlined text-${accent} !text-[18px] shrink-0 mt-px">${icon}</span>
-            <p class="text-white font-semibold text-[13px] leading-snug">${escapeHtml(expl.summary)}</p>
+    // Confidence note
+    if (expl.confidence_note) {
+        html += `<div class="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <div class="flex items-start gap-2">
+                <span class="material-symbols-outlined text-primary !text-[18px] mt-0.5 shrink-0">info</span>
+                <p class="text-white/70 text-sm leading-relaxed">${escapeHtml(expl.confidence_note)}</p>
+            </div>
         </div>`;
     }
 
-    // ── Key Clues ───────────────────────────────────────────────────────
+    // Key indicators
     if (expl.key_indicators && expl.key_indicators.length > 0) {
-        html += `<div class="mb-2">
-            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Key clues</h5>
-            <ul class="space-y-0.5">
-                ${expl.key_indicators.map(ind => `<li class="flex items-start gap-2 text-[12px] text-white/70 leading-snug">
-                    <span class="text-${accent} shrink-0">•</span><span>${escapeHtml(ind)}</span>
-                </li>`).join('')}
-            </ul>
-        </div>`;
-    }
-
-    // ── Writing Style Check (linguistic fingerprint — simplified) ────────
-    const fp = expl.linguistic_fingerprint || [];
-    if (fp.length > 0) {
-        html += `<div class="mb-2">
-            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Writing style check</h5>
-            <div class="grid gap-1">
-                ${fp.map(m => {
-                    const col = m.status === 'human_like' ? 'accent-success' : (m.status === 'ai_like' ? 'accent-danger' : 'accent-warning');
-                    const tag = m.status === 'human_like' ? 'Human-like' : (m.status === 'ai_like' ? 'AI-like' : 'Unclear');
-                    return `<div class="flex items-center gap-2 px-2.5 py-1.5 bg-white/[0.03] rounded-lg">
-                    <span class="w-1.5 h-1.5 rounded-full bg-${col} shrink-0"></span>
-                    <span class="text-white/60 text-[11px] flex-1">${escapeHtml(m.description || m.metric)}</span>
-                    <span class="text-${col} text-[10px] font-bold shrink-0">${tag}</span>
-                </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-    }
-
-    // ── Sentence Breakdown (dynamic per-sentence evidence) ────────────
-    const ev = expl.sentence_evidence;
-    if (ev && ev.sentences && ev.sentences.length > 0) {
-        html += `<div class="mb-2">
-            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">
-                Sentence breakdown <span class="text-white/30 font-normal">${escapeHtml(ev.summary)}</span>
+        html += `<div class="mb-4">
+            <h5 class="text-white/90 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px] text-accent-amber">key</span>
+                Key Indicators
             </h5>
-            <div class="space-y-0.5">
-                ${ev.sentences.slice(0, 5).map(s => {
-                    const scoreColor = s.score > 80 ? 'accent-danger' : (s.score > 60 ? 'accent-warning' : 'accent-success');
-                    const numLabel = s.num > 0 ? `#${s.num}` : '';
-                    return `<div class="flex items-start gap-2 px-2.5 py-1.5 bg-${scoreColor}/5 rounded-lg border-l-2 border-${scoreColor}/40">
-                    <div class="shrink-0 flex items-center gap-1.5">
-                        ${numLabel ? `<span class="text-white/30 text-[10px] font-mono">${numLabel}</span>` : ''}
-                        <span class="text-[10px] font-bold text-${scoreColor}">${Math.round(s.score)}%</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-white/55 text-[11px] leading-snug italic line-clamp-2">"${escapeHtml(s.text)}"</p>
-                        ${s.reason ? `<p class="text-${scoreColor}/70 text-[10px] mt-0.5">${escapeHtml(s.reason)}</p>` : ''}
-                    </div>
-                </div>`;
-                }).join('')}
-            </div>
-            ${ev.human_sentences && ev.human_sentences.length > 0 ? `
-            <div class="mt-1">
-                <p class="text-white/30 text-[10px] mb-0.5">In contrast, these look human-written:</p>
-                ${ev.human_sentences.map(s => {
-                    const numLabel = s.num > 0 ? `#${s.num}` : '';
-                    return `<div class="flex items-start gap-2 px-2.5 py-1 bg-accent-success/5 rounded-lg border-l-2 border-accent-success/30">
-                    <div class="shrink-0 flex items-center gap-1.5">
-                        ${numLabel ? `<span class="text-white/30 text-[10px] font-mono">${numLabel}</span>` : ''}
-                        <span class="text-[10px] font-bold text-accent-success">${Math.round(s.score)}%</span>
-                    </div>
-                    <p class="text-white/45 text-[11px] leading-snug italic line-clamp-1 flex-1">"${escapeHtml(s.text)}"</p>
-                </div>`;
-                }).join('')}
-            </div>` : ''}
-        </div>`;
+            <ul class="space-y-1.5">`;
+        expl.key_indicators.forEach(indicator => {
+            html += `<li class="flex items-start gap-2 text-white/60 text-sm leading-relaxed">
+                <span class="text-accent-amber mt-1 shrink-0">•</span>
+                <span>${escapeHtml(indicator)}</span>
+            </li>`;
+        });
+        html += `</ul></div>`;
     }
 
-    // ── Pattern Analysis (one-liner) ────────────────────────────────────
+    // Pattern breakdown
     if (expl.pattern_breakdown) {
-        html += `<div class="mb-2 px-2.5 py-2 bg-white/[0.03] rounded-lg">
-            <p class="text-white/55 text-[11px] leading-snug"><span class="text-accent-warning font-bold">Patterns:</span> ${escapeHtml(expl.pattern_breakdown)}</p>
+        html += `<div class="mb-4">
+            <h5 class="text-white/90 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px] text-accent-danger">pattern</span>
+                Pattern Breakdown
+            </h5>
+            <p class="text-white/60 text-sm leading-relaxed">${escapeHtml(expl.pattern_breakdown)}</p>
         </div>`;
     }
 
-    // ── Tips ─────────────────────────────────────────────────────────────
+    // Suggestions
     if (expl.suggestions && expl.suggestions.length > 0) {
         html += `<div class="mb-2">
-            <h5 class="text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">${isAI ? 'Tips to sound more human' : 'What makes this human'}</h5>
-            <ul class="space-y-0.5">
-                ${expl.suggestions.map(s => `<li class="flex items-start gap-2 text-[11px] text-white/55 leading-snug">
-                    <span class="text-accent-success shrink-0">›</span><span>${escapeHtml(s)}</span>
-                </li>`).join('')}
-            </ul>
-        </div>`;
+            <h5 class="text-white/90 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px] text-accent-success">lightbulb</span>
+                Suggestions
+            </h5>
+            <ul class="space-y-1.5">`;
+        expl.suggestions.forEach(suggestion => {
+            html += `<li class="flex items-start gap-2 text-white/60 text-sm leading-relaxed">
+                <span class="text-accent-success mt-1 shrink-0">•</span>
+                <span>${escapeHtml(suggestion)}</span>
+            </li>`;
+        });
+        html += `</ul></div>`;
     }
 
-    // ── Confidence footer ───────────────────────────────────────────────
-    if (expl.confidence_note) {
-        html += `<div class="flex items-start gap-1.5 pt-2 border-t border-white/5">
-            <span class="material-symbols-outlined text-white/25 !text-[12px] shrink-0 mt-px">info</span>
-            <p class="text-white/35 text-[10px] leading-snug">${escapeHtml(expl.confidence_note)}</p>
-        </div>`;
+    // Fallback: render any remaining top-level string fields
+    if (!html) {
+        const skipKeys = ['ai_explained', 'confidence_note', 'key_indicators', 'pattern_breakdown', 'suggestions'];
+        for (const [key, value] of Object.entries(expl)) {
+            if (skipKeys.includes(key)) continue;
+            if (typeof value === 'string') {
+                html += `<p class="text-white/60 text-sm leading-relaxed mb-2"><strong class="text-white/80">${escapeHtml(key.replace(/_/g, ' '))}:</strong> ${escapeHtml(value)}</p>`;
+            }
+        }
     }
 
     return html || `<p class="text-white/50 text-sm italic">No detailed explanation available.</p>`;
 }
-
 
 /**
  * Show no text state
@@ -622,7 +574,7 @@ async function analyzeText(text, preloadedResult = null) {
 /**
  * Call the backend text detection API
  * @param {string} text - Text to analyze
- * @param {boolean} explain - Request explanation
+ * @param {boolean} explain - Request Groq explanation
  */
 async function callTextDetectionAPI(text, explain = true) {
     const response = await fetch(`${API_BASE_URL}/api/detect-ai`, {
