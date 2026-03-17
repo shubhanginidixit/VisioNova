@@ -1,324 +1,255 @@
-/* VisioNova — Common Styles v3.0
-   Typography: Archivo Black / DM Mono / Archivo
-   Aesthetic: Cold-war surveillance terminal
-   ─────────────────────────────────────────── */
-
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Archivo:wght@400;500;600&display=swap');
+/* VisioNova - Common Styles */
 
 /* ============================================
    GLOBAL VARIABLES
    ============================================ */
 
 :root {
-    /* ── Core palette ── */
-    --ink: #0A0B0D;
-    --ink-2: #111318;
-    --ink-3: #181C22;
-    --ink-4: #1F242D;
-    --ink-5: #262C37;
-    --paper: #F4F2ED;
-    --paper-2: #EBE8E2;
-    --paper-3: #D6D3CB;
-    --muted: #5C6270;
-    --ghost: #3A3F4A;
+    /* Colors - Dark Mode (Default) */
+    --color-primary: #3A8DFF;
+    --color-primary-rgb: 58, 141, 255;
 
-    /* ── Signal colors — one true accent ── */
-    --signal: #C8FF57;
-    --signal-dim: rgba(200, 255, 87, 0.10);
-    --signal-mid: rgba(200, 255, 87, 0.20);
+    --color-bg-main: #0F121A;
+    --color-bg-surface: #0D1B2A;
+    --color-bg-card: #1E2338;
+    --color-bg-panel: #161B2E;
 
-    /* ── Semantic ── */
-    --authentic: #C8FF57;
-    /* verified / clean */
-    --suspicious: #FFB347;
-    /* warning / partial */
-    --danger: #FF3B3B;
-    /* fake / manipulated */
-    --brand: #4D90FF;
-    /* informational */
+    --color-text-main: #ffffff;
+    --color-text-muted: #94A3B8;
+    --color-text-dim: #64748B;
 
-    /* ── Legacy aliases for backward compat ── */
-    --color-primary: var(--signal);
-    --color-primary-rgb: 200, 255, 87;
-    --color-bg-main: var(--ink);
-    --color-bg-surface: var(--ink-2);
-    --color-bg-card: var(--ink-3);
-    --color-bg-panel: var(--ink-4);
-    --color-text-main: var(--paper);
-    --color-text-muted: var(--muted);
-    --color-text-dim: var(--ghost);
-    --color-border: rgba(255, 255, 255, 0.06);
-    --color-border-hover: rgba(255, 255, 255, 0.12);
-    --color-accent-success: var(--authentic);
-    --color-accent-warning: var(--suspicious);
-    --color-accent-danger: var(--danger);
-    --color-authentic: var(--authentic);
-    --color-suspicious: var(--suspicious);
-    --color-danger: var(--danger);
-    --color-brand: var(--brand);
-    --header-bg: var(--ink-2);
-    --sidebar-bg: var(--ink-2);
-    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 20px rgba(200, 255, 87, 0.08);
+    --color-border: #1E2338;
+    --color-border-hover: #2A3450;
 
-    /* ── Typography ── */
-    --font-display: 'Archivo Black', sans-serif;
-    --font-ui: 'Archivo', sans-serif;
-    --font-mono: 'DM Mono', monospace;
+    --color-accent-success: #00D991;
+    --color-accent-warning: #FFB74A;
+    --color-accent-danger: #FF4A4A;
+
+    /* UI Elements */
+    --header-bg: rgba(13, 27, 42, 0.9);
+    --sidebar-bg: #0D1B2A;
+
+    /* Shadows */
+    --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(58, 141, 255, 0.3);
 }
 
-/* ── Light mode (minimal support) ── */
+/* Light Mode Overrides */
 :root.light {
-    --ink: #F4F2ED;
-    --ink-2: #EDEAE3;
-    --ink-3: #E4E1D9;
-    --ink-4: #D6D3CB;
-    --paper: #1A1C22;
-    --paper-2: #2C3040;
-    --muted: #6E7280;
-    --ghost: #9BA0AE;
-    --color-border: rgba(0, 0, 0, 0.08);
-    --color-border-hover: rgba(0, 0, 0, 0.15);
-    --header-bg: rgba(244, 242, 237, 0.95);
-    --sidebar-bg: #EDEAE3;
-    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+    /* Colors - Light Mode */
+    --color-bg-main: #f5f7fa;
+    --color-bg-surface: #ffffff;
+    --color-bg-card: #ffffff;
+    --color-bg-panel: #f8fafc;
+
+    --color-text-main: #1a202c;
+    --color-text-muted: #64748b;
+    --color-text-dim: #94a3b8;
+
+    --color-border: #e2e8f0;
+    --color-border-hover: #cbd5e1;
+
+    /* UI Elements */
+    --header-bg: rgba(255, 255, 255, 0.95);
+    --sidebar-bg: #ffffff;
+
+    /* Shadows */
+    --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px rgba(58, 141, 255, 0.15);
 }
 
 /* ============================================
-   BASE RESET + BODY
+   BASE STYLES
    ============================================ */
 
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-}
-
 body {
-    font-family: var(--font-ui);
-    background-color: var(--ink);
-    color: var(--paper);
-    transition: background-color 0.2s, color 0.2s;
-    -webkit-font-smoothing: antialiased;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-bg-main);
+    color: var(--color-text-main);
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ── Scanline texture (optional, applied on body via class) ── */
-body.scanlines::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(0deg,
-            transparent,
-            transparent 2px,
-            rgba(0, 0, 0, 0.06) 2px,
-            rgba(0, 0, 0, 0.06) 4px);
-    pointer-events: none;
-    z-index: 9999;
+/* Smooth theme transitions */
+header,
+aside,
+main,
+section,
+div,
+nav,
+button,
+a {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* ── Fine dot grid ── */
-.grid-bg {
-    background-image:
-        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-    background-size: 32px 32px;
+/* ============================================
+   UTILITY CLASSES (Mapped to Variables)
+   ============================================ */
+
+/* Backgrounds */
+.bg-background-dark {
+    background-color: var(--color-bg-main);
 }
+
+.bg-surface-dark {
+    background-color: var(--color-bg-surface);
+}
+
+.bg-card-dark {
+    background-color: var(--color-bg-card);
+}
+
+.bg-panel-dark {
+    background-color: var(--color-bg-panel);
+}
+
+/* Specific HEX overrides mapped to variables for compatibility */
+.bg-\[\#0F121A\],
+.bg-\[\#0f121a\] {
+    background-color: var(--color-bg-main);
+}
+
+.bg-\[\#0D1B2A\],
+.bg-\[\#0d1b2a\] {
+    background-color: var(--color-bg-surface);
+}
+
+.bg-\[\#1E2338\],
+.bg-\[\#1e2338\] {
+    background-color: var(--color-bg-card);
+}
+
+.bg-\[\#161B2E\],
+.bg-\[\#161b2e\] {
+    background-color: var(--color-bg-panel);
+}
+
+/* Text Colors */
+.text-white {
+    color: var(--color-text-main);
+}
+
+.text-\[\#94A3B8\] {
+    color: var(--color-text-muted);
+}
+
+.text-slate-400 {
+    color: var(--color-text-muted);
+}
+
+/* Borders */
+.border-\[\#1E2338\] {
+    border-color: var(--color-border);
+}
+
+.border-white\/5 {
+    border-color: rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* Fallback */
 
 /* ============================================
    SCROLLBAR
    ============================================ */
 
 ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--ink);
+    background: var(--color-bg-main);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--ghost);
-    border-radius: 2px;
+    background: var(--color-border-hover);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted);
+    background: var(--color-primary);
 }
 
+/* Firefox */
 * {
     scrollbar-width: thin;
-    scrollbar-color: var(--ghost) var(--ink);
+    scrollbar-color: var(--color-border-hover) var(--color-bg-main);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--ghost);
+    background: var(--color-border);
+    border-radius: 3px;
 }
 
 /* ============================================
-   TYPOGRAPHY SYSTEM
+   COMPONENT STYLES
    ============================================ */
 
-.font-display {
-    font-family: var(--font-display);
+/* Glass Panel */
+.glass-panel {
+    background: rgba(13, 27, 42, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.font-mono {
-    font-family: var(--font-mono);
-}
-
-.font-ui {
-    font-family: var(--font-ui);
-}
-
-/* Data label — the universal mono label */
-.data-label {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.09em;
-    color: var(--muted);
-}
-
-/* Eyebrow — section identifiers */
-.eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--signal);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.eyebrow::before {
-    content: '';
-    display: block;
-    width: 10px;
-    height: 1px;
-    background: var(--signal);
-    flex-shrink: 0;
-}
-
-/* ============================================
-   COMPONENT: PANEL
-   ============================================ */
-
-.panel {
-    background: var(--ink-3);
+.glass-panel-light {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-card);
 }
 
-/* Highlighted panel (active state) */
-.panel-active {
-    border-color: rgba(200, 255, 87, 0.25);
-    box-shadow: 0 0 0 1px rgba(200, 255, 87, 0.08);
-}
-
-/* ============================================
-   COMPONENT: TAB BUTTONS
-   ============================================ */
-
+/* Tabs */
 .tab-btn {
-    background: var(--ink-3);
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    border: none;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s;
+    color: var(--color-text-muted);
+    background: transparent;
+    transition: all 0.2s ease;
 }
 
 .tab-btn:hover {
-    color: var(--paper-2);
-    background: rgba(255, 255, 255, 0.025);
+    color: var(--color-text-main);
+    background: rgba(58, 141, 255, 0.1);
 }
 
 .tab-btn.active {
-    color: var(--signal);
-    border-bottom-color: var(--signal);
-    background: var(--signal-dim);
+    color: #ffffff;
+    /* Always white on active button for contrast */
+    background: var(--color-primary);
+    box-shadow: var(--shadow-glow);
 }
 
-/* ── Legacy tab styles for fact-check/result pages ── */
-.active-tab {
-    color: var(--signal) !important;
-    border-bottom-color: var(--signal) !important;
-    background: var(--signal-dim) !important;
-}
-
-.inactive-tab {
-    color: var(--muted);
-    border-bottom-color: transparent;
-}
-
-.inactive-tab:hover {
-    color: var(--paper-2);
-    background: rgba(255, 255, 255, 0.02);
-}
-
-/* ============================================
-   COMPONENT: FEATURE CARD
-   ============================================ */
-
+/* Feature Cards */
 .feature-card {
-    background: var(--ink-2);
+    background-color: var(--color-bg-card);
     border: 1px solid var(--color-border);
-    transition: all 0.2s;
+    transition: all 0.3s ease;
 }
 
 .feature-card:hover {
-    background: var(--ink-3);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
     box-shadow: var(--shadow-card);
+    border-color: rgba(58, 141, 255, 0.3);
 }
 
-/* ============================================
-   COMPONENT: GLASS PANEL (legacy)
-   ============================================ */
-
-.glass-panel {
-    background: rgba(17, 19, 24, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* ============================================
-   COMPONENT: VIZ BUTTONS
-   ============================================ */
-
+/* Result Visualization Buttons */
 .viz-btn {
+    color: var(--color-text-muted);
     background: transparent;
-    color: var(--muted);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    border: 1px solid var(--color-border);
-    cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s ease;
 }
 
 .viz-btn:hover {
-    color: var(--paper);
-    border-color: var(--color-border-hover);
+    color: var(--color-text-main);
+    background: rgba(58, 141, 255, 0.1);
 }
 
 .viz-btn.active {
-    color: var(--signal);
-    background: var(--signal-dim);
-    border-color: rgba(200, 255, 87, 0.3);
-    box-shadow: 0 0 0 1px rgba(200, 255, 87, 0.08);
+    color: #ffffff;
+    background: var(--color-primary);
+    box-shadow: 0 2px 10px rgba(58, 141, 255, 0.3);
 }
 
 /* ============================================
@@ -326,39 +257,39 @@ body.scanlines::before {
    ============================================ */
 
 .sentence-highlight {
-    border-radius: 2px;
+    border-radius: 3px;
     padding: 1px 2px;
     margin: 0 -2px;
-    transition: background-color 0.2s, box-shadow 0.2s;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
     cursor: default;
     position: relative;
 }
 
 .sentence-human {
-    background: rgba(200, 255, 87, 0.10);
+    background: rgba(0, 217, 145, 0.12);
 }
 
 .sentence-human:hover {
-    background: rgba(200, 255, 87, 0.20);
-    box-shadow: 0 0 0 1px rgba(200, 255, 87, 0.25);
+    background: rgba(0, 217, 145, 0.25);
+    box-shadow: 0 0 0 1px rgba(0, 217, 145, 0.3);
 }
 
 .sentence-ai {
-    background: rgba(255, 59, 59, 0.12);
+    background: rgba(255, 74, 74, 0.15);
 }
 
 .sentence-ai:hover {
-    background: rgba(255, 59, 59, 0.24);
-    box-shadow: 0 0 0 1px rgba(255, 59, 59, 0.3);
+    background: rgba(255, 74, 74, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 74, 74, 0.35);
 }
 
 .sentence-uncertain {
-    background: rgba(255, 179, 71, 0.10);
+    background: rgba(234, 179, 8, 0.12);
 }
 
 .sentence-uncertain:hover {
-    background: rgba(255, 179, 71, 0.22);
-    box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.28);
+    background: rgba(234, 179, 8, 0.25);
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.3);
 }
 
 /* Tooltips */
@@ -368,15 +299,17 @@ body.scanlines::before {
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 500;
-    padding: 3px 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s ease;
     z-index: 50;
-    color: var(--ink);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    color: #fff;
 }
 
 .sentence-highlight:hover .sentence-tooltip {
@@ -384,40 +317,37 @@ body.scanlines::before {
 }
 
 .sentence-tooltip-human {
-    background: var(--authentic);
+    background: var(--color-accent-success);
 }
 
 .sentence-tooltip-ai {
-    background: var(--danger);
+    background: var(--color-accent-danger);
 }
 
 .sentence-tooltip-uncertain {
-    background: var(--suspicious);
+    background: var(--color-accent-warning);
 }
 
-/* ============================================
-   COMPONENT: PATTERN CHIPS
-   ============================================ */
-
+/* Pattern Chips */
 .pattern-chip {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     padding: 6px 10px;
-    background: var(--ink-4);
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.1);
     border: 1px solid var(--color-border);
-    transition: background 0.15s;
+    transition: background 0.2s ease;
 }
 
 .pattern-chip:hover {
-    background: var(--ink-5);
+    background: rgba(128, 128, 128, 0.15);
 }
 
 .pattern-example {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--ghost);
+    font-size: 11px;
+    color: var(--color-text-dim);
     font-style: italic;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -425,14 +355,11 @@ body.scanlines::before {
     max-width: 200px;
 }
 
-/* ============================================
-   ANIMATIONS
-   ============================================ */
-
+/* Animations */
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(16px);
+        transform: translateY(20px);
     }
 
     to {
@@ -442,301 +369,852 @@ body.scanlines::before {
 }
 
 .animate-fade-in-up {
-    animation: fadeInUp 0.5s ease-out;
+    animation: fadeInUp 0.6s ease-out;
 }
 
-/* Scan line pulse — for active panels */
-@keyframes scan-pulse {
 
-    0%,
-    100% {
-        opacity: 0.3;
-    }
+/* ============================================
+   GLOBAL STYLES
+   ============================================ */
 
-    50% {
-        opacity: 1;
-    }
+body {
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Smooth theme transitions for major elements */
+header,
+aside,
+main,
+section,
+div,
+nav {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 /* ============================================
-   UTILITY OVERRIDES
-   (Mapping legacy Tailwind classes to new system)
+   CUSTOM SCROLLBAR (Dark Theme)
    ============================================ */
 
-.bg-background-dark,
-.bg-\[\#0F121A\],
-.bg-\[\#0f121a\] {
-    background-color: var(--ink) !important;
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-.bg-surface-dark,
-.bg-\[\#0D1B2A\],
-.bg-\[\#0d1b2a\] {
-    background-color: var(--ink-2) !important;
+::-webkit-scrollbar-track {
+    background: #0F121A;
 }
 
-.bg-card-dark,
-.bg-\[\#1E2338\],
-.bg-\[\#1e2338\] {
-    background-color: var(--ink-3) !important;
+::-webkit-scrollbar-thumb {
+    background: #2A3450;
+    border-radius: 4px;
 }
 
-.bg-panel-dark,
-.bg-\[\#161b2e\] {
-    background-color: var(--ink-4) !important;
+::-webkit-scrollbar-thumb:hover {
+    background: #3A8DFF;
 }
 
-.text-white {
-    color: var(--paper) !important;
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #2A3450 #0F121A;
 }
 
-.text-\[\#94A3B8\],
-.text-slate-400 {
-    color: var(--muted) !important;
+/* ============================================
+   GLASSMORPHISM EFFECTS
+   ============================================ */
+
+.glass-panel {
+    background: rgba(13, 27, 42, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.text-slate-300 {
-    color: var(--paper-3) !important;
+.glass-panel-light {
+    background: rgba(13, 27, 42, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.text-slate-500 {
-    color: var(--ghost) !important;
+/* ============================================
+   TAB STYLES
+   ============================================ */
+
+.active-tab {
+    color: #3A8DFF;
+    border-bottom-color: #3A8DFF;
 }
 
-.border-\[\#1E2338\],
-.border-white\/5,
-.border-white\/10 {
-    border-color: var(--color-border) !important;
+.inactive-tab {
+    color: #94A3B8;
+    border-bottom-color: transparent;
 }
 
-/* Text accent colors */
-.text-accent-success {
-    color: var(--authentic) !important;
+.inactive-tab:hover {
+    color: #E2E8F0;
+    background-color: rgba(255, 255, 255, 0.02);
 }
 
-.text-accent-warning {
-    color: var(--suspicious) !important;
+/* ============================================
+   CARD EFFECTS
+   ============================================ */
+
+.feature-card {
+    transition: all 0.3s ease;
 }
 
-.text-accent-danger {
-    color: var(--danger) !important;
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    border-color: rgba(58, 141, 255, 0.3);
 }
 
-.text-accent-green {
-    color: var(--authentic) !important;
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
 }
 
-.text-accent-blue {
-    color: var(--brand) !important;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #20204b;
+    border-radius: 3px;
 }
 
-.text-accent-red {
-    color: var(--danger) !important;
+/* Fade in animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.text-accent-amber {
-    color: var(--suspicious) !important;
-}
-
-/* Background accents */
-.bg-accent-green {
-    background-color: var(--authentic) !important;
-}
-
-.bg-accent-blue {
-    background-color: var(--brand) !important;
-}
-
-.bg-accent-danger {
-    background-color: var(--danger) !important;
-}
-
-/* Step bars — dashboard */
-.step-bar.bg-accent-green {
-    background-color: var(--authentic) !important;
-    box-shadow: 0 0 8px rgba(200, 255, 87, 0.3) !important;
-}
-
-.step-bar.bg-accent-blue {
-    background-color: var(--brand) !important;
-    box-shadow: 0 0 8px rgba(77, 144, 255, 0.3) !important;
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
 }
 
 /* ============================================
    LIGHT MODE OVERRIDES
    ============================================ */
 
+/* Light mode body and backgrounds */
+html.light,
 html.light body,
 body.light {
-    background-color: #F4F2ED !important;
-    color: #1A1C22 !important;
+    background-color: #f5f7fa !important;
+    color: #1a202c !important;
 }
 
-.light header {
-    background-color: rgba(244, 242, 237, 0.95) !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
+/* Header in light mode */
+.light header,
+.light header[class*="bg-"] {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border-bottom-color: #e2e8f0 !important;
 }
 
-.light aside {
-    background-color: #EDEAE3 !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
+/* Sidebar in light mode */
+.light aside,
+.light aside[class*="bg-"] {
+    background-color: #ffffff !important;
+    border-right-color: #e2e8f0 !important;
 }
 
-.light main {
-    background-color: #F4F2ED !important;
+/* Main content area */
+.light main,
+.light main[class*="bg-"] {
+    background-color: #f5f7fa !important;
 }
 
-.light .bg-card-dark,
-.light .bg-surface-dark,
+/* All dark background overrides - comprehensive list */
+.light .bg-\[#161b2e\],
+.light .bg-\[#0D1B2A\],
+.light .bg-\[#0d1b2a\],
+.light .bg-\[#1E2338\],
+.light .bg-\[#1e2338\],
+.light .bg-\[#0F121A\],
+.light .bg-\[#0f121a\],
+.light .bg-\[#0f1723\],
+.light .bg-\[#17202d\],
+.light .bg-\[#17202e\],
+.light .bg-\[#162030\],
+.light .bg-\[#212f4a\],
+.light .bg-\[#20324b\],
+.light .bg-\[#0a0f16\],
 .light .bg-panel-dark,
+.light .bg-surface-dark,
+.light .bg-card-dark,
 .light .bg-background-dark,
-.light .glass-panel,
-.light .panel {
-    background-color: #FFFFFF !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
+.light .bg-secondary,
+.light .bg-surface {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
 }
 
+/* Background with opacity - use attribute selectors */
+.light [class*="bg-\[#0D1B2A\]"],
+.light [class*="bg-\[#0d1b2a\]"],
+.light [class*="bg-\[#1E2338\]"],
+.light [class*="bg-\[#1e2338\]"],
+.light [class*="bg-\[#0F121A\]"],
+.light [class*="bg-\[#0f121a\]"] {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Nav pill container */
+.light nav[class*="bg-\[#1E2338\]"],
+.light nav.rounded-full {
+    background-color: rgba(241, 245, 249, 0.9) !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Text colors in light mode */
 .light .text-white {
-    color: #1A1C22 !important;
+    color: #1a202c !important;
 }
 
-.light .text-slate-400 {
-    color: #6E7280 !important;
+.light .text-\[#94A3B8\],
+.light .text-\[#94a3b8\] {
+    color: #64748b !important;
 }
 
-.light .text-slate-300 {
-    color: #4A4E5A !important;
+.light .text-\[#64748B\] {
+    color: #94a3b8 !important;
 }
 
-.light .text-slate-500 {
-    color: #9BA0AE !important;
-}
-
+/* Border colors in light mode */
+.light .border-\[#1E2338\],
+.light .border-\[#2A3450\],
 .light .border-white\/5,
 .light .border-white\/10 {
-    border-color: rgba(0, 0, 0, 0.08) !important;
+    border-color: #e2e8f0 !important;
 }
 
+/* Input fields in light mode */
 .light input,
 .light textarea {
-    background-color: #FFFFFF !important;
-    border-color: rgba(0, 0, 0, 0.12) !important;
-    color: #1A1C22 !important;
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1a202c !important;
 }
 
+.light input::placeholder,
+.light textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Scrollbar for light mode */
 .light ::-webkit-scrollbar-track {
-    background: #F4F2ED;
+    background: #f1f5f9;
 }
 
 .light ::-webkit-scrollbar-thumb {
-    background: #C8C5BE;
+    background: #cbd5e1;
 }
 
-/* Sentence highlighting — light mode */
+.light ::-webkit-scrollbar-thumb:hover {
+    background: #3A8DFF;
+}
+
+/* Nav pills in light mode */
+.light nav.bg-\[#1E2338\]\/50 {
+    background-color: rgba(241, 245, 249, 0.8) !important;
+    border-color: #e2e8f0 !important;
+}
+
+.light .inactive-tab {
+    color: #64748b;
+}
+
+.light .inactive-tab:hover {
+    color: #1a202c;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Feature cards in light mode */
+.light .feature-card {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.light .feature-card:hover {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+/* Hero gradient for light mode */
+.light .bg-hero-gradient {
+    background-image: radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.05) 0%, transparent 60%);
+}
+
+/* ==================================================
+   ADDITIONAL CUSTOM THEME OVERRIDES (Fixing "Ugly" Mode)
+   ================================================== */
+
+/* Override custom tailwind classes used in various pages (FactCheck, VideoResult, etc) */
+.light .bg-card-dark,
+.light .bg-surface-dark,
+.light .bg-visio-card,
+.light .bg-visio-navy,
+.light .bg-visio-charcoal,
+.light .bg-card-bg,
+.light .glass-panel,
+.light .bg-primary-dark\/50,
+.light .bg-primary-dark\/40,
+.light .bg-\[#0a0f16\],
+.light .bg-\[#0D1B2A\],
+.light .bg-\[#212f4a\],
+.light .bg-\[#0f121a\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #1a202c !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Ensure backdrop filters don't mess up white backgrounds */
+.light .glass-panel {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(12px);
+}
+
+/* Fix Button Text Contrast: Keep text white on primary/accent buttons */
+.light .bg-primary.text-white,
+.light .bg-accent-red.text-white,
+.light .bg-accent-green.text-white,
+.light .bg-accent-amber.text-white,
+.light button.bg-primary,
+.light a.bg-primary,
+.light .bg-accent-danger,
+.light .bg-\[#20324b\],
+/* Setup Analysis buttons */
+.light .bg-\[#212f4a\] {
+    color: #ffffff !important;
+}
+
+/* Fix specific gradient text or icons */
+.light .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+}
+
+/* Fix various opacity text helpers */
+.light .text-white\/70,
+.light .text-white\/60,
+.light .text-white\/50,
+.light .text-white\/40,
+.light .text-white\/30,
+.light .text-gray-400,
+.light .text-slate-400 {
+    color: #64748b !important;
+}
+
+/* Fix specific IDs if needed */
+.light #trustScore,
+.light #credibilityScore {
+    color: #1a202c !important;
+}
+
+/* ============================================
+   ADDITIONAL LIGHT MODE FIXES
+   ============================================ */
+
+/* Buttons in light mode */
+.light button[class*="bg-\[#1E2338\]"],
+.light button[class*="bg-\[#2A3450\]"] {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+.light button[class*="bg-\[#1E2338\]"]:hover,
+.light button[class*="bg-\[#2A3450\]"]:hover {
+    background-color: #cbd5e1 !important;
+}
+
+/* Sidebar links */
+.light a[class*="hover:bg-\[#1E2338\]"]:hover {
+    background-color: #e2e8f0 !important;
+}
+
+/* Dividers - be specific to not affect progress bar tracks */
+.light div.h-px.bg-\[#1E2338\],
+.light div.w-full.h-px.bg-\[#1E2338\] {
+    background-color: #e2e8f0 !important;
+}
+
+/* Upload areas / drop zones */
+.light .border-dashed {
+    border-color: #cbd5e1 !important;
+    background-color: #f8fafc !important;
+}
+
+/* Tab navigation */
+.light .bg-primary\/20 {
+    background-color: rgba(58, 141, 255, 0.15) !important;
+}
+
+/* Noise overlay - reduce opacity in light mode (only for decorative overlays) */
+.light .fixed [class*="noise"],
+.light .fixed [class*="grainy"],
+.light .pointer-events-none [class*="noise"] {
+    opacity: 0.05 !important;
+}
+
+/* Grid lines / decorative backgrounds - only on main bg */
+.light .pointer-events-none [style*="grid"] {
+    opacity: 0.3 !important;
+}
+
+/* Icon colors */
+.light .text-\[#94A3B8\] .material-symbols-outlined,
+.light .material-symbols-outlined {
+    color: inherit !important;
+}
+
+/* Badge/status indicators - keep colored */
+.light .bg-accent-danger,
+.light .bg-accent-success,
+.light .bg-accent-warning,
+.light .bg-primary {
+    color: #ffffff !important;
+}
+
+/* ============================================
+   COMPREHENSIVE LIGHT MODE PANEL FIXES
+   ============================================ */
+
+/* Main container backgrounds - be specific to avoid breaking accent colors */
+.light body,
+.light main,
+.light aside,
+.light header,
+.light .bg-background-dark,
+.light .bg-surface-dark,
+.light .bg-panel-dark,
+.light .bg-card-dark {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Cards and panels with shadows */
+.light .bg-card-dark.rounded-2xl,
+.light .bg-card-dark.rounded-xl,
+.light [class*="bg-card-dark"],
+.light [class*="from-card-dark"],
+.light [class*="to-surface-dark"] {
+    background-color: #ffffff !important;
+    background-image: none !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Gradient backgrounds in light mode */
+.light .bg-gradient-to-r.from-card-dark,
+.light [class*="bg-gradient"][class*="from-card-dark"] {
+    background: #f8fafc !important;
+}
+
+/* Specific hex backgrounds for panels (not accent elements) */
+.light>.bg-\[#0F121A\],
+.light>.bg-\[#0D1B2A\],
+.light>.bg-\[#161b2e\],
+.light>.bg-\[#1E2338\],
+.light main .bg-\[#0F121A\],
+.light main .bg-\[#0D1B2A\],
+.light main .bg-\[#161b2e\],
+.light main .bg-\[#1E2338\],
+.light section .bg-\[#0F121A\],
+.light section .bg-\[#0D1B2A\] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Tab containers and navigation panels */
+.light .bg-card-dark\/50,
+.light [class*="bg-card-dark"]:not(.scan-line):not([class*="accent"]),
+.light [class*="bg-surface-dark"]:not(.scan-line):not([class*="accent"]),
+.light [class*="bg-panel-dark"]:not(.scan-line):not([class*="accent"]),
+.light [class*="bg-background-dark"]:not(.scan-line):not([class*="accent"]) {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Active tabs should have light background */
+.light .tab-btn.bg-card-dark,
+.light button.bg-card-dark {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+/* Modal/dialog backgrounds - be more specific */
+.light .glass-panel,
+.light .shadow-2xl.rounded-2xl,
+.light .shadow-xl.rounded-2xl,
+.light .shadow-xl.rounded-xl {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Upload area inner containers */
+.light .border-dashed[class*="bg-"] {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Scorecard and info panels */
+.light #analysisInfo,
+.light .bg-card-dark.rounded-2xl {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Progress bars background */
+.light .bg-background-dark\/50,
+.light [class*="bg-background-dark"] {
+    background-color: #f1f5f9 !important;
+}
+
+/* Download/action buttons with dark backgrounds */
+.light button[class*="bg-surface-dark"],
+.light button[class*="bg-card-dark"],
+.light a[class*="bg-surface-dark"],
+.light a[class*="bg-card-dark"] {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* White text on light backgrounds - fix contrast */
+.light .text-white:not(.bg-primary):not(.bg-accent-success):not(.bg-accent-danger):not(.bg-accent-warning) {
+    color: #1a202c !important;
+}
+
+/* Slate text colors */
+.light .text-slate-400,
+.light .text-slate-500 {
+    color: #64748b !important;
+}
+
+.light .text-slate-300 {
+    color: #475569 !important;
+}
+
+/* Border with white opacity */
+.light .border-white\/5,
+.light .border-white\/10,
+.light [class*="border-white\/"] {
+    border-color: #e2e8f0 !important;
+}
+
+/* Background with opacity variations */
+.light .bg-white\/5,
+.light .bg-white\/10,
+.light [class*="bg-white\/"] {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Specific gradient backgrounds */
+.light [class*="bg-primary\/5"],
+.light [class*="bg-primary\/10"],
+.light [class*="bg-primary\/20"] {
+    background-color: rgba(58, 141, 255, 0.1) !important;
+}
+
+/* Analysis stream/content panels */
+.light #contentStream,
+.light .analysis-panel,
+.light [id*="Panel"],
+.light [id*="panel"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Fix SVG strokes in gauges */
+.light svg circle[stroke="#20324b"] {
+    stroke: #e2e8f0 !important;
+}
+
+/* Media tab bar */
+.light #mediaTabs,
+.light [id="mediaTabs"] {
+    background-color: #ffffff !important;
+}
+
+.light .media-tab.inactive-tab {
+    color: #64748b !important;
+}
+
+.light .media-tab.inactive-tab:hover {
+    color: #1a202c !important;
+    background-color: #f1f5f9 !important;
+}
+
+/* Unified Credibility Scorecard footer */
+.light .bg-surface-dark.rounded-2xl,
+.light footer[class*="bg-"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Fix any remaining dark backgrounds in specific containers */
+.light .shadow-xl[class*="bg-"],
+.light .shadow-2xl[class*="bg-"] {
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Keep primary colored buttons with white text */
+.light button.bg-primary,
+.light a.bg-primary,
+.light .bg-primary.rounded-2xl {
+    background-color: #3A8DFF !important;
+    color: #ffffff !important;
+}
+
+/* Analyzing Media modal fixes */
+.light .backdrop-blur-sm[class*="bg-"] {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Report page button */
+.light button[class*="bg-"][class*="rounded-full"] {
+    background-color: #e2e8f0 !important;
+    color: #1a202c !important;
+}
+
+/* Keep accent colored elements properly colored */
+.light .bg-accent-success,
+.light .bg-accent-danger,
+.light .bg-accent-warning {
+    color: #ffffff !important;
+}
+
+.light .text-accent-success {
+    color: #00D991 !important;
+}
+
+.light .text-accent-danger {
+    color: #FF4A4A !important;
+}
+
+/* ============================================
+   VISUALIZATION TOGGLE BUTTONS
+   ============================================ */
+
+/* ============================================
+   SENTENCE HIGHLIGHTING (Text Result Page)
+   ============================================ */
+
+.sentence-highlight {
+    border-radius: 3px;
+    padding: 1px 2px;
+    margin: 0 -2px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+    position: relative;
+}
+
+.sentence-human {
+    background: rgba(0, 217, 145, 0.12);
+}
+
+.sentence-human:hover {
+    background: rgba(0, 217, 145, 0.25);
+    box-shadow: 0 0 0 1px rgba(0, 217, 145, 0.3);
+}
+
+.sentence-ai {
+    background: rgba(255, 74, 74, 0.15);
+}
+
+.sentence-ai:hover {
+    background: rgba(255, 74, 74, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 74, 74, 0.35);
+}
+
+.sentence-uncertain {
+    background: rgba(234, 179, 8, 0.12);
+}
+
+.sentence-uncertain:hover {
+    background: rgba(234, 179, 8, 0.25);
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.3);
+}
+
+/* Sentence tooltip */
+.sentence-tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.sentence-highlight:hover .sentence-tooltip {
+    opacity: 1;
+}
+
+.sentence-tooltip-human {
+    background: #00D991;
+    color: #fff;
+}
+
+.sentence-tooltip-ai {
+    background: #FF4A4A;
+    color: #fff;
+}
+
+.sentence-tooltip-uncertain {
+    background: #EAB308;
+    color: #fff;
+}
+
+/* Document info header */
+.doc-format-pdf {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.doc-format-docx {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.doc-format-txt {
+    background-color: #f0fdf4;
+    color: #16a34a;
+}
+
+.doc-icon-pdf {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.doc-icon-docx {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.doc-icon-txt {
+    background-color: #f0fdf4;
+    color: #16a34a;
+}
+
+/* Pattern category chips */
+.pattern-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.2s ease;
+}
+
+.pattern-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pattern-example {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+/* Light mode: sentence highlighting */
 .light .sentence-human {
-    background: rgba(100, 160, 30, 0.12);
+    background: rgba(0, 217, 145, 0.15);
 }
 
 .light .sentence-human:hover {
-    background: rgba(100, 160, 30, 0.22);
+    background: rgba(0, 217, 145, 0.3);
 }
 
 .light .sentence-ai {
-    background: rgba(200, 60, 60, 0.12);
+    background: rgba(255, 74, 74, 0.18);
 }
 
 .light .sentence-ai:hover {
-    background: rgba(200, 60, 60, 0.22);
+    background: rgba(255, 74, 74, 0.32);
 }
 
 .light .sentence-uncertain {
-    background: rgba(200, 130, 30, 0.12);
+    background: rgba(234, 179, 8, 0.15);
 }
 
 .light .sentence-uncertain:hover {
-    background: rgba(200, 130, 30, 0.22);
+    background: rgba(234, 179, 8, 0.3);
 }
 
-/* Pattern chips — light */
+/* Light mode: pattern chips */
 .light .pattern-chip {
     background: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.08);
 }
 
 .light .pattern-chip:hover {
-    background: rgba(0, 0, 0, 0.07);
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .light .pattern-example {
     color: rgba(0, 0, 0, 0.4);
 }
 
-/* Viz buttons — light */
-.light .viz-btn {
-    color: #6E7280;
+/* Dark Mode */
+.viz-btn {
+    color: #8da8ce;
     background: transparent;
-    border-color: rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.viz-btn:hover {
+    color: white;
+    background: rgba(58, 141, 255, 0.1);
+}
+
+.viz-btn.active {
+    color: white;
+    background: #3A8DFF;
+    box-shadow: 0 2px 10px rgba(58, 141, 255, 0.3);
+}
+
+/* Light Mode */
+.light .viz-btn {
+    color: #64748b;
+    background: transparent;
 }
 
 .light .viz-btn:hover {
-    color: #1A1C22;
-    background: rgba(0, 0, 0, 0.04);
-    border-color: rgba(0, 0, 0, 0.18);
+    color: #1a202c;
+    background: rgba(58, 141, 255, 0.1);
 }
 
 .light .viz-btn.active {
-    color: #fff;
-    background: #3A7A20;
-    border-color: transparent;
-}
-
-/* Tab buttons — light */
-.light .tab-btn {
-    background: #EDEAE3;
-    color: #6E7280;
-}
-
-.light .tab-btn:hover {
-    color: #1A1C22;
-    background: rgba(0, 0, 0, 0.04);
-}
-
-.light .tab-btn.active {
-    color: #3A7A20;
-    border-bottom-color: #3A7A20;
-    background: rgba(100, 160, 30, 0.08);
-}
-
-/* ============================================
-   DOC FORMAT BADGES
-   ============================================ */
-
-.doc-format-pdf {
-    background-color: #2D0F0F;
-    color: var(--danger);
-}
-
-.doc-format-docx {
-    background-color: #0F1A2D;
-    color: var(--brand);
-}
-
-.doc-format-txt {
-    background-color: #0F2D16;
-    color: var(--authentic);
-}
-
-.doc-icon-pdf {
-    background-color: #2D0F0F;
-    color: var(--danger);
-}
-
-.doc-icon-docx {
-    background-color: #0F1A2D;
-    color: var(--brand);
-}
-
-.doc-icon-txt {
-    background-color: #0F2D16;
-    color: var(--authentic);
+    color: white;
+    background: #3A8DFF;
+    box-shadow: 0 2px 10px rgba(58, 141, 255, 0.3);
 }
