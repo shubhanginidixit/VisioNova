@@ -772,7 +772,15 @@
                 updateLoadingStatus('Error: Storage module not loaded');
                 return null;
             }
-            const inputData = VisioNovaStorage.getFile(mediaType);
+            let inputData = null;
+
+            // For large image uploads, prefer IndexedDB and fall back to sessionStorage.
+            if (mediaType === 'image' && typeof VisioNovaStorage.getImageFile === 'function') {
+                inputData = await VisioNovaStorage.getImageFile();
+            }
+            if (!inputData) {
+                inputData = VisioNovaStorage.getFile(mediaType);
+            }
             const isDocumentUpload = mediaType === 'text' && sessionStorage.getItem('visioNova_isDocument') === 'true';
             if (!isDocumentUpload && (!inputData || !inputData.data)) {
                 updateLoadingStatus('Error: No input data found. Please go back and upload/enter data.');
