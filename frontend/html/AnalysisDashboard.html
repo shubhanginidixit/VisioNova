@@ -751,6 +751,76 @@
                                     logDebug('Audio API error:', fetchError);
                                     throw fetchError;
                                 }
+                            } else if (mediaType === 'video') {
+                                // Handle video analysis with backend API
+                                logDebug('Starting video analysis...');
+
+                                // Step 1: Frame Analysis
+                                updateStepProgress(0, 'processing', 30);
+                                updateLoadingStatus(config.statusMessages[0] || 'Processing video frames...');
+
+                                let progressValue = 30;
+                                const progressInterval = setInterval(() => {
+                                    if (progressValue < 80) {
+                                        progressValue += 2;
+                                        updateStepProgress(0, 'processing', progressValue);
+                                    }
+                                }, 400);
+
+                                try {
+                                    const controller = new AbortController();
+                                    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min for video
+
+                                    const response = await fetch(`${API_BASE_URL}/api/detect-video`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            video: inputData.data,
+                                            filename: inputData.fileName || 'video.mp4'
+                                        }),
+                                        signal: controller.signal
+                                    });
+
+                                    clearTimeout(timeoutId);
+                                    clearInterval(progressInterval);
+
+                                    if (!response.ok) {
+                                        const errorText = await response.text();
+                                        logDebug(`Video API error: ${response.status}`, errorText);
+                                        throw new Error(`Video analysis failed: ${response.status}`);
+                                    }
+
+                                    // Step 1: Complete
+                                    updateStepProgress(0, 'complete', 100);
+
+                                    // Step 2: Audio-Visual Sync
+                                    updateStepProgress(1, 'processing', 50);
+                                    updateLoadingStatus(config.statusMessages[1] || 'Checking temporal consistency...');
+
+                                    const result = await response.json();
+                                    logDebug('Video analysis result:', result);
+
+                                    await new Promise(r => setTimeout(r, 400));
+                                    updateStepProgress(1, 'complete', 100);
+
+                                    // Step 3: Deepfake Detection
+                                    updateStepProgress(2, 'processing', 60);
+                                    updateLoadingStatus(config.statusMessages[2] || 'Running deepfake detectors...');
+
+                                    // Store result for VideoResultPage to use
+                                    sessionStorage.setItem('visioNova_video_result', JSON.stringify(result));
+                                    logDebug('Video result stored in sessionStorage');
+
+                                    await new Promise(r => setTimeout(r, 500));
+                                    updateStepProgress(2, 'complete', 100);
+                                    updateLoadingStatus('Analysis complete! Redirecting...');
+
+                                    return result;
+                                } catch (fetchError) {
+                                    clearInterval(progressInterval);
+                                    logDebug('Video API error:', fetchError);
+                                    throw fetchError;
+                                }
                             } else {
                                 // For other media types (video), simulate progress
                                 for (let i = 0; i < config.steps.length; i++) {

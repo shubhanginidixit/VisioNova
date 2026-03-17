@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova - Semantic Text Telemetry</title>
+    <title>VisioNova - Text Analysis</title>
     <!-- Blocking theme script to prevent FOUC -->
     <script>
         (function() {
@@ -12,340 +13,487 @@
             document.documentElement.classList.add(theme);
         })();
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "v-bg": "#0A0F1A", 
-                        "v-surface": "#0F1626", 
-                        "v-panel": "#141C2F", 
-                        "v-border": "rgba(255, 255, 255, 0.08)",
-                        "v-border-focus": "rgba(100, 255, 218, 0.4)",
-                        "v-text-main": "#F8FAFC",
-                        "v-text-muted": "#94A3B8",
-                        "v-authentic": "#64FFDA", 
-                        "v-suspicious": "#FFB74D", 
-                        "v-brand": "#3B82F6",
-                        "v-danger": "#FF4A4A",
-                        // Mappings for JS compatibility
-                        "accent-emerald": "#64FFDA",
-                        "accent-amber": "#FFB74D",
-                        "accent-danger": "#FF4A4A"
+                        "primary": "#3A8DFF",
+                        "accent-success": "#00D991",
+                        "accent-warning": "#FFB74A",
+                        "accent-danger": "#FF4A4A",
+                        "accent-emerald": "#00D991",
+                        "accent-amber": "#FFB74A",
+                        "accent-red": "#FF4A4A",
+                        "primary-dark": "#0D1B2A",
+                        "background-light": "#F5F7FA",
+                        "background-dark": "#0F121A",
+                        "surface-dark": "#0D1B2A",
+                        "panel-dark": "#161B2E",
+                        "card-dark": "#1E2338",
                     },
                     fontFamily: {
-                        "sans": ["Inter", "sans-serif"],
-                        "mono": ["Roboto Mono", "monospace"],
+                        "display": ["Inter", "sans-serif"]
                     },
-                    boxShadow: {
-                        'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-                    }
                 },
             },
         }
     </script>
-    
-    <style>
-        /* Base system overrides */
-        body { background-color: #0A0F1A !important; color: #F8FAFC !important; letter-spacing: -0.01em; }
-        .light body { background-color: #F8FAFC; color: #0F172A; }
-        
-        .panel {
-            background-color: theme('colors.v-panel');
-            border: 1px solid theme('colors.v-border');
-            box-shadow: theme('boxShadow.panel');
-        }
-        
-        .structural-grid {
-            background-image: linear-gradient(theme('colors.v-border') 1px, transparent 1px),
-                              linear-gradient(90deg, theme('colors.v-border') 1px, transparent 1px);
-            background-size: 40px 40px;
-            opacity: 0.15;
-        }
-
-        .data-label { font-family: theme('fontFamily.mono'); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: theme('colors.v-text-muted'); }
-        
-        /* Document Styles */
-        #uploadedText {
-            font-family: theme('fontFamily.mono');
-            font-size: 0.85rem;
-            line-height: 1.8;
-            color: theme('colors.v-text-main');
-        }
-        
-        /* Highlighter Colors injected by JS */
-        mark.bg-green-100 { background-color: rgba(100, 255, 218, 0.15); border-bottom: 1px solid theme('colors.v-authentic'); color: inherit; }
-        mark.bg-red-100 { background-color: rgba(255, 74, 74, 0.15); border-bottom: 1px solid theme('colors.v-danger'); color: inherit; }
-        mark.bg-yellow-100 { background-color: rgba(255, 183, 77, 0.15); border-bottom: 1px solid theme('colors.v-suspicious'); color: inherit; }
-        
-        /* Force JS injected inline styles to use the design system */
-        #humanBar { border-right: 1px solid theme('colors.v-bg'); }
-        #aiBar { border-left: 1px solid theme('colors.v-bg'); }
-        
-        /* Pattern Categories Styles */
-        #patternCategories h4 {
-            font-family: theme('fontFamily.mono');
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: theme('colors.v-text-muted');
-        }
-        
-        .btn-outline {
-            border: 1px solid theme('colors.v-border');
-            background: theme('colors.v-bg');
-            color: theme('colors.v-text-muted');
-            font-family: theme('fontFamily.mono');
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            transition: all 0.2s;
-        }
-        .btn-outline:hover {
-            border-color: theme('colors.v-authentic');
-            color: theme('colors.v-authentic');
-        }
-    </style>
-
     <link rel="stylesheet" href="../css/common.css">
-    <script src="../js/layout.js"></script>
+    <script src="../js/theme-toggle.js"></script>
 </head>
 
-<body class="relative flex h-screen w-full flex-col overflow-hidden selection:bg-v-brand selection:text-white">
-    <!-- Background Texture -->
-    <div class="absolute inset-0 pointer-events-none structural-grid z-0"></div>
-
-    <!-- Top Navigation (Injected by layout.js) -->
-    <header class="relative z-20 border-b border-v-border bg-v-bg/90 backdrop-blur-sm"></header>
-
-    <div class="flex flex-1 overflow-hidden relative z-10 w-full max-w-[1600px] mx-auto">
-        <!-- Sidebar Navigation (Injected by layout.js) -->
-        <aside class="border-r border-v-border bg-v-bg/90 backdrop-blur-sm hidden md:block w-64"></aside>
-
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto w-full px-6 py-8 flex flex-col gap-6">
-            
-            <!-- Context Header -->
-            <div class="flex flex-col gap-4 border border-v-border panel p-6 rounded-none relative">
-                <div class="absolute top-0 right-0 p-2 opacity-50"><span class="material-symbols-outlined text-v-text-muted">psychology</span></div>
-                
-                <div class="flex items-center gap-2 text-v-text-muted font-mono text-[10px] tracking-widest uppercase">
-                    <span>Telemetry</span> <span class="text-v-authentic">></span> <span>Text Analysis</span>
+<body
+    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div
+            class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
+        </div>
+        <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
+    </div>
+    <!-- Top Navbar -->
+    <header
+        class="z-50 flex items-center justify-between whitespace-nowrap border-b border-[#1E2338] bg-[#0D1B2A]/90 backdrop-blur-md px-6 py-3 sticky top-0">
+        <div class="flex items-center gap-4 text-white">
+            <div class="size-8 text-primary">
+                <span class="material-symbols-outlined !text-[32px]">hub</span>
+            </div>
+            <h2 class="text-white text-xl font-bold leading-tight tracking-[-0.015em] hidden sm:block">VisioNova</h2>
+        </div>
+        <div class="flex flex-1 justify-center hidden md:flex">
+            <nav class="flex items-center gap-1 bg-[#1E2338]/50 p-1 rounded-full border border-white/5">
+                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                    href="homepage.html">Home</a>
+                <a class="text-white bg-primary/20 px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                    href="AnalysisDashboard.html">Analyze</a>
+                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                    href="FactCheckPage.html">Fact Check</a>
+                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                    href="ReportPage.html">Reports</a>
+                <a class="text-[#94A3B8] hover:text-white px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                    href="#">API</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <button
+                class="relative flex size-10 items-center justify-center rounded-xl bg-[#1E2338] text-[#94A3B8] hover:text-white hover:bg-[#2A3450] transition-colors">
+                <span class="material-symbols-outlined !text-[20px]">notifications</span>
+                <span
+                    class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent-danger border border-[#1E2338]"></span>
+            </button>
+            <button id="themeToggle"
+                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1E2338] hover:bg-[#2A3450] transition-colors border border-white/5"
+                title="Toggle Dark/Light Mode">
+                <span class="material-symbols-outlined !text-[20px] theme-icon-dark text-yellow-400">light_mode</span>
+                <span
+                    class="material-symbols-outlined !text-[20px] theme-icon-light hidden text-slate-700">dark_mode</span>
+            </button>
+        </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside
+            class="hidden md:flex w-20 flex-col items-center justify-between bg-[#0D1B2A] border-r border-[#1E2338] py-6 z-40 hover:w-64 transition-all duration-300 group/sidebar absolute md:relative h-full">
+            <div class="flex flex-col gap-6 w-full px-3">
+                <div class="w-full flex flex-col gap-1">
+                    <a href="homepage.html"
+                        class="flex items-center gap-4 px-3 py-3 rounded-xl bg-primary text-white w-full justify-start overflow-hidden whitespace-nowrap shadow-glow">
+                        <span class="material-symbols-outlined shrink-0">add_circle</span>
+                        <span
+                            class="text-sm font-semibold opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">New
+                            Scan</span>
+                    </a>
                 </div>
-                
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div class="w-full h-px bg-[#1E2338]"></div>
+                <div class="flex flex-col gap-2 w-full">
+                    <a href="AnalysisDashboard.html"
+                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+                        <span class="material-symbols-outlined shrink-0">dashboard</span>
+                        <span
+                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Dashboard</span>
+                    </a>
+                    <a href="ReportPage.html"
+                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+                        <span class="material-symbols-outlined shrink-0">history</span>
+                        <span
+                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Recent
+                            Scans</span>
+                    </a>
+                    <a href="ReportPage.html"
+                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+                        <span class="material-symbols-outlined shrink-0">folder_open</span>
+                        <span
+                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Projects</span>
+                    </a>
+                    <a href="FactCheckPage.html"
+                        class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+                        <span class="material-symbols-outlined shrink-0">shield</span>
+                        <span
+                            class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Threat
+                            Intel</span>
+                    </a>
+                </div>
+            </div>
+            <div class="flex flex-col gap-2 w-full px-3">
+                <button
+                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+                    <span class="material-symbols-outlined shrink-0">settings</span>
+                    <span
+                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Settings</span>
+                </button>
+                <button
+                    class="flex items-center gap-4 px-3 py-3 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#1E2338] w-full justify-start overflow-hidden whitespace-nowrap transition-colors">
+                    <span class="material-symbols-outlined shrink-0">help</span>
+                    <span
+                        class="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Support</span>
+                </button>
+            </div>
+        </aside>
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-4 md:p-8 lg:px-12">
+            <!-- Background Decorative Elements -->
+            <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                <div
+                    class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
+                </div>
+                <div
+                    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
+                </div>
+            </div>
+            <div class="max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
+                <!-- Page Heading -->
+                <div class="flex flex-wrap justify-between items-end gap-4 border-b border-white/10 pb-6">
                     <div class="flex flex-col gap-2">
-                        <h1 id="pageTitle" class="text-3xl font-semibold tracking-tight text-white">Semantic Buffer Analysis</h1>
-                        <p class="data-label flex items-center gap-2">
-                            <span class="material-symbols-outlined text-sm">schedule</span>
-                            <span id="analysisDate">Active Feed</span>
+                        <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
+                            <span>Analyze</span>
+                            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                            <span>Text Analysis</span>
+                        </div>
+                        <h1 id="pageTitle"
+                            class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Text
+                            Analysis</h1>
+                        <p class="text-[#8da8ce] text-sm font-normal flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+                            <span id="analysisDate">Analyzed just now</span>
                         </p>
                     </div>
-                    
                     <div class="flex gap-3">
-                        <button class="border border-v-border bg-v-surface hover:border-v-authentic text-v-text-muted hover:text-v-authentic transition-colors px-4 py-2 font-mono text-xs flex items-center gap-2 uppercase">
-                            <span class="material-symbols-outlined text-sm">share</span> Relay
+                        <button
+                            class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold transition-all">
+                            <span class="material-symbols-outlined text-[20px] mr-2">share</span>
+                            Share
                         </button>
-                        <button class="border border-v-authentic bg-v-authentic/10 text-v-authentic hover:bg-v-authentic/20 transition-colors px-4 py-2 font-mono text-xs flex items-center gap-2 uppercase">
-                            <span class="material-symbols-outlined text-sm">download</span> Fetch Report
+                        <button
+                            class="flex h-10 px-4 cursor-pointer items-center justify-center rounded-xl bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-lg shadow-primary/20 transition-all">
+                            <span class="material-symbols-outlined text-[20px] mr-2">download</span>
+                            Export Report
                         </button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Dashboard Grid Container -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                
-                <!-- Unified Scorecard -->
-                <div class="panel border border-v-border p-6 flex flex-col relative justify-between min-h-[160px]">
-                    <h3 class="data-label block mb-4 border-b border-v-border pb-2">Human Equivalency Index</h3>
-                    
-                    <div class="flex items-baseline gap-3 mb-2">
-                        <span id="credibilityScore" class="text-4xl font-mono font-bold text-white tracking-tighter">--</span>
-                        <span id="verdictBadge" class="px-2 py-0.5 border border-v-authentic text-v-authentic bg-v-authentic/10 font-mono text-[10px] uppercase tracking-wider animate-pulse">Scanning</span>
-                    </div>
-                    
-                    <div class="mt-auto w-full">
-                        <div class="w-full bg-v-bg border border-v-border h-2 mb-2">
-                            <div id="scoreBar" class="h-2 transition-all duration-1000 bg-v-authentic" style="width: 0%;"></div>
+                <!-- Scorecard Section -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Unified Score -->
+                    <div
+                        class="bg-primary-dark/50 border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <span class="material-symbols-outlined text-8xl text-white">shield</span>
                         </div>
-                        <p id="metricsInfo" class="text-[10px] uppercase font-mono text-v-text-muted">Generating vector maps...</p>
-                    </div>
-                </div>
-
-                <!-- Probability Distribution -->
-                <div class="panel border border-v-border p-6 flex flex-col justify-between min-h-[160px]">
-                    <h3 class="data-label block mb-4 border-b border-v-border pb-2">Model Probability</h3>
-                    
-                    <div class="flex gap-4 items-end mt-2 flex-1">
-                        <!-- Human Bar -->
-                        <div class="flex flex-col gap-1 w-1/2 justify-end h-full">
-                            <span id="humanPercent" class="text-xs font-mono font-bold text-white text-center mb-1">--%</span>
-                            <div class="w-full bg-v-bg border border-v-border relative flex items-end overflow-hidden" style="height: 60px;">
-                                <div id="humanBar" class="w-full bg-v-brand transition-all duration-1000" style="height: 0%;"></div>
-                            </div>
-                            <span class="data-label text-center mt-1 !text-[9px]">Human</span>
-                        </div>
-                        <!-- AI Bar -->
-                        <div class="flex flex-col gap-1 w-1/2 justify-end h-full">
-                            <span id="aiPercent" class="text-xs font-mono font-bold text-white text-center mb-1">--%</span>
-                            <div class="w-full bg-v-bg border border-v-border relative flex items-end overflow-hidden" style="height: 60px;">
-                                <div id="aiBar" class="w-full bg-v-danger transition-all duration-1000" style="height: 0%;"></div>
-                            </div>
-                            <span class="data-label text-center mt-1 !text-[9px]">Synthetic</span>
-                        </div>
-                    </div>
-                    <p id="probabilityNote" class="text-[10px] font-mono text-v-text-muted mt-3 uppercase tracking-widest flex items-center gap-1 bg-v-surface border border-v-border px-2 py-1">
-                        <span class="material-symbols-outlined text-[14px]">psychology</span>
-                        <span id="probabilityText">Awaiting Data</span>
-                    </p>
-                </div>
-
-                <!-- Source Architecture / Reliability -->
-                <div id="sourceCard" class="panel border border-v-border p-6 flex flex-col min-h-[160px]">
-                    <h3 class="data-label block mb-4 border-b border-v-border pb-2">Document Architecture</h3>
-                    
-                    <div class="flex-1 mt-2">
-                        <span id="sourceLevel" class="text-xl font-mono font-bold text-white block">Evaluating...</span>
-                        <span id="sourceInfo" class="text-[10px] font-mono text-v-text-muted uppercase mt-2 block">Awaiting payload</span>
-                    </div>
-                    <div id="sourceTags" class="flex gap-2 mt-4 flex-wrap">
-                        <!-- Dynamic Tags -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Lower Layout Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full pb-12">
-                
-                <!-- Main Text Buffer -->
-                <div class="lg:col-span-7 flex flex-col panel border border-v-border relative h-[600px]">
-                    <div class="p-4 border-b border-v-border bg-v-surface/80 flex justify-between items-center z-10">
-                        <h3 class="data-label flex items-center gap-2 m-0"><span class="material-symbols-outlined text-[16px]">subject</span> Decoded Buffer</h3>
-                        <div class="flex gap-2">
-                            <span class="flex items-center gap-1 border border-v-authentic/30 bg-v-authentic/5 px-2 py-0.5 text-[9px] font-mono uppercase text-v-authentic"><span class="block size-1.5 bg-v-authentic mr-1"></span> Human Authored</span>
-                            <span class="flex items-center gap-1 border border-v-suspicious/30 bg-v-suspicious/5 px-2 py-0.5 text-[9px] font-mono uppercase text-v-suspicious"><span class="block size-1.5 bg-v-suspicious mr-1"></span> Indeterminate</span>
-                            <span class="flex items-center gap-1 border border-v-danger/30 bg-v-danger/5 px-2 py-0.5 text-[9px] font-mono uppercase text-v-danger"><span class="block size-1.5 bg-v-danger mr-1"></span> Automated Token</span>
-                        </div>
-                    </div>
-
-                    <!-- Document Metadata (hidden for pure text) -->
-                    <div id="documentInfoHeader" class="hidden bg-v-surface border-b border-v-border px-6 py-3">
-                        <div class="flex items-center gap-4">
-                            <div id="docIconContainer" class="text-v-authentic">
-                                <span class="material-symbols-outlined !text-[24px]">description</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-3">
-                                    <h3 id="docFileName" class="text-white font-mono text-sm truncate uppercase tracking-widest">document_01.txt</h3>
-                                    <span id="docFormatBadge" class="border border-v-border text-v-text-muted px-2 py-0.5 text-[10px] font-mono uppercase">EXT</span>
-                                </div>
-                                <div class="flex gap-4 mt-2">
-                                    <span class="data-label !text-[9px]"><span id="docCharCount" class="text-white font-bold">--</span> CHARS</span>
-                                    <span class="data-label !text-[9px]"><span id="docWordCount" class="text-white font-bold">--</span> WORDS</span>
-                                    <span class="data-label !text-[9px]"><span id="docPageCount" class="text-white font-bold">--</span> PAGES</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Scrollable Content View -->
-                    <div class="flex-1 overflow-y-auto bg-v-bg p-6 relative custom-scrollbar">
-                        <div id="noTextPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center opacity-30 text-center">
-                            <span class="material-symbols-outlined text-4xl mb-4 text-v-text-muted">terminal</span>
-                            <h4 class="data-label mb-2">Null Buffer</h4>
-                            <p class="text-v-text-muted font-mono text-[10px] uppercase tracking-widest">Mount document or inject text array via upstream interface.</p>
-                        </div>
-                        <div id="textContent" class="w-full">
-                            <div id="uploadedText" class="hidden text-justify"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Deep Metrics Pipeline -->
-                <div class="lg:col-span-5 flex flex-col gap-6">
-                    
-                    <!-- Perplexity Chart -->
-                    <div class="panel border border-v-border p-5 flex flex-col h-48 relative">
-                        <div class="flex justify-between items-center mb-2 z-10">
+                        <div class="flex flex-col h-full justify-between relative z-10">
                             <div>
-                                <h3 class="data-label block">Perplexity Heatmap</h3>
-                                <p class="text-[9px] font-mono text-v-text-muted uppercase mt-0.5">Token predictability index</p>
+                                <h3 class="text-white/70 text-sm font-medium mb-1">Unified Credibility Score</h3>
+                                <div class="flex items-baseline gap-2">
+                                    <span id="credibilityScore"
+                                        class="text-5xl font-black text-white tracking-tight">--</span>
+                                    <span id="verdictBadge"
+                                        class="px-2 py-0.5 rounded-full bg-accent-emerald/20 text-accent-emerald text-xs font-bold border border-accent-emerald/20">Analyzing...</span>
+                                </div>
                             </div>
-                            <span id="perplexityAvg" class="border border-v-border px-2 py-1 font-mono text-[10px] text-white">μ: --</span>
-                        </div>
-                        <div class="absolute bottom-0 left-0 w-full h-32 overflow-hidden pointer-events-none opacity-40">
-                            <!-- Retaining original SVG chart shape but adapting to dark/neon aesthetic -->
-                            <svg class="w-full h-full" preserveaspectratio="none">
-                                <path d="M0,80 C20,70 40,90 60,60 C80,30 100,50 120,40 C140,30 160,80 180,90 C200,100 220,50 240,60 C260,70 280,20 300,30 C320,40 340,10 360,20" fill="none" stroke="var(--color-brand)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
-                                <path d="M0,80 C20,70 40,90 60,60 C80,30 100,50 120,40 C140,30 160,80 180,90 C200,100 220,50 240,60 C260,70 280,20 300,30 C320,40 340,10 360,20 V 150 H 0 Z" fill="url(#gradient)" opacity="0.3" vector-effect="non-scaling-stroke"></path>
-                                <defs>
-                                    <lineargradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:var(--color-brand);stop-opacity:1"></stop>
-                                        <stop offset="100%" style="stop-color:var(--color-brand);stop-opacity:0"></stop>
-                                    </lineargradient>
-                                </defs>
-                            </svg>
-                            <!-- Grid lines -->
-                            <div class="absolute inset-0 flex flex-col justify-between pt-4">
-                                <div class="w-full h-px bg-v-border"></div>
-                                <div class="w-full h-px bg-v-border"></div>
-                                <div class="w-full h-px bg-v-border"></div>
+                            <div class="mt-4">
+                                <div class="w-full bg-black/40 rounded-full h-2 mb-2">
+                                    <div id="scoreBar"
+                                        class="h-2 rounded-full transition-all duration-1000"
+                                        style="width: 0%; background: #00D991; box-shadow: 0 0 10px rgba(0,217,145,0.5)"></div>
+                                </div>
+                                <p id="metricsInfo" class="text-white/50 text-xs">Calculating metrics...</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Burstiness Matrix -->
-                    <div class="panel border border-v-border p-5 flex flex-col h-48">
-                        <div class="flex justify-between items-center border-b border-v-border pb-3 mb-3">
-                            <h3 class="data-label block">Burstiness Variance</h3>
-                            <div class="flex gap-3">
-                                <div class="flex items-center gap-1.5"><span id="burstinenessLegendDot" class="block size-1.5 border border-v-authentic bg-v-authentic/20"></span><span id="burstinenessLegendLabel" class="font-mono text-[9px] uppercase text-v-text-muted">Human Env</span></div>
-                                <div class="flex items-center gap-1.5"><span class="block size-1.5 bg-v-surface border border-v-border"></span><span class="font-mono text-[9px] uppercase text-v-text-muted">Buffer Flow</span></div>
+                    <!-- Probability Card -->
+                    <div class="bg-primary-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-white/70 text-sm font-medium">Human vs. AI Probability</h3>
+                            <span class="material-symbols-outlined text-white/30">psychology</span>
+                        </div>
+                        <div class="flex gap-4 items-end mt-4">
+                            <div class="flex flex-col gap-1 w-1/2">
+                                <span class="text-xs text-white/50">Human</span>
+                                <div class="h-16 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                                    <div id="humanBar" class="w-full transition-all duration-1000"
+                                        style="height: 0%; background: #3A8DFF; opacity: 0.9"></div>
+                                    <span id="humanPercent"
+                                        class="absolute bottom-1 w-full text-center text-xs font-bold text-white drop-shadow-md">--%</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-1 w-1/2">
+                                <span class="text-xs text-white/50">AI-Gen</span>
+                                <div class="h-16 w-full bg-black/40 rounded-lg relative overflow-hidden flex items-end">
+                                    <div id="aiBar" class="w-full transition-all duration-1000"
+                                        style="height: 0%; background: #FF4A4A; opacity: 0.85"></div>
+                                    <span id="aiPercent"
+                                        class="absolute bottom-1 w-full text-center text-xs font-bold text-white/60">--%</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex-1 flex items-end justify-between gap-1 px-2 pt-2 pb-1">
-                            <!-- Abstract static visual of burstiness - styled for brutalist UI -->
-                            <div class="w-full bg-v-surface border border-v-border h-[40%] relative"><div class="absolute bottom-0 left-0 w-full" style="background: var(--color-authentic); opacity: 0.3; height: 90%;"></div><div class="absolute bottom-0 border-l border-v-authentic h-[90%] left-1/2"></div></div>
-                            <div class="w-full bg-v-surface border border-v-border h-[70%] relative"><div class="absolute bottom-0 left-0 w-full" style="background: var(--color-authentic); opacity: 0.3; height: 60%;"></div><div class="absolute bottom-0 border-l border-v-authentic h-[60%] left-1/2"></div></div>
-                            <div class="w-full bg-v-surface border border-v-border h-[30%] relative"><div class="absolute bottom-0 left-0 w-full" style="background: var(--color-authentic); opacity: 0.3; height: 80%;"></div><div class="absolute bottom-0 border-l border-v-authentic h-[80%] left-1/2"></div></div>
-                            <div class="w-full bg-v-surface border border-v-border h-[90%] relative"><div class="absolute bottom-0 left-0 w-full" style="background: var(--color-authentic); opacity: 0.3; height: 50%;"></div><div class="absolute bottom-0 border-l border-v-authentic h-[50%] left-1/2"></div></div>
-                            <div class="w-full bg-v-surface border border-v-border h-[50%] relative"><div class="absolute bottom-0 left-0 w-full" style="background: var(--color-authentic); opacity: 0.3; height: 70%;"></div><div class="absolute bottom-0 border-l border-v-authentic h-[70%] left-1/2"></div></div>
-                            <div class="w-full bg-v-surface border border-v-border h-[60%] relative"><div class="absolute bottom-0 left-0 w-full" style="background: var(--color-authentic); opacity: 0.3; height: 40%;"></div><div class="absolute bottom-0 border-l border-v-authentic h-[40%] left-1/2"></div></div>
+                        <p id="probabilityNote"
+                            class="text-xs text-accent-emerald mt-2 font-medium flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">trending_up</span>
+                            <span id="probabilityText">Analyzing patterns...</span>
+                        </p>
+                    </div>
+                    <!-- Source Card -->
+                    <div id="sourceCard" class="bg-primary-dark/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-white/70 text-sm font-medium">Source Reliability</h3>
+                            <span class="material-symbols-outlined text-white/30">domain_verification</span>
+                        </div>
+                        <div class="mt-2">
+                            <span id="sourceLevel" class="text-2xl font-bold text-white block">Analyzing...</span>
+                            <span id="sourceInfo" class="text-sm text-white/60 block mt-1">Checking sources...</span>
+                        </div>
+                        <div id="sourceTags" class="flex gap-2 mt-4 flex-wrap">
+                            <!-- Populated dynamically -->
                         </div>
                     </div>
-
-                    <!-- Detected Patterns & LLM Explanation -->
-                    <div id="patternsPanel" class="hidden panel border border-v-suspicious p-5">
-                        <div class="flex justify-between items-center border-b border-v-suspicious/50 pb-3 mb-3">
-                            <h3 class="data-label text-v-suspicious flex items-center gap-2 block"><span class="material-symbols-outlined text-[14px]">warning</span> Vector Anomalies</h3>
-                            <span id="patternTotalBadge" class="font-mono text-[10px] text-v-suspicious border border-v-suspicious/50 px-2.5 py-0.5">0</span>
-                        </div>
-                        <p id="patternCountText" class="text-[10px] font-mono text-v-text-muted uppercase tracking-widest mb-3">Processing arrays...</p>
-                        <div id="patternCategories" class="flex flex-col gap-3 custom-scrollbar">
-                            <!-- Injected recursively -->
-                        </div>
-                    </div>
-
-                    <div id="explanationPanel" class="hidden panel border border-v-border">
-                        <button id="explanationToggle" class="w-full flex items-center justify-between p-4 bg-v-surface hover:bg-v-surface/80 border-b border-transparent transition-colors group">
-                            <h3 class="data-label m-0 group-hover:text-v-authentic transition-colors text-left"><span class="material-symbols-outlined align-text-bottom mr-2 text-[16px]">smart_toy</span> Diagnostic Summary</h3>
-                            <span class="material-symbols-outlined text-v-text-muted group-hover:text-v-authentic text-[16px]" id="explanationChevron">expand_more</span>
-                        </button>
-                        <div id="explanationContent" class="hidden bg-v-bg p-4 border-t border-v-border">
-                            <div id="explanationText" class="font-mono text-xs text-v-text-muted leading-relaxed whitespace-pre-line tracking-tight"></div>
-                        </div>
-                    </div>
-
                 </div>
+                <!-- Middle Section: Text & Graphs -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
+                    <!-- Text Viewer (Paper Style) -->
+                    <div class="lg:col-span-7 flex flex-col bg-[#e2e8f0] rounded-2xl overflow-hidden shadow-xl">
+                        <div class="bg-white px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+                            <div class="flex gap-2 items-center">
+                                <span class="material-symbols-outlined text-slate-400">article</span>
+                                <span class="text-slate-700 font-bold text-sm">Analyzed Content</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <span
+                                    class="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                                    <span class="size-2 rounded-full bg-green-400"></span> Human
+                                </span>
+                                <span
+                                    class="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                                    <span class="size-2 rounded-full bg-yellow-400"></span> Uncertain
+                                </span>
+                                <span
+                                    class="flex items-center gap-1 text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                                    <span class="size-2 rounded-full bg-red-400"></span> AI
+                                </span>
+                            </div>
+                        </div>
+                        <!-- Document Info Header (hidden by default, shown for PDF/DOCX) -->
+                        <div id="documentInfoHeader" class="hidden bg-white border-b border-slate-200 px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div id="docIconContainer" class="p-2.5 rounded-xl bg-red-50 text-red-500">
+                                    <span class="material-symbols-outlined !text-[28px]">picture_as_pdf</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 id="docFileName" class="text-slate-800 font-bold text-sm truncate">document.pdf</h3>
+                                        <span id="docFormatBadge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-600">PDF</span>
+                                    </div>
+                                    <div class="flex gap-3 mt-1.5">
+                                        <span id="docPageCount" class="text-slate-400 text-xs flex items-center gap-1">
+                                            <span class="material-symbols-outlined !text-[14px]">description</span>
+                                            <span>-- pages</span>
+                                        </span>
+                                        <span id="docCharCount" class="text-slate-400 text-xs flex items-center gap-1">
+                                            <span class="material-symbols-outlined !text-[14px]">text_fields</span>
+                                            <span>-- characters</span>
+                                        </span>
+                                        <span id="docWordCount" class="text-slate-400 text-xs flex items-center gap-1">
+                                            <span class="material-symbols-outlined !text-[14px]">notes</span>
+                                            <span>-- words</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="textContent"
+                            class="p-8 font-serif text-lg leading-relaxed text-slate-800 h-full overflow-y-auto max-h-[600px]">
+                            <div id="noTextPlaceholder"
+                                class="flex flex-col items-center justify-center h-full gap-4 text-slate-400 font-sans text-center">
+                                <span class="material-symbols-outlined text-6xl opacity-50">description</span>
+                                <p class="text-sm">No text provided for analysis</p>
+                                <a href="homepage.html" class="text-primary hover:underline text-sm">Paste or upload
+                                    text to analyze</a>
+                            </div>
+                            <div id="uploadedText" class="hidden"></div>
+                        </div>
+                    </div>
+                    <!-- Metrics & Graphs Column -->
+                    <div class="lg:col-span-5 flex flex-col gap-4">
+                        <!-- AI Explanation Panel (top of column for visibility) -->
+                        <div id="explanationPanel" class="hidden bg-primary-dark/40 border border-white/5 rounded-2xl overflow-hidden">
+                            <button id="explanationToggle" class="w-full px-5 py-3 flex justify-between items-center hover:bg-white/5 transition-colors">
+                                <div class="flex gap-2 items-center">
+                                    <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                                        <span class="material-symbols-outlined !text-[20px]">smart_toy</span>
+                                    </div>
+                                    <div class="text-left">
+                                        <h4 class="text-white font-bold text-sm">AI Explanation</h4>
+                                        <p class="text-white/40 text-xs">Why we reached this verdict</p>
+                                    </div>
+                                </div>
+                                <span class="material-symbols-outlined text-white/40 transition-transform" id="explanationChevron">expand_more</span>
+                            </button>
+                            <div id="explanationContent" class="px-4 pb-3">
+                                <div id="explanationText" class="text-white/70 text-sm leading-snug border-t border-white/5 pt-2"></div>
+                            </div>
+                        </div>
+                        <!-- Perplexity Chart -->
+                        <div class="bg-primary-dark/40 border border-white/5 rounded-2xl p-5 flex-1 flex flex-col">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">Perplexity Analysis</h4>
+                                    <p class="text-white/40 text-xs">Text unpredictability flow</p>
+                                </div>
+                                <span id="perplexityAvg" class="text-accent-emerald font-mono text-sm font-bold">Avg:
+                                    --</span>
+                            </div>
+                            <!-- Mock Chart -->
+                            <div class="relative flex-1 min-h-[140px] w-full mt-2">
+                                <div class="absolute inset-0 flex items-end justify-between px-2">
+                                    <!-- Grid lines -->
+                                    <div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                                        <div class="w-full h-px bg-white/5"></div>
+                                        <div class="w-full h-px bg-white/5"></div>
+                                        <div class="w-full h-px bg-white/5"></div>
+                                    </div>
+                                    <!-- Chart Line (SVG) -->
+                                    <svg class="w-full h-full overflow-visible" preserveaspectratio="none">
+                                        <path
+                                            d="M0,80 C20,70 40,90 60,60 C80,30 100,50 120,40 C140,30 160,80 180,90 C200,100 220,50 240,60 C260,70 280,20 300,30 C320,40 340,10 360,20"
+                                            fill="none" stroke="#3A8DFF" stroke-width="2"
+                                            vector-effect="non-scaling-stroke"></path>
+                                        <path
+                                            d="M0,80 C20,70 40,90 60,60 C80,30 100,50 120,40 C140,30 160,80 180,90 C200,100 220,50 240,60 C260,70 280,20 300,30 C320,40 340,10 360,20 V 150 H 0 Z"
+                                            fill="url(#gradient)" opacity="0.2" vector-effect="non-scaling-stroke">
+                                        </path>
+                                        <defs>
+                                            <lineargradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+                                                <stop offset="0%" style="stop-color:#3A8DFF;stop-opacity:1"></stop>
+                                                <stop offset="100%" style="stop-color:#3A8DFF;stop-opacity:0"></stop>
+                                            </lineargradient>
+                                        </defs>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Burstiness Chart -->
+                        <div class="bg-primary-dark/40 border border-white/5 rounded-2xl p-5 flex-1 flex flex-col">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">Burstiness Comparison</h4>
+                                    <p class="text-white/40 text-xs">Sentence length variance</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <div class="flex items-center gap-1"><span id="burstinenessLegendDot"
+                                            class="size-2 rounded-full bg-accent-emerald"></span><span
+                                            id="burstinenessLegendLabel"
+                                            class="text-[10px] text-white/60">Human</span></div>
+                                    <div class="flex items-center gap-1"><span
+                                            class="size-2 rounded-full bg-white/20"></span><span
+                                            class="text-[10px] text-white/60">Doc</span></div>
+                                </div>
+                            </div>
+                            <div class="flex-1 flex items-end justify-between gap-2 min-h-[120px] px-2 pt-4">
+                                <!-- Bars -->
+                                <div class="w-full rounded-t h-[40%] relative group" style="background: rgba(255,255,255,0.08)">
+                                    <div
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 90%; width: 60%; left: 20%">
+                                    </div>
+                                </div>
+                                <div class="w-full rounded-t h-[70%] relative group" style="background: rgba(255,255,255,0.08)">
+                                    <div
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 60%; width: 60%; left: 20%">
+                                    </div>
+                                </div>
+                                <div class="w-full rounded-t h-[30%] relative group" style="background: rgba(255,255,255,0.08)">
+                                    <div
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 80%; width: 60%; left: 20%">
+                                    </div>
+                                </div>
+                                <div class="w-full rounded-t h-[90%] relative group" style="background: rgba(255,255,255,0.08)">
+                                    <div
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 50%; width: 60%; left: 20%">
+                                    </div>
+                                </div>
+                                <div class="w-full rounded-t h-[50%] relative group" style="background: rgba(255,255,255,0.08)">
+                                    <div
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 70%; width: 60%; left: 20%">
+                                    </div>
+                                </div>
+                                <div class="w-full rounded-t h-[60%] relative group" style="background: rgba(255,255,255,0.08)">
+                                    <div
+                                        class="absolute bottom-0 rounded-t" style="background: #00D991; opacity: 0.85; height: 40%; width: 60%; left: 20%">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Rhythm Uniformity -->
+                        <div
+                            class="bg-primary-dark/40 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+                            <div class="flex gap-3 items-center">
+                                <div class="p-2 rounded-lg bg-accent-amber/10 text-accent-amber">
+                                    <span class="material-symbols-outlined">graphic_eq</span>
+                                </div>
+                                <div>
+                                    <h4 class="text-white font-bold text-sm">Rhythm Uniformity</h4>
+                                    <p class="text-white/40 text-xs">Natural variance detected</p>
+                                </div>
+                            </div>
+                            <span
+                                class="px-3 py-1 bg-white/5 rounded-full text-xs font-bold text-white border border-white/10">Normal</span>
+                        </div>
+                        <!-- Detected AI Patterns -->
+                        <div id="patternsPanel" class="hidden bg-primary-dark/40 border border-white/5 rounded-2xl p-5 flex flex-col">
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="flex gap-2 items-center">
+                                    <div class="p-1.5 rounded-lg bg-accent-danger/10 text-accent-danger">
+                                        <span class="material-symbols-outlined !text-[20px]">pattern</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-sm">Detected AI Patterns</h4>
+                                        <p id="patternCountText" class="text-white/40 text-xs">No patterns found</p>
+                                    </div>
+                                </div>
+                                <span id="patternTotalBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-accent-danger/10 text-accent-danger border border-accent-danger/20">0</span>
+                            </div>
+                            <div id="patternCategories" class="flex flex-col gap-2 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
 
-    <!-- Scripts -->
+    <!-- Storage Utilities -->
     <script src="../js/storage-utils.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
     <script src="../js/text-result.js"></script>
 </body>
+
 </html>

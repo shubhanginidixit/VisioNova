@@ -1,18 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova - Fact Check Analysis</title>
+    <title>VisioNova - Fact Check</title>
+    <!-- Blocking theme script to prevent FOUC -->
     <script>
         (function () {
             const theme = localStorage.getItem('visioNova_theme') || 'dark';
             document.documentElement.classList.add(theme);
         })();
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
         tailwind.config = {
@@ -20,354 +25,307 @@
             theme: {
                 extend: {
                     colors: {
-                        "v-bg": "#0A0F1A", 
-                        "v-surface": "#0F1626", 
-                        "v-panel": "#141C2F", 
-                        "v-border": "rgba(255, 255, 255, 0.08)",
-                        "v-border-focus": "rgba(100, 255, 218, 0.4)",
-                        "v-text-main": "#F8FAFC",
-                        "v-text-muted": "#94A3B8",
-                        "v-authentic": "#64FFDA", 
-                        "v-suspicious": "#FFB74D", 
-                        "v-brand": "#3B82F6",
-                        "v-danger": "#FF4A4A"
+                        "primary": "#3A8DFF",
+                        "accent-success": "#00D991",
+                        "accent-warning": "#FFB74A",
+                        "accent-danger": "#FF4A4A",
+                        "background-light": "#F5F7FA",
+                        "background-dark": "#0F121A",
+                        "surface-dark": "#0D1B2A",
+                        "panel-dark": "#161B2E",
+                        "card-dark": "#1E2338",
                     },
                     fontFamily: {
-                        "sans": ["Inter", "sans-serif"],
-                        "mono": ["Roboto Mono", "monospace"],
+                        "display": ["Inter", "sans-serif"]
                     },
-                    boxShadow: {
-                        'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-                    }
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px" },
                 },
             },
         }
     </script>
-    
-    <style>
-        /* Base system overrides */
-        body { background-color: #0A0F1A !important; color: #F8FAFC !important; letter-spacing: -0.01em; }
-        .light body { background-color: #F8FAFC; color: #0F172A; }
-        
-        .panel {
-            background-color: theme('colors.v-panel');
-            border: 1px solid theme('colors.v-border');
-            box-shadow: theme('boxShadow.panel');
-        }
-        
-        .structural-grid {
-            background-image: linear-gradient(theme('colors.v-border') 1px, transparent 1px),
-                              linear-gradient(90deg, theme('colors.v-border') 1px, transparent 1px);
-            background-size: 40px 40px;
-            opacity: 0.15;
-        }
-
-        .data-label { font-family: theme('fontFamily.mono'); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: theme('colors.v-text-muted'); }
-        
-        /* Tab states */
-        .tab-btn { transition: all 0.2s; background: theme('colors.v-bg'); }
-        .tab-btn.active { border-bottom: 2px solid theme('colors.v-authentic') !important; color: theme('colors.v-authentic'); background: theme('colors.v-surface'); }
-        .inactive-tab { border-bottom: 2px solid transparent; color: theme('colors.v-text-muted'); }
-        .inactive-tab:hover { color: white; background: rgba(255,255,255,0.02); }
-
-        /* ====================================================================
-           FORCE JS INJECTED TEMPLATES TO FOLLOW THE NEW DESIGN SYSTEM 
-           ==================================================================== */
-        
-        #factCheckResults .bg-card-dark,
-        #factCheckResults .bg-\[\#1e2338\],
-        #factCheckResults .bg-background-dark\/50,
-        #factCheckResults .bg-primary\/10 {
-            background-color: theme('colors.v-bg') !important;
-            border: 1px solid theme('colors.v-border') !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            margin-bottom: 0.5rem;
-        }
-
-        #factCheckResults .rounded-xl,
-        #factCheckResults .rounded-2xl,
-        #factCheckResults .rounded-lg,
-        #factCheckResults .rounded-full,
-        #explanationBox .rounded-xl,
-        #sourcesContainer .rounded-xl {
-            border-radius: 0 !important;
-        }
-
-        #factCheckResults .border-white\/5,
-        #factCheckResults .border-white\/10,
-        #factCheckResults .border-primary\/20 {
-            border-color: theme('colors.v-border') !important;
-        }
-
-        #factCheckResults h4,
-        #sourcesContainer h4,
-        #explanationBox h4 {
-            font-family: theme('fontFamily.sans');
-            font-weight: 600;
-            letter-spacing: -0.01em;
-            text-transform: uppercase;
-            font-size: 0.75rem !important;
-            color: theme('colors.v-text-muted') !important;
-            border-bottom: 1px solid theme('colors.v-border');
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem !important;
-        }
-
-        #factCheckResults .text-slate-400,
-        #factCheckResults .text-slate-300,
-        #factCheckResults .text-slate-500,
-        #factCheckResults .text-white {
-            color: theme('colors.v-text-muted') !important;
-            font-family: theme('fontFamily.mono');
-            font-size: 0.75rem !important;
-        }
-
-        #factCheckResults .text-lg,
-        #factCheckResults .text-xl,
-        #factCheckResults .text-2xl,
-        #factCheckResults .text-4xl,
-        #factCheckResults .text-3xl {
-            font-family: theme('fontFamily.mono');
-            font-weight: 700;
-            color: theme('colors.v-text-main') !important;
-            font-size: 1.25rem !important;
-        }
-
-        #factCheckResults .shadow-xl,
-        #factCheckResults .shadow-2xl,
-        #factCheckResults .shadow-sm {
-            box-shadow: none !important;
-        }
-
-        #verdictLabel { border-radius: 0 !important; font-family: theme('fontFamily.mono'); letter-spacing: 0.1em; background: transparent !important; }
-
-        /* Disable Tailwind opacity overrides injected by JS */
-        #factCheckResults .bg-success\/10 { background: transparent !important; border-color: theme('colors.v-authentic') !important; color: theme('colors.v-authentic') !important; }
-        #factCheckResults .bg-danger\/10 { background: transparent !important; border-color: theme('colors.v-danger') !important; color: theme('colors.v-danger') !important; }
-        #factCheckResults .bg-warning\/10 { background: transparent !important; border-color: theme('colors.v-suspicious') !important; color: theme('colors.v-suspicious') !important; }
-
-        .btn-outline {
-            border: 1px solid theme('colors.v-border');
-            background: theme('colors.v-bg');
-            color: theme('colors.v-text-muted');
-            font-family: theme('fontFamily.mono');
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            transition: all 0.2s;
-        }
-        .btn-outline:hover {
-            border-color: theme('colors.v-authentic');
-            color: theme('colors.v-authentic');
-        }
-    </style>
-
     <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/theme-toggle.js"></script>
+    <script src="../js/ui-utils.js"></script>
     <script src="../js/layout.js"></script>
 </head>
 
-<body class="relative flex h-screen w-full flex-col overflow-hidden selection:bg-v-brand selection:text-white">
-    <!-- Background Grid Texture -->
-    <div class="absolute inset-0 pointer-events-none structural-grid z-0"></div>
+<body
+    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div
+            class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay">
+        </div>
+        <div class="absolute inset-0 bg-hero-gradient opacity-40"></div>
+    </div>
 
     <!-- Top Navigation (Injected by layout.js) -->
-    <header class="relative z-20 border-b border-v-border bg-v-bg/90 backdrop-blur-sm"></header>
+    <header></header>
 
-    <div class="flex flex-1 overflow-hidden relative z-10 w-full max-w-[1600px] mx-auto">
+    <div class="flex flex-1 overflow-hidden">
         <!-- Sidebar Navigation (Injected by layout.js) -->
-        <aside class="border-r border-v-border bg-v-bg/90 backdrop-blur-sm hidden md:block w-64"></aside>
+        <aside></aside>
 
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto w-full px-6 py-8 flex flex-col gap-6">
-            
-            <!-- Page Header (Terminal Style) -->
-            <div class="flex flex-col gap-4 border border-v-border panel p-6 rounded-none relative">
-                <div class="absolute top-0 right-0 p-2 opacity-50"><span class="material-symbols-outlined text-v-text-muted">shield</span></div>
-                
-                <div class="flex items-center gap-2 text-v-text-muted font-mono text-[10px] tracking-widest uppercase">
-                    <span>Tools</span> <span class="text-v-authentic">></span> <span>Fact Check</span>
+        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient p-6 lg:p-10">
+            <!-- Background Decorative Elements -->
+            <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                <div
+                    class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
                 </div>
-                
-                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div class="flex flex-col gap-2">
-                        <h1 id="pageTitle" class="text-3xl font-semibold tracking-tight text-white">Semantic Web Ping</h1>
-                        <p class="data-label">Investigative web-scraping and cross-reference reasoning logs.</p>
+                <div
+                    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
+                </div>
+            </div>
+            <!-- Page Header -->
+            <div class="flex flex-col gap-2 mb-6 border-b border-white/10 pb-6 relative z-10">
+                <div class="flex items-center gap-2 text-white/50 text-sm mb-1">
+                    <span>Tools</span>
+                    <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                    <span>Fact Check</span>
+                </div>
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div class="flex flex-col gap-1">
+                        <h1 id="pageTitle"
+                            class="text-white text-3xl md:text-3xl font-black leading-tight tracking-tight">Fact Check
+                            Analysis</h1>
+                        <p class="text-slate-400">Detailed breakdown of content credibility and source verification.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button
+                            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium border border-white/10 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">share</span>
+                            Share Report
+                        </button>
+                        <button
+                            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium border border-white/10 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">download</span>
+                            Export PDF
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Input Bar Area -->
-            <div class="w-full panel border border-v-border p-4 bg-v-bg">
-                <div class="flex flex-col md:flex-row items-stretch gap-4">
-                    <div class="flex-1 flex items-center bg-v-surface border border-v-border px-4 focus-within:border-v-authentic transition-colors h-12">
-                        <span class="text-v-text-muted font-mono mr-3">></span>
+            <!-- Input Bar -->
+            <div class="mb-10 w-full max-w-4xl mx-auto">
+                <div class="relative group">
+                    <div
+                        class="absolute inset-0 bg-primary/20 rounded-2xl blur-lg transition-opacity opacity-50 group-hover:opacity-70">
+                    </div>
+                    <div
+                        class="relative flex items-center bg-card-dark border border-white/10 rounded-2xl shadow-xl overflow-hidden p-1.5">
+                        <div class="pl-4 pr-3 text-slate-400">
+                            <span class="material-symbols-outlined">link</span>
+                        </div>
                         <input id="urlInput"
-                            class="bg-transparent border-none text-white font-mono text-sm w-full focus:ring-0 p-0 placeholder-v-text-muted/50"
-                            placeholder="[ INJECT TARGET CLAIM, URL, OR QUERY ]..." type="text" value="" />
+                            class="bg-transparent border-none text-white placeholder-slate-500 w-full focus:ring-0 text-base"
+                            placeholder="Paste URL, text, or drop media here..." type="text" value="" />
+                        <button
+                            class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-primary/25 flex items-center gap-2 whitespace-nowrap">
+                            <span class="material-symbols-outlined text-[20px]">verified</span>
+                            Verify Credibility
+                        </button>
                     </div>
-                    <!-- fact-check.js looks for a button with text 'Verify Credibility' -->
-                    <button class="bg-v-authentic/10 border border-v-authentic text-v-authentic hover:bg-v-authentic/20 px-8 font-mono text-xs uppercase tracking-wider flex items-center gap-2 transition-colors h-12">
-                        <span class="material-symbols-outlined text-[16px]">radar</span>
-                        Verify Credibility
-                    </button>
                 </div>
             </div>
-
-            <!-- Dashboard Grid Container -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12 w-full">
-                
-                <!-- Left Column: Metrics & Actions -->
-                <div class="lg:col-span-4 flex flex-col gap-6">
-                    
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1400px] mx-auto">
+                <!-- Left Column: Score & Summary -->
+                <div class="lg:col-span-4 space-y-6">
                     <!-- Scorecard -->
-                    <div class="panel border border-v-border p-6 flex flex-col items-center relative h-64 justify-center">
-                        <h3 class="data-label absolute top-4 left-4">Trust Vector</h3>
-                        <div class="relative size-32 flex items-center justify-center mt-4">
-                            <!-- SVG Gauge Background -->
-                            <svg class="transform -rotate-90 size-full" viewbox="0 0 100 100">
-                                <circle cx="50" cy="50" fill="none" r="40" stroke="var(--color-border)" stroke-linecap="square" stroke-width="2"></circle>
-                                <circle class="transition-all duration-1000 ease-out" cx="50" cy="50" fill="none" r="40"
-                                    stroke="var(--color-authentic)" stroke-dasharray="251.2" stroke-dashoffset="251.2"
-                                    stroke-linecap="square" stroke-width="2"></circle>
-                            </svg>
-                            <div class="absolute flex flex-col items-center justify-center">
-                                <span id="trustScore" class="text-3xl font-mono text-white tracking-tighter">--</span>
-                                <span class="text-[9px] text-v-text-muted font-mono uppercase tracking-widest mt-1">Index</span>
+                    <div
+                        class="bg-card-dark rounded-2xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <span class="material-symbols-outlined text-8xl text-white">shield</span>
+                        </div>
+                        <h3 class="text-white font-semibold text-lg mb-6 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">analytics</span>
+                            Trust Score
+                        </h3>
+                        <div class="flex flex-col items-center justify-center mb-6">
+                            <div class="relative size-40 flex items-center justify-center">
+                                <!-- SVG Gauge Background -->
+                                <svg class="transform -rotate-90 size-full" viewbox="0 0 100 100">
+                                    <circle cx="50" cy="50" fill="none" r="40" stroke="#20324b" stroke-linecap="round"
+                                        stroke-width="8"></circle>
+                                    <circle class="animate-[dash_1s_ease-out]" cx="50" cy="50" fill="none" r="40"
+                                        stroke="#00D991" stroke-dasharray="251.2" stroke-dashoffset="40"
+                                        stroke-linecap="round" stroke-width="8"></circle>
+                                </svg>
+                                <div class="absolute flex flex-col items-center">
+                                    <span id="trustScore" class="text-4xl font-black text-white">--</span>
+                                    <span class="text-xs text-slate-400 font-medium">OUT OF 100</span>
+                                </div>
+                            </div>
+                            <div id="verdictLabel"
+                                class="mt-4 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-400 text-sm font-bold tracking-wide">
+                                AWAITING INPUT
                             </div>
                         </div>
-                        <div id="verdictLabel" class="mt-6 px-4 py-1.5 border border-v-border text-v-text-muted font-mono text-xs uppercase tracking-widest">
-                            AWAITING INPUT
-                        </div>
-                        
-                        <div class="absolute bottom-0 left-0 w-full flex border-t border-v-border bg-v-surface/30">
-                            <div class="flex-1 p-2 text-center border-r border-v-border">
-                                <p class="text-[9px] text-v-text-muted font-mono uppercase mb-0.5">Sources Hit</p>
-                                <p id="sourceCount" class="text-white font-mono text-sm">--</p>
+                        <div class="grid grid-cols-2 gap-3 mt-6">
+                            <div class="bg-background-dark/50 p-3 rounded-xl border border-white/5">
+                                <p class="text-xs text-slate-400 mb-1">Sources Found</p>
+                                <p id="sourceCount" class="text-white font-semibold text-sm">--</p>
                             </div>
-                            <div class="flex-1 p-2 text-center">
-                                <p class="text-[9px] text-v-text-muted font-mono uppercase mb-0.5">Payload Type</p>
-                                <p id="inputType" class="text-white font-mono text-sm">--</p>
+                            <div class="bg-background-dark/50 p-3 rounded-xl border border-white/5">
+                                <p class="text-xs text-slate-400 mb-1">Input Type</p>
+                                <p id="inputType" class="text-white font-semibold text-sm">--</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Analysis Overview & Status -->
-                    <div id="analysisInfo" class="panel border border-v-border p-6 min-h-[120px]">
-                        <h3 class="data-label border-b border-v-border pb-2 mb-4 block">Telemetry Output</h3>
-                        <div id="explanationBox" class="text-v-text-muted font-mono text-xs leading-relaxed">
-                            <p>> Interface nominal.<br>> Awaiting pipeline execution...</p>
+                    <!-- Analysis Info -->
+                    <div id="analysisInfo" class="bg-card-dark rounded-2xl p-6 border border-white/5 shadow-xl">
+                        <h3 class="text-white font-semibold text-sm uppercase tracking-wider mb-4 text-slate-400">
+                            Analysis
+                            Summary</h3>
+                        <div id="explanationBox" class="space-y-4">
+                            <p class="text-slate-400 text-sm">Enter a claim, question, or URL above to get fact-check
+                                results.</p>
                         </div>
                     </div>
-
-                    <!-- Actions -->
-                    <div class="panel border border-v-suspicious bg-v-suspicious/5 p-6 flex flex-col gap-4 relative">
-                        <div class="absolute top-0 left-0 w-full h-[1px] bg-v-suspicious opacity-50"></div>
-                        <h3 class="data-label text-v-suspicious flex items-center gap-2 block"><span class="material-symbols-outlined text-sm">history</span> Deep Scan Protocol</h3>
-                        <p id="deepScanDescription" class="text-v-text-muted font-mono text-[10px] leading-relaxed">Execute exhaustive archive retrieval. May take longer to process temporal context.</p>
-                        <button id="deepScanBtn" class="bg-v-suspicious/10 border border-v-suspicious text-v-suspicious hover:bg-v-suspicious/20 px-4 py-2 font-mono text-xs uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                            [ INITIATE DEEP SCAN ]
-                        </button>
-                        <button id="exportPdfBtn" disabled class="btn-outline flex justify-center items-center gap-2 py-2 mt-2 disabled:opacity-30 disabled:cursor-not-allowed">
-                            <span class="material-symbols-outlined text-[16px]">download</span> Export Dossier
+                    <!-- Quick Actions -->
+                    <div class="bg-primary rounded-2xl p-6 shadow-xl text-white relative overflow-hidden">
+                        <div class="absolute -right-4 -bottom-4 bg-white/20 size-24 rounded-full blur-2xl"></div>
+                        <h3 class="font-bold text-lg mb-2 relative z-10">Deep Analysis</h3>
+                        <p id="deepScanDescription" class="text-primary-100 text-sm mb-4 relative z-10">Run a deeper
+                            scan including
+                            cross-referencing archives from the relevant time period.</p>
+                        <button id="deepScanBtn"
+                            class="bg-white text-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors relative z-10 w-full disabled:opacity-50 disabled:cursor-not-allowed mb-3">Start
+                            Deep Scan</button>
+                        <button id="exportPdfBtn"
+                            class="bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors relative z-10 w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            <span class="material-symbols-outlined text-[18px]">download</span>
+                            Export as PDF
                         </button>
                     </div>
                 </div>
+                <!-- Right Column: Content & Analysis Stream -->
+                <div class="lg:col-span-8 flex flex-col gap-6">
+                    <!-- Tabs -->
+                    <div id="analysisTabs"
+                        class="flex gap-1 bg-card-dark/50 p-1 rounded-xl w-fit border border-white/5">
+                        <button id="tabSummary" data-tab="summary"
+                            class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium shadow-sm">Summary</button>
+                        <button id="tabDetailed" data-tab="detailed"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Detailed
+                            Analysis</button>
+                        <button id="tabClaims" data-tab="claims"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">Claims
+                            & Evidence</button> <button id="tabReasoning" data-tab="reasoning"
+                            class="tab-btn px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors">AI
+                            Reasoning</button>
+                    </div>
 
-                <!-- Right Column: Streams -->
-                <div class="lg:col-span-8 flex flex-col gap-4">
-                    
-                    <!-- Top Claim / Investigation Subject -->
-                    <div id="claimsCard" class="panel border border-v-border flex flex-col relative w-full overflow-hidden">
-                        
-                        <!-- Header -->
-                        <div class="p-6 border-b border-v-border bg-v-surface/30 flex items-start justify-between">
-                            <div class="flex-1">
-                                <h3 class="data-label mb-2 block">Target Semantic Claim</h3>
-                                <h2 id="claimTitle" class="text-white font-mono text-lg leading-tight">Ready...</h2>
-                            </div>
-                            <!-- Feedback Actions -->
-                            <div id="feedbackButtons" class="hidden items-center gap-2">
-                                <button id="feedbackAgree" class="border border-v-authentic text-v-authentic hover:bg-v-authentic/10 px-3 py-1 font-mono text-[10px] uppercase flex items-center gap-1 transition-colors">
-                                    <span class="material-symbols-outlined text-[14px]">thumb_up</span> Agree
-                                </button>
-                                <button id="feedbackDisagree" class="border border-v-danger text-v-danger hover:bg-v-danger/10 px-3 py-1 font-mono text-[10px] uppercase flex items-center gap-1 transition-colors">
-                                    <span class="material-symbols-outlined text-[14px]">thumb_down</span> Disagree
-                                </button>
+                    <!-- Claim Preview & Sources List -->
+                    <div id="claimsCard"
+                        class="bg-card-dark rounded-2xl border border-white/5 shadow-xl overflow-hidden flex flex-col">
+                        <div class="p-6 border-b border-white/5 bg-gradient-to-r from-card-dark to-surface-dark">
+                            <div class="flex items-start justify-between">
+                                <h2 id="claimTitle" class="text-xl font-bold text-white leading-tight flex-1">Enter a
+                                    claim to
+                                    verify</h2>
+                                <!-- Feedback Buttons -->
+                                <div id="feedbackButtons" class="hidden flex items-center gap-2 ml-4">
+                                    <button id="feedbackAgree"
+                                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/10 hover:bg-success/20 border border-success/30 text-success transition-colors text-sm font-medium"
+                                        title="Agree with verdict">
+                                        <span class="material-symbols-outlined text-[18px]">thumb_up</span>
+                                        <span>Agree</span>
+                                    </button>
+                                    <button id="feedbackDisagree"
+                                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger transition-colors text-sm font-medium"
+                                        title="Disagree with verdict">
+                                        <span class="material-symbols-outlined text-[18px]">thumb_down</span>
+                                        <span>Disagree</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Data Tabs (Replaces floating generic tabs) -->
-                        <div id="analysisTabs" class="flex border-b border-v-border bg-v-bg">
-                            <button id="tabSummary" data-tab="summary" class="tab-btn active px-6 py-3 font-mono text-xs uppercase text-v-text-muted border-r border-v-border border-b-2 border-b-transparent hover:text-white">Execution Log</button>
-                            <button id="tabDetailed" data-tab="detailed" class="tab-btn inactive-tab px-6 py-3 font-mono text-xs uppercase text-v-text-muted border-r border-v-border border-b-2 border-b-transparent hover:text-white">Network Graph</button>
-                            <button id="tabClaims" data-tab="claims" class="tab-btn inactive-tab px-6 py-3 font-mono text-xs uppercase text-v-text-muted border-r border-v-border border-b-2 border-b-transparent hover:text-white">Evidence Buffer</button>
-                            <button id="tabReasoning" data-tab="reasoning" class="tab-btn inactive-tab px-6 py-3 font-mono text-xs uppercase text-v-text-muted border-b-2 border-b-transparent hover:text-white">LLM Heuristics</button>
-                        </div>
-                        
-                        <!-- Content Stream Mount Point -->
-                        <div id="sourcesContainer" class="p-6 min-h-[400px] bg-v-bg overflow-x-hidden">
+                        <div id="sourcesContainer" class="p-6 space-y-6">
                             <!-- Empty State -->
-                            <div id="emptyState" class="flex flex-col items-center justify-center py-20 text-center opacity-30">
-                                <span class="material-symbols-outlined text-4xl mb-4 text-v-text-muted">radar</span>
-                                <h4 class="data-label mb-2">Awaiting Target Coordinates</h4>
-                                <p class="text-v-text-muted font-mono text-[10px] uppercase tracking-widest max-w-[300px]">Inject URL or textual claim into terminal prompt to initialize packet sniffing.</p>
+                            <div id="emptyState" class="flex flex-col items-center justify-center py-12 text-center">
+                                <div class="size-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                                    <span class="material-symbols-outlined text-3xl text-primary">fact_check</span>
+                                </div>
+                                <h4 class="text-white font-medium text-lg mb-2">Ready to Verify</h4>
+                                <p class="text-slate-400 text-sm max-w-sm">Enter a claim, question, or URL in the input
+                                    field above and we'll analyze it against trusted sources.</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Hidden anchor for script injection rendering -->
-                    <div id="factCheckResults" class="hidden"></div>
                 </div>
             </div>
         </main>
     </div>
 
     <!-- Feedback Modal -->
-    <div id="feedbackModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-v-bg/90 backdrop-blur-sm p-4">
-        <div class="bg-v-panel border border-v-suspicious w-full max-w-lg relative p-6">
-            <div class="absolute top-0 left-0 w-full h-1 bg-v-suspicious"></div>
-            
+    <div id="feedbackModal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div class="bg-card-dark rounded-2xl border border-white/10 shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
             <!-- Modal Header -->
-            <div class="flex items-center justify-between border-b border-v-border pb-4 mb-4">
-                <h3 class="data-label text-v-suspicious flex items-center gap-2"><span class="material-symbols-outlined">feedback</span> Submit Override Command</h3>
-                <button id="closeFeedbackModal" class="text-v-text-muted hover:text-white font-mono text-xs border border-v-border px-2 py-0.5">[X]</button>
+            <div class="p-6 border-b border-white/10 bg-gradient-to-r from-card-dark to-surface-dark">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">feedback</span>
+                        Submit Feedback
+                    </h3>
+                    <button id="closeFeedbackModal"
+                        class="size-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Modal Body -->
-            <div class="space-y-6">
-                <div class="border border-v-border p-3 bg-v-bg">
-                    <p class="font-mono text-[10px] text-v-text-muted uppercase mb-1">System Verdict</p>
-                    <p id="feedbackSystemVerdict" class="text-white font-mono text-sm">--</p>
+            <div class="p-6 space-y-4">
+                <div>
+                    <p class="text-slate-300 text-sm mb-3">Help us improve by sharing why you disagree with this
+                        verdict.</p>
+                    <div class="bg-background-dark/50 rounded-lg p-3 border border-white/5">
+                        <p class="text-xs text-slate-400 mb-1">System Verdict</p>
+                        <p id="feedbackSystemVerdict" class="text-white font-semibold">--</p>
+                    </div>
                 </div>
 
                 <div>
-                    <label class="data-label block mb-2">Human Override Verdict</label>
-                    <select id="feedbackUserVerdict" class="w-full bg-v-surface border border-v-border rounded-none px-3 py-2 text-white font-mono text-xs focus:ring-0 focus:border-v-suspicious outline-none">
-                        <option value="TRUE">TRUE - Claim is verified accurate</option>
-                        <option value="FALSE">FALSE - Claim is demonstrably false</option>
-                        <option value="PARTIALLY TRUE">PARTIALLY TRUE - Mixed elements</option>
-                        <option value="MISLEADING">MISLEADING - Lacking proper context</option>
-                        <option value="UNVERIFIABLE">UNVERIFIABLE - Insufficient data</option>
+                    <label class="text-white text-sm font-medium mb-2 block">Your Verdict</label>
+                    <select id="feedbackUserVerdict"
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="TRUE">TRUE - Claim is accurate</option>
+                        <option value="FALSE">FALSE - Claim is false</option>
+                        <option value="PARTIALLY TRUE">PARTIALLY TRUE - Mixed accuracy</option>
+                        <option value="MISLEADING">MISLEADING - Deceptive context</option>
+                        <option value="UNVERIFIABLE">UNVERIFIABLE - Cannot verify</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="data-label block mb-2">Diagnostic Notes (Optional)</label>
-                    <textarea id="feedbackReason" class="w-full bg-v-surface border border-v-border rounded-none px-3 py-2 text-white font-mono text-xs focus:ring-0 focus:border-v-suspicious outline-none resize-none" rows="3" placeholder="Provide contextual correction data..."></textarea>
+                    <label class="text-white text-sm font-medium mb-2 block">Reason (Optional)</label>
+                    <textarea id="feedbackReason"
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                        rows="3" placeholder="Why do you disagree? What did we miss?"></textarea>
                 </div>
 
                 <div>
-                    <label class="data-label block mb-2">Supplemental Archival Links (Optional)</label>
-                    <input id="feedbackSources" type="text" class="w-full bg-v-surface border border-v-border rounded-none px-3 py-2 text-white font-mono text-xs focus:ring-0 focus:border-v-suspicious outline-none" placeholder="https://..., https://...">
-                    <p class="font-mono text-[9px] text-v-text-muted mt-1 uppercase">Delimiter: Comma</p>
+                    <label class="text-white text-sm font-medium mb-2 block">Additional Sources (Optional)</label>
+                    <input id="feedbackSources" type="text"
+                        class="w-full bg-background-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="https://example.com/source1, https://example.com/source2">
+                    <p class="text-xs text-slate-400 mt-1">Separate multiple URLs with commas</p>
                 </div>
             </div>
 
             <!-- Modal Footer -->
-            <div class="flex gap-3 mt-6 pt-6 border-t border-v-border">
-                <button id="cancelFeedback" class="btn-outline flex-1 py-2 font-mono text-xs uppercase">Cancel</button>
-                <button id="submitFeedback" class="bg-v-suspicious/10 border border-v-suspicious text-v-suspicious hover:bg-v-suspicious/20 flex-1 py-2 font-mono text-xs uppercase tracking-wider transition-colors flex justify-center items-center gap-2">
-                    <span class="material-symbols-outlined text-[16px]">send</span> Transmit
+            <div class="p-6 border-t border-white/10 bg-background-dark/30 flex gap-3">
+                <button id="cancelFeedback"
+                    class="flex-1 px-4 py-2 rounded-lg bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 font-medium transition-colors">
+                    Cancel
+                </button>
+                <button id="submitFeedback"
+                    class="flex-1 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-semibold transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    Submit Feedback
                 </button>
             </div>
         </div>
@@ -375,7 +333,12 @@
 
     <!-- Storage Utilities -->
     <script src="../js/storage-utils.js"></script>
+
+    <!-- jsPDF for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Dynamic Content Loading Script -->
     <script src="../js/fact-check.js"></script>
 </body>
+
 </html>

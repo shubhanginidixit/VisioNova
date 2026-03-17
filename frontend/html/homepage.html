@@ -1,1564 +1,513 @@
 <!DOCTYPE html>
+
 <html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>VisioNova — Credibility Engine</title>
+    <title>VisioNova - AI Credibility Verification</title>
+    <!-- Blocking theme script to prevent FOUC -->
+    <script>
+        (function () {
+            const theme = localStorage.getItem('visioNova_theme') || 'dark';
+            document.documentElement.classList.add(theme);
+        })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
     <link
-        href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Archivo:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0..1&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
-
-    <style>
-        /* ===================================================
-   VISIONOVA — SURVEILLANCE TERMINAL v3.0
-   Typography: Archivo Black + DM Mono + Archivo
-   ================================================= */
-
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            /* Core palette — ink + signal */
-            --ink: #0A0B0D;
-            --ink-2: #111318;
-            --ink-3: #181C22;
-            --ink-4: #1F242D;
-            --paper: #F4F2ED;
-            --paper-2: #EBE8E2;
-            --muted: #5C6270;
-            --ghost: #3A3F4A;
-            --signal: #C8FF57;
-            /* acid green — one key accent */
-            --signal-dim: rgba(200, 255, 87, 0.12);
-            --warn: #FF6B35;
-            --danger: #FF3B3B;
-            --border: rgba(255, 255, 255, 0.06);
-            --border-2: rgba(255, 255, 255, 0.11);
-            --scan: rgba(200, 255, 87, 0.04);
-            --font-display: 'Archivo Black', sans-serif;
-            --font-ui: 'Archivo', sans-serif;
-            --font-mono: 'DM Mono', monospace;
-        }
-
-        html,
-        body {
-            height: 100%;
-            background-color: var(--ink);
-            color: var(--paper);
-            font-family: var(--font-ui);
-            overflow: hidden;
-            letter-spacing: -0.01em;
-        }
-
-        /* ── Scanline texture overlay ── */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(0deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.08) 2px,
-                    rgba(0, 0, 0, 0.08) 4px);
-            pointer-events: none;
-            z-index: 9999;
-        }
-
-        /* ── Fine grid ── */
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-            background-size: 32px 32px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* ===================================================
-   APP SHELL
-   ================================================= */
-
-        .app {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* ===================================================
-   TOP BAR
-   ================================================= */
-
-        .topbar {
-            height: 46px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            border-bottom: 1px solid var(--border-2);
-            background: var(--ink-2);
-            position: relative;
-            z-index: 10;
-        }
-
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-
-        .brand-mark {
-            width: 22px;
-            height: 22px;
-            border: 1.5px solid var(--signal);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .brand-mark::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: var(--signal);
-            display: block;
-        }
-
-        .brand-name {
-            font-family: var(--font-display);
-            font-size: 13px;
-            color: var(--paper);
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-        }
-
-        .brand-tag {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--signal);
-            border: 1px solid rgba(200, 255, 87, 0.3);
-            padding: 1px 5px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .topnav {
-            display: flex;
-            align-items: center;
-            gap: 0;
-        }
-
-        .topnav a {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            font-weight: 400;
-            color: var(--muted);
-            text-decoration: none;
-            padding: 0 14px;
-            height: 46px;
-            line-height: 46px;
-            border-left: 1px solid var(--border);
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            transition: color 0.15s, background 0.15s;
-        }
-
-        .topnav a:hover {
-            color: var(--paper);
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .topnav a.active {
-            color: var(--signal);
-            border-bottom: 1px solid var(--signal);
-        }
-
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .sys-status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--signal);
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .sys-dot {
-            width: 5px;
-            height: 5px;
-            background: var(--signal);
-            border-radius: 50%;
-            animation: blink 2.8s ease-in-out infinite;
-        }
-
-        @keyframes blink {
-
-            0%,
-            100% {
-                opacity: 1
-            }
-
-            50% {
-                opacity: 0.25
-            }
-        }
-
-        .btn-sm {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--muted);
-            background: transparent;
-            border: 1px solid var(--border-2);
-            padding: 5px 10px;
-            cursor: pointer;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            transition: all 0.15s;
-        }
-
-        .btn-sm:hover {
-            color: var(--paper);
-            border-color: rgba(255, 255, 255, 0.25);
-        }
-
-        /* ===================================================
-   BODY LAYOUT
-   ================================================= */
-
-        .body-row {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* ===================================================
-   SIDEBAR
-   ================================================= */
-
-        .sidebar {
-            width: 48px;
-            flex-shrink: 0;
-            border-right: 1px solid var(--border-2);
-            background: var(--ink-2);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 16px 0;
-            gap: 4px;
-            overflow: hidden;
-            transition: width 0.22s ease;
-        }
-
-        .sidebar:hover {
-            width: 180px;
-        }
-
-        .sb-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 9px 14px;
-            text-decoration: none;
-            color: var(--ghost);
-            font-family: var(--font-mono);
-            font-size: 10px;
-            white-space: nowrap;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            transition: all 0.15s;
-            border-left: 2px solid transparent;
-        }
-
-        .sb-item:hover {
-            color: var(--paper);
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .sb-item.active {
-            color: var(--signal);
-            border-left-color: var(--signal);
-            background: var(--signal-dim);
-        }
-
-        .sb-item .material-symbols-outlined {
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-
-        .sb-label {
-            opacity: 0;
-            transition: opacity 0.18s;
-        }
-
-        .sidebar:hover .sb-label {
-            opacity: 1;
-        }
-
-        .sb-divider {
-            width: 28px;
-            height: 1px;
-            background: var(--border-2);
-            margin: 4px auto;
-            transition: width 0.22s ease;
-        }
-
-        .sidebar:hover .sb-divider {
-            width: 148px;
-        }
-
-        /* ===================================================
-   MAIN STAGE
-   ================================================= */
-
-        .stage {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            padding: 28px 32px 32px;
-            gap: 24px;
-            scrollbar-width: thin;
-            scrollbar-color: var(--ghost) var(--ink);
-        }
-
-        /* ===================================================
-   PAGE HEADER
-   ================================================= */
-
-        .page-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 20px;
-        }
-
-        .page-header-title {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .eyebrow {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--signal);
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .eyebrow::before {
-            content: '';
-            display: block;
-            width: 12px;
-            height: 1px;
-            background: var(--signal);
-        }
-
-        h1 {
-            font-family: var(--font-display);
-            font-size: clamp(22px, 3vw, 36px);
-            font-weight: 400;
-            color: var(--paper);
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-        }
-
-        .page-header p {
-            font-family: var(--font-mono);
-            font-size: 11px;
-            color: var(--muted);
-            max-width: 480px;
-            line-height: 1.7;
-        }
-
-        .header-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .meta-chip {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--ghost);
-            border: 1px solid var(--border-2);
-            padding: 4px 8px;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-        }
-
-        /* ===================================================
-   ANALYSIS PANEL
-   ================================================= */
-
-        .analysis-panel {
-            border: 1px solid var(--border-2);
-            background: var(--ink-2);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        /* Top scan line animation */
-        .analysis-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent 0%, var(--signal) 30%, var(--signal) 70%, transparent 100%);
-            opacity: 0;
-            animation: scan-top 4s ease-in-out infinite;
-        }
-
-        @keyframes scan-top {
-
-            0%,
-            100% {
-                opacity: 0;
-                transform: scaleX(0.2);
-            }
-
-            50% {
-                opacity: 0.6;
-                transform: scaleX(1);
-            }
-        }
-
-        /* ── Tab strip ── */
-        .tab-strip {
-            display: flex;
-            border-bottom: 1px solid var(--border-2);
-            background: var(--ink-3);
-        }
-
-        .tab-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            padding: 12px 16px;
-            border: none;
-            background: transparent;
-            color: var(--ghost);
-            font-family: var(--font-mono);
-            font-size: 9px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            border-right: 1px solid var(--border);
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            flex: 1;
-            transition: all 0.15s;
-            min-width: 0;
-        }
-
-        .tab-btn:hover {
-            color: var(--paper-2);
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .tab-btn.active {
-            color: var(--signal);
-            border-bottom-color: var(--signal);
-            background: var(--signal-dim);
-        }
-
-        .tab-btn .material-symbols-outlined {
-            font-size: 16px;
-        }
-
-        .tab-btn span.label {
-            font-size: 8px;
-        }
-
-        /* ── Tab Content ── */
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: flex;
-        }
-
-        .upload-layout {
-            display: flex;
-            width: 100%;
-            min-height: 300px;
-        }
-
-        /* ── Upload sidebar ── */
-        .upload-sidebar {
-            width: 210px;
-            flex-shrink: 0;
-            border-right: 1px solid var(--border);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            background: var(--ink-3);
-        }
-
-        .us-label {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--signal);
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-2);
-        }
-
-        .us-desc {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        .us-field-label {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--ghost);
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .us-input {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--ink-4);
-            border: 1px solid var(--border-2);
-            padding: 0 10px;
-            height: 32px;
-        }
-
-        .us-input span {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--ghost);
-        }
-
-        .us-input input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--paper);
-            font-family: var(--font-mono);
-            font-size: 10px;
-            width: 100%;
-            letter-spacing: 0.02em;
-        }
-
-        .us-input input::placeholder {
-            color: var(--ghost);
-        }
-
-        .us-input:focus-within {
-            border-color: rgba(200, 255, 87, 0.35);
-        }
-
-        .us-meta {
-            margin-top: auto;
-        }
-
-        /* ── Drop Zone ── */
-        .upload-main {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            align-items: stretch;
-        }
-
-        .dropzone {
-            flex: 1;
-            border: 1px dashed var(--border-2);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            transition: border-color 0.2s, background 0.2s;
-            min-height: 240px;
-        }
-
-        .dropzone:hover,
-        .dropzone:focus-within {
-            border-color: rgba(200, 255, 87, 0.4);
-            background: var(--signal-dim);
-        }
-
-        /* Animated corner brackets on hover */
-        .dropzone::before,
-        .dropzone::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-color: var(--signal);
-            border-style: solid;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .dropzone::before {
-            top: 10px;
-            left: 10px;
-            border-width: 1px 0 0 1px;
-        }
-
-        .dropzone::after {
-            bottom: 10px;
-            right: 10px;
-            border-width: 0 1px 1px 0;
-        }
-
-        .dropzone:hover::before,
-        .dropzone:hover::after {
-            opacity: 1;
-        }
-
-        .dz-icon {
-            font-family: var(--font-mono);
-            font-size: 11px;
-            color: var(--ghost);
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .dz-icon .material-symbols-outlined {
-            font-size: 22px;
-            color: var(--ghost);
-            transition: color 0.2s;
-        }
-
-        .dropzone:hover .dz-icon .material-symbols-outlined {
-            color: var(--signal);
-        }
-
-        .dz-title {
-            font-family: var(--font-mono);
-            font-size: 12px;
-            color: var(--paper);
-            letter-spacing: 0.02em;
-        }
-
-        .dz-sub {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--muted);
-        }
-
-        .dz-browse {
-            color: var(--signal);
-            cursor: pointer;
-            text-decoration: underline;
-            text-underline-offset: 2px;
-        }
-
-        .dz-paste-btn {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 12px;
-            background: var(--ink-4);
-            border: 1px solid var(--border-2);
-            color: var(--ghost);
-            font-family: var(--font-mono);
-            font-size: 9px;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            cursor: pointer;
-            margin-top: 6px;
-            transition: all 0.15s;
-        }
-
-        .dz-paste-btn:hover {
-            color: var(--paper);
-            border-color: rgba(255, 255, 255, 0.25);
-        }
-
-        .dz-paste-btn .material-symbols-outlined {
-            font-size: 12px;
-        }
-
-        /* Drop zone preview */
-        .dz-preview {
-            display: none;
-            position: absolute;
-            inset: 0;
-            background: var(--ink-3);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .dz-preview.show {
-            display: flex;
-        }
-
-        .dz-preview img {
-            max-height: 160px;
-            max-width: 90%;
-            object-fit: contain;
-            border: 1px solid var(--border-2);
-            opacity: 0.92;
-        }
-
-        .file-chip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--ink-4);
-            border: 1px solid var(--border-2);
-            padding: 5px 10px;
-        }
-
-        .file-chip-name {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--paper);
-            max-width: 160px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-chip-clear {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--warn);
-            background: none;
-            border: none;
-            cursor: pointer;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-        }
-
-        /* ── Text pane ── */
-        .text-pane {
-            flex: 1;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .text-pane textarea {
-            flex: 1;
-            background: var(--ink-4);
-            border: 1px solid var(--border-2);
-            color: var(--paper);
-            font-family: var(--font-mono);
-            font-size: 11px;
-            padding: 12px 14px;
-            resize: none;
-            outline: none;
-            line-height: 1.7;
-            min-height: 200px;
-            letter-spacing: 0.01em;
-        }
-
-        .text-pane textarea::placeholder {
-            color: var(--ghost);
-        }
-
-        .text-pane textarea:focus {
-            border-color: rgba(200, 255, 87, 0.35);
-        }
-
-        /* Doc upload zone */
-        .doc-zone {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border: 1px solid var(--border-2);
-            background: var(--ink-4);
-            color: var(--ghost);
-            font-family: var(--font-mono);
-            font-size: 10px;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.15s;
-            margin-top: auto;
-        }
-
-        .doc-zone:hover {
-            border-color: rgba(200, 255, 87, 0.4);
-            color: var(--signal);
-        }
-
-        .doc-zone .material-symbols-outlined {
-            font-size: 14px;
-        }
-
-        .doc-indicator {
-            display: none;
-            align-items: center;
-            gap: 8px;
-            margin-top: 6px;
-        }
-
-        .doc-indicator.show {
-            display: flex;
-        }
-
-        /* ── URL pane ── */
-        .url-pane {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-
-        .url-wrap {
-            width: 100%;
-            max-width: 440px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .url-label {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--muted);
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            text-align: center;
-        }
-
-        .url-field {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            height: 42px;
-            background: var(--ink-4);
-            border: 1px solid var(--border-2);
-            padding: 0 14px;
-            transition: border-color 0.2s;
-        }
-
-        .url-field:focus-within {
-            border-color: rgba(255, 107, 53, 0.5);
-        }
-
-        .url-field .material-symbols-outlined {
-            font-size: 16px;
-            color: var(--warn);
-            flex-shrink: 0;
-        }
-
-        .url-field input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--paper);
-            font-family: var(--font-mono);
-            font-size: 11px;
-            width: 100%;
-            letter-spacing: 0.02em;
-        }
-
-        .url-field input::placeholder {
-            color: var(--ghost);
-        }
-
-        .url-note {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--ghost);
-            text-align: center;
-            letter-spacing: 0.04em;
-            line-height: 1.8;
-        }
-
-        /* ── Toolbar ── */
-        .toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            border-top: 1px solid var(--border-2);
-            background: var(--ink-3);
-        }
-
-        .toolbar-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: var(--font-mono);
-            font-size: 10px;
-            color: var(--ghost);
-        }
-
-        .toolbar-indicator {
-            width: 5px;
-            height: 5px;
-            background: var(--signal);
-            border-radius: 50%;
-        }
-
-        .execute-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            height: 38px;
-            padding: 0 24px;
-            background: transparent;
-            border: 1px solid var(--signal);
-            color: var(--signal);
-            font-family: var(--font-display);
-            font-size: 10px;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            transition: box-shadow 0.2s;
-        }
-
-        .execute-btn::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--signal-dim);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.25s ease;
-        }
-
-        .execute-btn:hover::before {
-            transform: scaleX(1);
-        }
-
-        .execute-btn:hover {
-            box-shadow: 0 0 18px rgba(200, 255, 87, 0.15);
-        }
-
-        .execute-btn * {
-            position: relative;
-            z-index: 1;
-        }
-
-        .execute-btn .material-symbols-outlined {
-            font-size: 15px;
-        }
-
-        /* ===================================================
-   FEATURE GRID
-   ================================================= */
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1px;
-            background: var(--border);
-            border: 1px solid var(--border-2);
-            flex-shrink: 0;
-        }
-
-        .feat-card {
-            background: var(--ink-2);
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            text-decoration: none;
-            transition: background 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feat-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: currentColor;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .feat-card:hover {
-            background: var(--ink-3);
-        }
-
-        .feat-card:hover::before {
-            opacity: 1;
-        }
-
-        .feat-card.c-video {
-            color: #4E9EFF;
-        }
-
-        .feat-card.c-audio {
-            color: #AA7FFF;
-        }
-
-        .feat-card.c-text {
-            color: #FF9F57;
-        }
-
-        .feat-card.c-fact {
-            color: var(--danger);
-        }
-
-        .feat-header {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        .feat-header .material-symbols-outlined {
-            font-size: 14px;
-        }
-
-        .feat-title {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: inherit;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .feat-desc {
-            font-family: var(--font-mono);
-            font-size: 9px;
-            color: var(--muted);
-            line-height: 1.7;
-        }
-
-        /* ===================================================
-   RESPONSIVE
-   ================================================= */
-
-        @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-
-            .stage {
-                padding: 16px;
-            }
-
-            .features {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .upload-layout {
-                flex-direction: column;
-            }
-
-            .upload-sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .topnav {
-                display: none;
-            }
-        }
-
-        /* ===================================================
-   SCROLLBAR
-   ================================================= */
-
-        ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--ink);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--ghost);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--muted);
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3A8DFF",
+                        "primary-glow": "#3A8DFF",
+                        "secondary": "#0D1B2A",
+                        "accent-success": "#00D991",
+                        "accent-warning": "#FFB74A",
+                        "accent-danger": "#FF4A4A",
+                        "background-light": "#F5F7FA",
+                        "background-dark": "#0F121A",
+                        "surface-dark": "#0D1B2A",
+                        "panel-dark": "#161B2E",
+                        "card-dark": "#1E2338",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(58, 141, 255, 0.15)',
+                        'glow-hover': '0 0 30px rgba(58, 141, 255, 0.3)',
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15)',
+                    },
+                    backgroundImage: {
+                        'hero-gradient': 'radial-gradient(circle at 50% 0%, rgba(58, 141, 255, 0.08) 0%, transparent 60%)',
+                    }
+                },
+            },
+        }
+    </script>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/layout.js"></script>
 </head>
 
-<body>
-    <div class="app">
-
-        <!-- ═══ TOP BAR ═══ -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <a class="brand" href="homepage.html">
-                    <div class="brand-mark"></div>
-                    <span class="brand-name">VisioNova</span>
-                    <span class="brand-tag">v2.1</span>
-                </a>
-                <nav class="topnav">
-                    <a href="homepage.html" class="active">Home</a>
-                    <a href="AnalysisDashboard.html">Analyze</a>
-                    <a href="FactCheckPage.html">Fact Check</a>
-                    <a href="ReportPage.html">Reports</a>
-                </nav>
-            </div>
-            <div class="topbar-right">
-                <div class="sys-status">
-                    <div class="sys-dot"></div>
-                    Systems Online
+<body
+    class="relative flex h-screen w-full flex-col bg-background-dark text-white overflow-hidden selection:bg-primary selection:text-white">
+    <!-- Top Navigation Bar (Injected by layout.js) -->
+    <header></header>
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <!-- Sidebar Navigation (Injected by layout.js) -->
+        <aside></aside>
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto relative bg-background-dark bg-hero-gradient">
+            <!-- Background Decorative Elements -->
+            <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                <div
+                    class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px]">
                 </div>
-                <button class="btn-sm" id="themeToggle">Theme</button>
-            </div>
-        </header>
-
-        <div class="body-row">
-
-            <!-- ═══ SIDEBAR ═══ -->
-            <aside class="sidebar">
-                <a class="sb-item active" href="homepage.html">
-                    <span class="material-symbols-outlined">add_circle</span>
-                    <span class="sb-label">New Scan</span>
-                </a>
-                <div class="sb-divider"></div>
-                <a class="sb-item" href="AnalysisDashboard.html">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    <span class="sb-label">Dashboard</span>
-                </a>
-                <a class="sb-item" href="FactCheckPage.html">
-                    <span class="material-symbols-outlined">shield</span>
-                    <span class="sb-label">Fact Check</span>
-                </a>
-                <a class="sb-item" href="ReportPage.html">
-                    <span class="material-symbols-outlined">description</span>
-                    <span class="sb-label">Reports</span>
-                </a>
-            </aside>
-
-            <!-- ═══ MAIN STAGE ═══ -->
-            <main class="stage">
-
-                <!-- Page Header -->
-                <div class="page-header">
-                    <div class="page-header-title">
-                        <div class="eyebrow">Multi-modal credibility engine</div>
-                        <h1>Intelligence<br>Dashboard</h1>
-                        <p>Forensic analysis pipeline. Upload media to begin multi-modal deepfake and misinformation
-                            verification.</p>
-                    </div>
-                    <div class="header-meta">
-                        <div class="meta-chip">Node 14 online</div>
-                        <div class="meta-chip">Ensemble ready</div>
-                    </div>
+                <!-- Grid pattern -->
+                <div
+                    class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]">
                 </div>
+            </div>
+            <div class="relative max-w-7xl mx-auto px-6 py-10 flex flex-col gap-10">
+                <!-- Hero Section -->
+                <div class="flex flex-col items-center text-center gap-2 mb-4 animate-fade-in-up">
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-2">
+                        Verify Reality. <span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">Detect
+                            Deception.</span>
+                    </h1>
+                    <p class="text-[#94A3B8] text-lg max-w-2xl font-light">
+                        The world's most advanced multi-modal AI credibility engine for enterprise security and media
+                        integrity.
+                    </p>
+                </div>
+                <!-- Analysis Module -->
+                <div class="w-full max-w-4xl mx-auto z-10">
+                    <div
+                        class="bg-[#161b2e] bg-panel-dark border border-[#1E2338] rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm">
+                        <!-- Tabs -->
+                        <div class="flex border-b border-[#1E2338] overflow-x-auto" id="mediaTabs">
+                            <button data-tab="image" data-result="ImageResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 active-tab transition-colors min-w-[100px]">
+                                <span class="material-symbols-outlined">image</span>
+                                <span class="text-xs font-bold uppercase tracking-wider">Image</span>
+                            </button>
+                            <button data-tab="video" data-result="VideoResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                                <span class="material-symbols-outlined">videocam</span>
+                                <span class="text-xs font-bold uppercase tracking-wider">Video</span>
+                            </button>
+                            <button data-tab="audio" data-result="AudioResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                                <span class="material-symbols-outlined">mic</span>
+                                <span class="text-xs font-bold uppercase tracking-wider">Audio</span>
+                            </button>
+                            <button data-tab="text" data-result="TextResultPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                                <span class="material-symbols-outlined">description</span>
+                                <span class="text-xs font-bold uppercase tracking-wider">Text</span>
+                            </button>
+                            <button data-tab="url" data-result="FactCheckPage.html"
+                                class="media-tab flex-1 flex flex-col items-center justify-center gap-2 py-4 px-6 border-b-2 inactive-tab transition-colors min-w-[100px]">
+                                <span class="material-symbols-outlined">link</span>
+                                <span class="text-xs font-bold uppercase tracking-wider">URL</span>
+                            </button>
+                        </div>
 
-                <!-- Analysis Panel -->
-                <div class="analysis-panel">
+                        <!-- Upload Content Sections -->
+                        <div id="uploadContents">
+                            <!-- Image Upload -->
+                            <div id="image-upload"
+                                class="upload-content p-6 md:p-8 flex flex-col items-center justify-center bg-[#0F121A]/50 bg-surface-dark relative">
 
-                    <!-- Tab Strip -->
-                    <div class="tab-strip" id="tabStrip">
-                        <button class="tab-btn active" data-tab="image" data-page="ImageResultPage.html">
-                            <span class="material-symbols-outlined">image</span>
-                            <span class="label">Image</span>
-                        </button>
-                        <button class="tab-btn" data-tab="video" data-page="VideoResultPage.html">
-                            <span class="material-symbols-outlined">videocam</span>
-                            <span class="label">Video</span>
-                        </button>
-                        <button class="tab-btn" data-tab="audio" data-page="AudioResultPage.html">
-                            <span class="material-symbols-outlined">graphic_eq</span>
-                            <span class="label">Audio</span>
-                        </button>
-                        <button class="tab-btn" data-tab="text" data-page="TextResultPage.html">
-                            <span class="material-symbols-outlined">description</span>
-                            <span class="label">Text</span>
-                        </button>
-                        <button class="tab-btn" data-tab="url" data-page="FactCheckPage.html">
-                            <span class="material-symbols-outlined">radar</span>
-                            <span class="label">Fact Check</span>
-                        </button>
-                    </div>
+                                <!-- Drop Zone Container -->
+                                <div id="image-drop-zone"
+                                    class="border-2 border-dashed border-[#2A3450] hover:border-primary/50 transition-all duration-300 rounded-2xl w-full min-h-[300px] flex items-center justify-center bg-[#0D1B2A]/80 cursor-pointer relative overflow-hidden"
+                                    tabindex="0">
 
-                    <!-- IMAGE TAB -->
-                    <div class="tab-content active" id="tab-image">
-                        <div class="upload-layout">
-                            <div class="upload-sidebar">
-                                <div class="us-label">Target Acquisition</div>
-                                <p class="us-desc">Vision Transformer ensemble analysis. JPG, PNG, WEBP — max 50MB.</p>
-                                <div class="us-meta">
-                                    <div class="us-field-label">Remote source</div>
-                                    <div class="us-input">
-                                        <span>&gt;</span>
-                                        <input id="imageUrlInput" type="text" placeholder="paste image URL" />
+                                    <!-- DEFAULT STATE -->
+                                    <div id="image-upload-default"
+                                        class="flex flex-col items-center justify-center gap-4 p-8 transition-opacity duration-300">
+                                        <div
+                                            class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-primary border border-primary/20">
+                                            <span class="material-symbols-outlined !text-4xl">cloud_upload</span>
+                                        </div>
+                                        <div class="text-center">
+                                            <p class="text-xl font-semibold text-white mb-2">Drag &amp; Drop image here
+                                            </p>
+                                            <p class="text-sm text-[#94A3B8]">or <span
+                                                    class="text-primary cursor-pointer hover:underline font-medium"
+                                                    id="imageBrowseLink">browse files</span>
+                                                from your computer</p>
+                                        </div>
+                                        <div class="flex flex-wrap items-center justify-center gap-3 mt-2">
+                                            <button id="pasteImageBtn" type="button"
+                                                class="flex items-center gap-2 px-5 py-2.5 bg-[#1E2338] hover:bg-primary/20 border border-[#2A3450] hover:border-primary/50 rounded-xl text-sm text-[#94A3B8] hover:text-white transition-all duration-200">
+                                                <span class="material-symbols-outlined text-lg">content_paste</span>
+                                                Paste from Clipboard
+                                            </button>
+                                            <span class="text-xs text-[#64748B]">or press <kbd
+                                                    class="px-2 py-1 bg-[#1E2338] rounded-md text-[#94A3B8] font-mono text-[11px] border border-[#2A3450]">Ctrl+V</kbd></span>
+                                        </div>
+                                        <p class="text-xs text-[#64748B] mt-2">Supports JPG, PNG, WEBP up to 50MB</p>
+                                    </div>
+
+                                    <!-- PREVIEW STATE (hidden by default) -->
+                                    <div id="image-preview-state"
+                                        class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 bg-[#0D1B2A] transition-opacity duration-300">
+                                        <!-- Preview Image Container -->
+                                        <div class="relative flex items-center justify-center mb-4 max-h-[180px]">
+                                            <img id="image-preview-img"
+                                                class="max-h-[180px] max-w-full rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
+                                                alt="Preview" />
+                                        </div>
+                                        <!-- File Info & Actions -->
+                                        <div class="flex items-center gap-3">
+                                            <div
+                                                class="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-green-500/30 rounded-full">
+                                                <span
+                                                    class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
+                                                <span id="image-file-name"
+                                                    class="text-green-400 text-sm font-medium truncate max-w-[180px]">image.png</span>
+                                            </div>
+                                            <button id="clearImageBtn" type="button"
+                                                class="flex items-center gap-1.5 px-4 py-2 bg-[#1E2338] hover:bg-red-500/20 border border-[#2A3450] hover:border-red-500/40 rounded-full text-sm text-[#94A3B8] hover:text-red-400 transition-all duration-200">
+                                                <span class="material-symbols-outlined text-lg">close</span>
+                                                Clear
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="upload-main">
-                                <div class="dropzone" id="imageDropZone" tabindex="0">
-                                    <div class="dz-icon">
-                                        <span class="material-symbols-outlined">add_photo_alternate</span>
+
+                                <!-- URL Input & Analyze Button -->
+                                <div class="w-full mt-5 flex flex-col md:flex-row items-center gap-3">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-xl focus-within:border-primary/50 transition-colors duration-200">
+                                            <span class="material-symbols-outlined text-[#64748B]">link</span>
+                                            <input id="imageUrlInput"
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or paste an image URL here..." type="text" />
+                                        </div>
                                     </div>
-                                    <div class="dz-title">Initialize Media Drop</div>
-                                    <div class="dz-sub">Drag & drop or <span class="dz-browse" id="imgBrowse">browse
-                                            storage</span></div>
-                                    <button class="dz-paste-btn" id="pasteImageBtn" type="button">
-                                        <span class="material-symbols-outlined">content_paste</span>
-                                        Clipboard paste
+                                    <button id="analyzeBtn" onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-7 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-xl shadow-glow hover:shadow-glow-hover transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Credibility
                                     </button>
-                                    <div class="dz-preview" id="imagePreview">
-                                        <img id="imagePreviewImg" alt="Preview" />
-                                        <div class="file-chip">
-                                            <span class="file-chip-name" id="imageFileName">target.png</span>
-                                            <button class="file-chip-clear" id="clearImageBtn">wipe</button>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- VIDEO TAB -->
-                    <div class="tab-content" id="tab-video">
-                        <div class="upload-layout">
-                            <div class="upload-sidebar">
-                                <div class="us-label">Video Telemetry</div>
-                                <p class="us-desc">Frame-by-frame deepfake analysis. MP4, MOV, AVI — max 500MB.</p>
-                                <div class="us-meta">
-                                    <div class="us-field-label">Remote source</div>
-                                    <div class="us-input">
-                                        <span>&gt;</span>
-                                        <input type="text" placeholder="paste video URL" />
-                                    </div>
+                            <!-- Video Upload -->
+                            <div id="video-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                 </div>
-                            </div>
-                            <div class="upload-main">
-                                <div class="dropzone">
-                                    <div class="dz-icon">
-                                        <span class="material-symbols-outlined">movie</span>
-                                    </div>
-                                    <div class="dz-title">Mount Video File</div>
-                                    <div class="dz-sub">Drag & drop or <span class="dz-browse"
-                                            style="color:#4E9EFF;">browse</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- AUDIO TAB -->
-                    <div class="tab-content" id="tab-audio">
-                        <div class="upload-layout">
-                            <div class="upload-sidebar">
-                                <div class="us-label">Spectral Intake</div>
-                                <p class="us-desc">Synthetic voice detection via Wav2Vec2. MP3, WAV, FLAC supported.</p>
-                                <div class="us-meta">
-                                    <div class="us-field-label">Remote audio URI</div>
-                                    <div class="us-input">
-                                        <span>&gt;</span>
-                                        <input type="text" placeholder="audio stream URL" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="upload-main">
-                                <div class="dropzone">
-                                    <div class="dz-icon">
-                                        <span class="material-symbols-outlined">mic</span>
-                                    </div>
-                                    <div class="dz-title">Inject Audio Signal</div>
-                                    <div class="dz-sub">Drag & drop or <span class="dz-browse"
-                                            style="color:#AA7FFF;">browse storage</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TEXT TAB -->
-                    <div class="tab-content" id="tab-text">
-                        <div class="upload-layout">
-                            <div class="upload-sidebar">
-                                <div class="us-label">Semantic Buffer</div>
-                                <p class="us-desc">LLM artifact detection via RoBERTa/DeBERTa ensemble. Binoculars
-                                    perplexity scoring.</p>
-                                <div class="us-meta">
-                                    <div class="us-field-label">Or mount document</div>
-                                    <div class="doc-zone" id="docUploadZone"
-                                        onclick="document.getElementById('textFileInput').click()">
-                                        <span class="material-symbols-outlined">upload_file</span>
-                                        PDF / DOCX / TXT — 10MB max
-                                    </div>
-                                    <div class="doc-indicator" id="docFileIndicator">
-                                        <div class="file-chip" style="border-color: rgba(255,159,87,0.4);">
-                                            <span class="file-chip-name" id="docFileNameDisplay"
-                                                style="color: #FF9F57;"></span>
-                                            <span class="material-symbols-outlined" id="docRemoveBtn"
-                                                style="font-size:13px;color:#FF9F57;cursor:pointer;">close</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-pane">
-                                <textarea id="textInput" placeholder="[ BEGIN RAW TEXT INJECTION HERE ]..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- URL / FACT CHECK TAB -->
-                    <div class="tab-content" id="tab-url">
-                        <div class="upload-layout">
-                            <div class="upload-sidebar">
-                                <div class="us-label">Network Analysis</div>
-                                <p class="us-desc">Web-scraping and cross-reference reasoning. Verifies claims against
-                                    real-time knowledge bases.</p>
-                                <div class="us-meta">
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-purple-500/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A]">
                                     <div
-                                        style="font-family: var(--font-mono); font-size: 10px; color: var(--ghost); line-height: 1.9; padding: 10px; background: var(--ink-4); border: 1px solid var(--border);">
-                                        &gt; Awaiting TARGET coordinate.<br>
-                                        &gt; Protocol: Semantic Web Ping<br>
-                                        &gt; Status: <span style="color: var(--signal);">STANDBY</span>
+                                        class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-purple-400 group-hover:text-white group-hover:bg-purple-500 transition-all shadow-glow">
+                                        <span class="material-symbols-outlined !text-3xl">videocam</span>
                                     </div>
+                                    <div class="text-center">
+                                        <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop video here</p>
+                                        <p class="text-sm text-[#94A3B8]">or <span
+                                                class="text-purple-400 cursor-pointer hover:underline">browse
+                                                files</span> from your computer</p>
+                                    </div>
+                                    <p class="text-xs text-[#64748B] mt-2">Supports MP4, MOV, AVI, WEBM up to 500MB</p>
+                                </div>
+                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                            <span class="material-symbols-outlined text-[#64748B]">link</span>
+                                            <input
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or paste a video URL here..." type="text" />
+                                        </div>
+                                    </div>
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Video
+                                    </button>
                                 </div>
                             </div>
-                            <div class="url-pane">
-                                <div class="url-wrap">
-                                    <div class="url-label">Target Uniform Resource Locator</div>
-                                    <div class="url-field">
-                                        <span class="material-symbols-outlined">radar</span>
-                                        <input type="url" id="urlInput" placeholder="https://..." />
-                                    </div>
-                                    <div class="url-note">
-                                        Accepts: article URLs, direct claims, factual questions.<br>
-                                        Cross-referenced against 40+ trusted source domains.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Toolbar -->
-                    <div class="toolbar">
-                        <div class="toolbar-info">
-                            <div class="toolbar-indicator"></div>
-                            Ensemble Engine — Standby
+                            <!-- Audio Upload -->
+                            <div id="audio-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-green-500/50 group-hover:scale-[1.01] transition-all rounded-xl w-full h-64 flex flex-col items-center justify-center gap-4 bg-[#0D1B2A]">
+                                    <div
+                                        class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-green-400 group-hover:text-white group-hover:bg-green-500 transition-all shadow-glow">
+                                        <span class="material-symbols-outlined !text-3xl">mic</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-lg font-medium text-white mb-1">Drag &amp; Drop audio here</p>
+                                        <p class="text-sm text-[#94A3B8]">or <span
+                                                class="text-green-400 cursor-pointer hover:underline">browse
+                                                files</span> from your computer</p>
+                                    </div>
+                                    <p class="text-xs text-[#64748B] mt-2">Supports MP3, WAV, FLAC, OGG up to 100MB</p>
+                                </div>
+                                <div class="w-full mt-8 flex flex-col md:flex-row items-center gap-4">
+                                    <div class="flex-1 w-full">
+                                        <div
+                                            class="flex items-center gap-3 px-4 py-3 bg-[#0D1B2A] border border-[#2A3450] rounded-lg">
+                                            <span class="material-symbols-outlined text-[#64748B]">link</span>
+                                            <input
+                                                class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                placeholder="Or paste an audio URL here..." type="text" />
+                                        </div>
+                                    </div>
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Audio
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Text Upload -->
+                            <div id="text-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-amber-500/50 transition-all rounded-xl w-full bg-[#0D1B2A] p-6">
+                                    <div class="flex items-center gap-3 mb-4">
+                                        <div
+                                            class="size-10 rounded-full bg-[#1E2338] flex items-center justify-center text-amber-400">
+                                            <span class="material-symbols-outlined">description</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-lg font-medium text-white">Paste or Type Text</p>
+                                            <p class="text-xs text-[#64748B]">Enter text to check for AI-generated
+                                                content</p>
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        class="w-full h-48 bg-[#0F121A] border border-[#2A3450] rounded-lg p-4 text-white text-sm placeholder-[#64748B] focus:outline-none focus:border-amber-500/50 resize-none"
+                                        placeholder="Paste your text here to analyze for AI-generated content..."></textarea>
+                                </div>
+
+                                <!-- Document Upload Section -->
+                                <div class="w-full mt-6">
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <div class="h-px flex-1 bg-[#2A3450]"></div>
+                                        <span class="text-xs text-[#64748B] font-medium uppercase tracking-wider">or
+                                            upload a document</span>
+                                        <div class="h-px flex-1 bg-[#2A3450]"></div>
+                                    </div>
+                                    <div id="docUploadZone"
+                                        class="flex items-center gap-4 px-5 py-4 bg-[#0D1B2A] border border-[#2A3450] hover:border-amber-500/40 rounded-xl transition-all cursor-pointer"
+                                        onclick="document.getElementById('textFileInput').click()">
+                                        <div class="flex gap-2 shrink-0">
+                                            <div class="size-9 rounded-lg bg-red-500/10 flex items-center justify-center"
+                                                title="PDF">
+                                                <span
+                                                    class="material-symbols-outlined text-red-400 !text-[20px]">picture_as_pdf</span>
+                                            </div>
+                                            <div class="size-9 rounded-lg bg-blue-500/10 flex items-center justify-center"
+                                                title="DOCX">
+                                                <span
+                                                    class="material-symbols-outlined text-blue-400 !text-[20px]">description</span>
+                                            </div>
+                                            <div class="size-9 rounded-lg bg-green-500/10 flex items-center justify-center"
+                                                title="TXT">
+                                                <span
+                                                    class="material-symbols-outlined text-green-400 !text-[20px]">text_snippet</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p id="docUploadLabel" class="text-sm text-white font-medium">Click to
+                                                upload a document</p>
+                                            <p id="docUploadHint" class="text-xs text-[#64748B] mt-0.5">Supports PDF,
+                                                DOCX, DOC, TXT — up to 10MB</p>
+                                        </div>
+                                        <span
+                                            class="material-symbols-outlined text-[#64748B] shrink-0">upload_file</span>
+                                    </div>
+                                    <!-- Uploaded file indicator (hidden by default) -->
+                                    <div id="docFileIndicator"
+                                        class="hidden mt-3 items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                        <span class="material-symbols-outlined text-amber-400">check_circle</span>
+                                        <div class="flex-1 min-w-0">
+                                            <p id="docFileNameDisplay" class="text-sm text-white font-medium truncate">
+                                                file.pdf</p>
+                                            <p id="docFileSizeDisplay" class="text-xs text-amber-400/70">Ready for
+                                                analysis</p>
+                                        </div>
+                                        <button id="docRemoveBtn"
+                                            class="text-[#64748B] hover:text-red-400 transition-colors"
+                                            title="Remove file">
+                                            <span class="material-symbols-outlined !text-[20px]">close</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="w-full mt-6">
+                                    <button onclick="navigateToResult()"
+                                        class="w-full px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">radar</span>
+                                        Analyze Text
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- URL Input -->
+                            <div id="url-upload"
+                                class="upload-content hidden p-8 md:p-12 flex flex-col items-center justify-center bg-[#0F121A]/50 relative group">
+                                <div
+                                    class="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                </div>
+                                <div
+                                    class="border-2 border-dashed border-[#2A3450] group-hover:border-red-500/50 transition-all rounded-xl w-full bg-[#0D1B2A] p-8">
+                                    <div class="flex flex-col items-center gap-6">
+                                        <div
+                                            class="size-16 rounded-full bg-[#1E2338] flex items-center justify-center text-red-400 group-hover:text-white group-hover:bg-red-500 transition-all shadow-glow">
+                                            <span class="material-symbols-outlined !text-3xl">link</span>
+                                        </div>
+                                        <div class="text-center">
+                                            <p class="text-lg font-medium text-white mb-1">Enter URL to Fact Check</p>
+                                            <p class="text-sm text-[#94A3B8]">Paste any news article, social media post,
+                                                or website URL</p>
+                                        </div>
+                                        <div class="w-full max-w-xl">
+                                            <div
+                                                class="flex items-center gap-3 px-4 py-4 bg-[#0F121A] border border-[#2A3450] rounded-lg focus-within:border-red-500/50 transition-colors">
+                                                <span class="material-symbols-outlined text-red-400">language</span>
+                                                <input
+                                                    class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-[#64748B] focus:ring-0"
+                                                    placeholder="https://example.com/article..." type="url" />
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-[#64748B]">We'll analyze the content for misinformation
+                                            and verify claims</p>
+                                    </div>
+                                </div>
+                                <div class="w-full mt-8 flex justify-center">
+                                    <button onclick="navigateToResult()"
+                                        class="w-full md:w-auto px-8 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-glow hover:shadow-glow-hover transition-all flex items-center justify-center gap-2 whitespace-nowrap group/btn">
+                                        <span
+                                            class="material-symbols-outlined group-hover/btn:animate-spin">fact_check</span>
+                                        Fact Check URL
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <button class="execute-btn" id="analyzeBtn" onclick="navigateToResult()">
-                            <span class="material-symbols-outlined">bolt</span>
-                            Execute Scan
-                        </button>
                     </div>
                 </div>
-
                 <!-- Feature Grid -->
-                <div class="features">
-                    <a href="VideoResultPage.html" class="feat-card c-video">
-                        <div class="feat-header">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Card 1 -->
+                    <a href="VideoResultPage.html"
+                        class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
+                            <span class="flex h-2 w-2 rounded-full bg-accent-success"></span>
+                        </div>
+                        <div
+                            class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-2">
                             <span class="material-symbols-outlined">face</span>
-                            <span class="feat-title">Video Frame Filter</span>
                         </div>
-                        <p class="feat-desc">Frame-by-frame synthetic face evaluation using FaceForensics++ models.</p>
+                        <div>
+                            <h3 class="text-white font-bold text-lg leading-tight mb-1">Deepfake Detector</h3>
+                            <p class="text-[#94A3B8] text-sm leading-relaxed">Advanced frame-by-frame video analysis to
+                                spot synthetic faces.</p>
+                        </div>
                     </a>
-                    <a href="AudioResultPage.html" class="feat-card c-audio">
-                        <div class="feat-header">
+                    <!-- Card 2 -->
+                    <a href="AudioResultPage.html"
+                        class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
+                            <span class="flex h-2 w-2 rounded-full bg-accent-success"></span>
+                        </div>
+                        <div
+                            class="size-12 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 mb-2">
                             <span class="material-symbols-outlined">graphic_eq</span>
-                            <span class="feat-title">Acoustic Scout</span>
                         </div>
-                        <p class="feat-desc">Sub-audible frequency disruption capture via Wav2Vec2 anti-deepfake models.
-                        </p>
+                        <div>
+                            <h3 class="text-white font-bold text-lg leading-tight mb-1">Voice Clone Scout</h3>
+                            <p class="text-[#94A3B8] text-sm leading-relaxed">Spectral audio analysis to identify
+                                AI-generated voice patterns.</p>
+                        </div>
                     </a>
-                    <a href="TextResultPage.html" class="feat-card c-text">
-                        <div class="feat-header">
+                    <!-- Card 3 -->
+                    <a href="TextResultPage.html"
+                        class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
+                            <span class="flex h-2 w-2 rounded-full bg-accent-warning"></span>
+                        </div>
+                        <div
+                            class="size-12 rounded-lg bg-accent-warning/10 flex items-center justify-center text-accent-warning mb-2">
                             <span class="material-symbols-outlined">psychology</span>
-                            <span class="feat-title">LLM Classifiers</span>
                         </div>
-                        <p class="feat-desc">Token probability mapping via Binoculars perplexity and RoBERTa ensemble.
-                        </p>
+                        <div>
+                            <h3 class="text-white font-bold text-lg leading-tight mb-1">AI Text Classifier</h3>
+                            <p class="text-[#94A3B8] text-sm leading-relaxed">Detects LLM-generated text from ChatGPT,
+                                Claude, and others.</p>
+                        </div>
                     </a>
-                    <a href="FactCheckPage.html" class="feat-card c-fact">
-                        <div class="feat-header">
-                            <span class="material-symbols-outlined">fact_check</span>
-                            <span class="feat-title">Fact Engine</span>
+                    <!-- Card 4 -->
+                    <a href="FactCheckPage.html"
+                        class="feature-card bg-[#161b2e] border border-[#1E2338] p-6 rounded-2xl flex flex-col gap-4 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-3 opacity-50 group-hover:opacity-100 transition-opacity">
+                            <span class="flex h-2 w-2 rounded-full bg-accent-success"></span>
                         </div>
-                        <p class="feat-desc">Real-time DB semantic query, cross-source validation and verdicts.</p>
+                        <div
+                            class="size-12 rounded-lg bg-accent-danger/10 flex items-center justify-center text-accent-danger mb-2">
+                            <span class="material-symbols-outlined">fact_check</span>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-bold text-lg leading-tight mb-1">Fact Check Radar</h3>
+                            <p class="text-[#94A3B8] text-sm leading-relaxed">Real-time cross-referencing with trusted
+                                global news sources.</p>
+                        </div>
                     </a>
                 </div>
-
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
-    <!-- Hidden file inputs -->
-    <input type="file" id="imageFileInput" accept="image/*" style="display:none" />
-    <input type="file" id="videoFileInput" accept="video/*" style="display:none" />
-    <input type="file" id="audioFileInput" accept="audio/*" style="display:none" />
-    <input type="file" id="textFileInput" accept=".txt,.doc,.docx,.pdf" style="display:none" />
+    <!-- Hidden File Inputs -->
+    <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+    <input type="file" id="videoFileInput" accept="video/*" class="hidden" />
+    <input type="file" id="audioFileInput" accept="audio/*" class="hidden" />
+    <input type="file" id="textFileInput" accept=".txt,.doc,.docx,.pdf" class="hidden" />
 
+    <!-- Storage Utilities -->
     <script src="../js/storage-utils.js"></script>
 
-    <script>
-        // ── Tab switching ──
-        let activeTab = 'image';
-        let activeResultPage = 'ImageResultPage.html';
+    <!-- Theme Toggle -->
+    <script src="../js/theme-toggle.js"></script>
 
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
-                btn.classList.add('active');
-                activeTab = btn.dataset.tab;
-                activeResultPage = btn.dataset.page;
-                document.getElementById('tab-' + activeTab).classList.add('active');
-            });
-        });
+    <!-- Homepage Functionality -->
+    <script src="../js/homepage.js"></script>
 
-        // ── Navigate to result ──
-        function navigateToResult() {
-            window.location.href = activeResultPage;
-        }
-
-        // ── Image preview ──
-        const imgBrowse = document.getElementById('imgBrowse');
-        const imageFileInput = document.getElementById('imageFileInput');
-        const imageDropZone = document.getElementById('imageDropZone');
-        const imagePreview = document.getElementById('imagePreview');
-        const imagePreviewImg = document.getElementById('imagePreviewImg');
-        const imageFileName = document.getElementById('imageFileName');
-        const clearImageBtn = document.getElementById('clearImageBtn');
-
-        if (imgBrowse) imgBrowse.addEventListener('click', () => imageFileInput.click());
-
-        imageFileInput.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            showImagePreview(file);
-            saveToStorage(file);
-        });
-
-        imageDropZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            imageDropZone.style.borderColor = 'rgba(200,255,87,0.5)';
-        });
-        imageDropZone.addEventListener('dragleave', () => {
-            imageDropZone.style.borderColor = '';
-        });
-        imageDropZone.addEventListener('drop', e => {
-            e.preventDefault();
-            imageDropZone.style.borderColor = '';
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                showImagePreview(file);
-                saveToStorage(file);
-            }
-        });
-
-        function showImagePreview(file) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                imagePreviewImg.src = e.target.result;
-                imageFileName.textContent = file.name;
-                imagePreview.classList.add('show');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        if (clearImageBtn) clearImageBtn.addEventListener('click', e => {
-            e.stopPropagation();
-            imagePreview.classList.remove('show');
-            imageFileInput.value = '';
-        });
-
-        // ── Paste from clipboard ──
-        const pasteBtn = document.getElementById('pasteImageBtn');
-        if (pasteBtn) pasteBtn.addEventListener('click', async () => {
-            try {
-                const items = await navigator.clipboard.read();
-                for (const item of items) {
-                    for (const type of item.types) {
-                        if (type.startsWith('image/')) {
-                            const blob = await item.getType(type);
-                            const file = new File([blob], 'pasted_image.png', { type });
-                            showImagePreview(file);
-                            saveToStorage(file);
-                        }
-                    }
-                }
-            } catch (e) { console.warn('Clipboard read failed:', e); }
-        });
-
-        function saveToStorage(file) {
-            if (typeof VisioNovaStorage !== 'undefined') {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    VisioNovaStorage.saveFile('image', e.target.result, file.name, file.type);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // ── Text / Doc upload ──
-        const textFileInput = document.getElementById('textFileInput');
-        const docFileIndicator = document.getElementById('docFileIndicator');
-        const docFileNameDisplay = document.getElementById('docFileNameDisplay');
-        const docRemoveBtn = document.getElementById('docRemoveBtn');
-
-        if (textFileInput) textFileInput.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            docFileNameDisplay.textContent = file.name;
-            docFileIndicator.classList.add('show');
-        });
-
-        if (docRemoveBtn) docRemoveBtn.addEventListener('click', () => {
-            textFileInput.value = '';
-            docFileIndicator.classList.remove('show');
-        });
-    </script>
 </body>
 
 </html>
