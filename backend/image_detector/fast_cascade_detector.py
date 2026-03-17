@@ -75,14 +75,8 @@ class FastCascadeDetector:
     
     @property
     def frequency_analyzer(self):
-        """Lazy load frequency analyzer."""
-        if self._frequency_analyzer is None:
-            try:
-                from .ml_detector import FrequencyAnalyzer
-                self._frequency_analyzer = FrequencyAnalyzer()
-            except ImportError:
-                logger.warning("FrequencyAnalyzer not available")
-        return self._frequency_analyzer
+        """Lazy load quick noise check (frequency analyzer removed)."""
+        return None
     
     @property
     def fast_detector(self):

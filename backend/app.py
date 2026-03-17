@@ -12,7 +12,7 @@ from fact_check import FactChecker
 from fact_check.feedback_handler import FeedbackHandler
 from text_detector import AIContentDetector, TextExplainer, DocumentParser
 from image_detector import (
-    ImageDetector, MetadataAnalyzer, ELAAnalyzer, 
+    MetadataAnalyzer, ELAAnalyzer, 
     WatermarkDetector, ContentCredentialsDetector, ImageExplainer,
     NoiseAnalyzer, EnsembleDetector, FastCascadeDetector, ML_DETECTORS_AVAILABLE
 )
@@ -52,50 +52,48 @@ ai_detector = AIContentDetector(use_ml_model=True)  # Enable hybrid detection (M
 text_explainer = TextExplainer()
 doc_parser = DocumentParser()
 
-# Initialize image detector and AI explainer
-# Basic detector (always available, fast)
-image_detector = ImageDetector(use_gpu=False)
+# Initialize image analyzers and AI explainer
 metadata_analyzer = MetadataAnalyzer()
 ela_analyzer = ELAAnalyzer()
 watermark_detector = WatermarkDetector()
 content_credentials_detector = ContentCredentialsDetector()
 noise_analyzer = NoiseAnalyzer()
-image_explainer = ImageExplainer()  # Groq Vision API for AI-powered image analysis
+image_explainer = ImageExplainer()  # XAI explainer (Ensemble Analysis + Grad-CAM, fully offline)
 
 # Ensemble detector (advanced, loads ML models on demand)
 # Set load_ml_models=False initially for faster startup, models load on first use
 ensemble_detector = None
 try:
     ensemble_detector = EnsembleDetector(use_gpu=False, load_ml_models=False)
-    print(f"✓ Ensemble detector initialized (ML models available: {ML_DETECTORS_AVAILABLE})")
+    print(f"[OK] Ensemble detector initialized (ML models available: {ML_DETECTORS_AVAILABLE})")
 except Exception as e:
-    print(f"⚠ Ensemble detector not available: {e}")
+    print(f"[WARN] Ensemble detector not available: {e}")
 
 # Fast cascade detector (speed-optimized, 3-5x faster for clear cases)
 fast_detector = None
 try:
     fast_detector = FastCascadeDetector(use_gpu=False, enable_fp16=False)
-    print("✓ Fast cascade detector initialized (3-5x speedup for clear cases)")
+    print("[OK] Fast cascade detector initialized (3-5x speedup for clear cases)")
 except Exception as e:
-    print(f"⚠ Fast cascade detector not available: {e}")
+    print(f"[WARN] Fast cascade detector not available: {e}")
 
 # Audio deepfake detector (lazy-loaded, models downloaded on first use)
 audio_detector = None
 if AUDIO_DETECTOR_AVAILABLE:
     try:
-        audio_detector = AudioDeepfakeDetector(use_gpu=False)
-        print("✓ Audio deepfake detector initialized (model loads on first use)")
+        audio_detector = AudioDeepfakeDetector(use_gpu=True)
+        print("[OK] Audio deepfake detector initialized (model loads on first use)")
     except Exception as e:
-        print(f"⚠ Audio detector not available: {e}")
+        print(f"[WARN] Audio detector not available: {e}")
 
 # Video deepfake detector (lazy-loaded, models downloaded on first use)
 video_detector = None
 if VIDEO_DETECTOR_AVAILABLE:
     try:
         video_detector = VideoDeepfakeDetector(use_gpu=False)
-        print("✓ Video deepfake detector initialized (model loads on first use)")
+        print("[OK] Video deepfake detector initialized (model loads on first use)")
     except Exception as e:
-        print(f"⚠ Video detector not available: {e}")
+        print(f"[WARN] Video detector not available: {e}")
 
 # File upload limits
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -484,7 +482,7 @@ def detect_ai_content():
                 'error_code': 'DETECTION_ERROR'
             }), 400
         
-        # Add Groq explanation if requested
+        # Add text explanation if requested
         if explain:
             explanation = text_explainer.explain(result, text[:500])
             result['explanation'] = explanation
@@ -618,7 +616,7 @@ def detect_ai_file_upload():
                 s for s in sentence_analysis if s.get('is_flagged')
             ]
         
-        # Add Groq explanation if requested
+        # Add text explanation if requested
         if explain:
             explanation = text_explainer.explain(result, text[:500])
             result['explanation'] = explanation
@@ -732,22 +730,8 @@ def detect_ai_image():
         if not detection_result.get('success', False):
             return jsonify(detection_result), 400
         
-        # Add metadata analysis if requested
-        if include_metadata:
-            metadata_result = metadata_analyzer.analyze(image_bytes)
-            detection_result['metadata'] = metadata_result
-            
-            # Adjust AI probability based on metadata
-            modifier = metadata_result.get('ai_probability_modifier', 0)
-            original_prob = detection_result['ai_probability']
-            adjusted_prob = max(0, min(100, original_prob + modifier))
-            detection_result['ai_probability'] = round(adjusted_prob, 2)
-            detection_result['probability_adjustment'] = modifier
-        
-        # Add ELA analysis if requested
-        if include_ela:
-            ela_result = ela_analyzer.analyze(image_bytes)
-            detection_result['ela'] = ela_result
+        # Note: Metadata, ELA, and noise analysis removed from response 
+        # to simplify the results page. Backend modules still exist for future 'Advanced' mode.
         
         # Add watermark detection if requested
         if include_watermark:
@@ -763,23 +747,6 @@ def detect_ai_image():
                 detection_result['ai_probability'] = min(100, round(ai_prob + adjustment, 2))
                 detection_result['watermark_adjustment'] = round(adjustment, 2)
         
-        # Add advanced noise analysis (always run for forensics)
-        noise_result = noise_analyzer.analyze(image_bytes)
-        if noise_result.get('success'):
-            # Add noise map to top-level response for UI
-            detection_result['noise_map'] = noise_result.get('noise_map')
-            # Update analysis_scores with noise consistency from advanced analyzer
-            if 'analysis_scores' in detection_result:
-                detection_result['analysis_scores']['noise_consistency'] = noise_result.get('noise_consistency', 
-                    detection_result['analysis_scores'].get('noise_consistency', 50))
-            # Store full noise details for forensics tab (frontend expects 'noise_analysis')
-            detection_result['noise_analysis'] = {
-                'consistency': noise_result.get('noise_consistency', 50),
-                'low_freq': noise_result.get('low_freq', 'N/A'),
-                'mid_freq': noise_result.get('mid_freq', 'N/A'),
-                'high_freq': noise_result.get('high_freq', 'N/A'),
-                'pattern_analysis': noise_result.get('pattern_analysis', {})
-            }
         
         # Add C2PA Content Credentials detection if requested
         if include_c2pa:
@@ -793,20 +760,18 @@ def detect_ai_image():
                 detection_result['verdict'] = 'AI_GENERATED'
                 detection_result['verdict_description'] = f"Confirmed AI-generated by {c2pa_result.get('ai_generator')} (verified via Content Credentials)"
         
-        # Add AI-powered visual analysis and explanation (Groq Vision - Llama 4 Scout)
+        # Add XAI explanation (Ensemble Disagreement Analysis + Grad-CAM, fully offline)
         if include_ai_analysis:
             ai_analysis = image_explainer.analyze_image(image_bytes, detection_result)
             detection_result['ai_analysis'] = ai_analysis
-            
-            # Update verdict with combined analysis if available
-            if ai_analysis.get('success') and ai_analysis.get('combined_verdict'):
-                combined = ai_analysis['combined_verdict']
-                # Only override if not already confirmed by C2PA
-                if not detection_result.get('content_credentials', {}).get('is_ai_generated'):
-                    detection_result['ai_probability'] = combined['combined_probability']
-                    detection_result['verdict'] = combined['verdict']
-                    detection_result['verdict_description'] = combined['verdict_description']
         
+        # Force the final probability to 100 or 0 based on the 50% threshold
+        ai_prob = detection_result.get('ai_probability', 50.0)
+        if ai_prob > 50.0:
+            detection_result['ai_probability'] = 100.0
+        else:
+            detection_result['ai_probability'] = 0.0
+            
         return jsonify(detection_result)
     
     except Exception as e:
@@ -915,11 +880,17 @@ def detect_ai_image_ensemble():
         # Run ensemble detection
         result = ensemble_detector.detect(image_bytes, filename)
         
-        # Add AI-powered visual analysis for explanation
-        if image_explainer.client:
-            ai_analysis = image_explainer.analyze_image(image_bytes, result)
-            result['ai_analysis'] = ai_analysis
+        # Add XAI explanation (Ensemble Disagreement Analysis + Grad-CAM, fully offline)
+        ai_analysis = image_explainer.analyze_image(image_bytes, result)
+        result['ai_analysis'] = ai_analysis
         
+        # Force the final probability to 100 or 0 based on the 50% threshold
+        ai_prob = result.get('ai_probability', 50.0)
+        if ai_prob > 50.0:
+            result['ai_probability'] = 100.0
+        else:
+            result['ai_probability'] = 0.0
+            
         return jsonify(result)
     
     except Exception as e:
@@ -1004,6 +975,13 @@ def detect_ai_image_fast():
         # Run fast cascading detection
         result = fast_detector.detect(image_bytes, filename)
         
+        # Force the final probability to 100 or 0 based on the 50% threshold
+        ai_prob = result.get('ai_probability', 50.0)
+        if ai_prob > 50.0:
+            result['ai_probability'] = 100.0
+        else:
+            result['ai_probability'] = 0.0
+            
         return jsonify(result)
     
     except Exception as e:
@@ -1293,9 +1271,9 @@ def detect_audio_deepfake():
     """
     Detect AI-generated or deepfake audio.
     
-    Uses an **Ensemble** of:
-    1. Wav2Vec2 (MelodyMachine) - 60% weight
-    2. WavLM (DavidCombei) - 40% weight
+    Uses NII AntiDeepfake (ASRU 2025) — state-of-the-art SSL-based detector.
+    Primary: XLS-R-1B-AntiDeepfake (1B params, EER 1.35%)
+    Fallback: Wav2Vec2-Large-AntiDeepfake (315M params, EER 1.91%)
     
     Request: multipart/form-data with 'audio' file field
     Supported formats: wav, mp3, flac, ogg, m4a, webm, aac, wma
@@ -1315,7 +1293,7 @@ def detect_audio_deepfake():
         if audio_detector is None:
             return jsonify({
                 'success': False,
-                'error': 'Audio detection not available. Install required packages: pip install soundfile librosa',
+                'error': 'Audio detection not available. Install required packages: pip install torchaudio soundfile',
                 'error_code': 'AUDIO_DETECTOR_UNAVAILABLE'
             }), 503
 

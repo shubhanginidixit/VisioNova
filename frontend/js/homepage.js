@@ -175,8 +175,17 @@ const MAX_FILE_SIZES = {
     image: 500 * 1024 * 1024,  // 500 MB (large RAW/TIFF/PNG supported)
     text:  25 * 1024 * 1024,   // 25 MB
 };
+
 async function handleFileUpload(type, file) {
     try {
+        // Client-side size validation
+        const maxSize = MAX_FILE_SIZES[type] || 25 * 1024 * 1024;
+        if (file.size > maxSize) {
+            const maxMB = Math.round(maxSize / (1024 * 1024));
+            alert(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum for ${type}: ${maxMB} MB.`);
+            return;
+        }
+
         const dataURL = await VisioNovaStorage.readFileAsDataURL(file);
         uploadedFiles[type] = {
             data: dataURL,
@@ -200,6 +209,7 @@ async function handleFileUpload(type, file) {
                 return;
             }
         }
+
         showUploadSuccess(type, file.name);
         showPreview(type, dataURL, file.type, file.name);
     } catch (error) {
@@ -214,12 +224,12 @@ function showUploadSuccess(type, fileName) {
     if (type === 'image') {
         return; // Handled by showPreview
     }
-    
+
     // For text documents (PDF/DOCX), handled by docFileIndicator
     if (type === 'text' && uploadedFiles.text && uploadedFiles.text.isDocument) {
         return; // Handled by docFileIndicator
     }
-    
+
     const uploadArea = document.getElementById(type + '-upload');
     if (!uploadArea) return;
 
@@ -245,16 +255,16 @@ function showPreview(type, dataURL, mimeType, fileName) {
         const previewState = document.getElementById('image-preview-state');
         const previewImg = document.getElementById('image-preview-img');
         const fileNameEl = document.getElementById('image-file-name');
-        
+
         if (defaultState && previewState && previewImg) {
             // Set preview image
             previewImg.src = dataURL;
-            
+
             // Set filename
             if (fileNameEl && fileName) {
                 fileNameEl.textContent = fileName;
             }
-            
+
             // Switch states with fade effect
             defaultState.classList.add('opacity-0');
             setTimeout(() => {
@@ -267,7 +277,7 @@ function showPreview(type, dataURL, mimeType, fileName) {
         }
         return;
     }
-    
+
     // Handle video/audio with original method
     const uploadArea = document.getElementById(type + '-upload');
     if (!uploadArea) return;
@@ -300,7 +310,7 @@ function clearImagePreview() {
     const defaultState = document.getElementById('image-upload-default');
     const previewState = document.getElementById('image-preview-state');
     const previewImg = document.getElementById('image-preview-img');
-    
+
     if (defaultState && previewState) {
         // Switch back to default state with fade
         previewState.classList.add('opacity-0');
@@ -313,14 +323,14 @@ function clearImagePreview() {
             }, 10);
         }, 150);
     }
-    
+
     // Clear stored file data
     uploadedFiles.image = null;
-    
+
     // Clear URL input
     const urlInput = document.getElementById('imageUrlInput');
     if (urlInput) urlInput.value = '';
-    
+
     // Reset file input
     const fileInput = document.getElementById('imageFileInput');
     if (fileInput) fileInput.value = '';
@@ -335,7 +345,7 @@ function setupClearButton() {
             clearImagePreview();
         });
     }
-    
+
     // Also setup browse link
     const browseLink = document.getElementById('imageBrowseLink');
     if (browseLink) {
@@ -360,6 +370,13 @@ function setupDragAndDrop() {
 
         const dropArea = zone.querySelector('.border-dashed');
         if (!dropArea) return;
+
+        // Click anywhere on the drop zone to browse files
+        dropArea.addEventListener('click', (e) => {
+            // Don't trigger if clicking on a button or link inside the zone
+            if (e.target.closest('button') || e.target.closest('a')) return;
+            document.getElementById(dropZones[zoneId].input).click();
+        });
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropArea.addEventListener(eventName, e => {
@@ -403,10 +420,10 @@ function setupClipboardPaste() {
     document.addEventListener('paste', async (e) => {
         // Only handle paste when image tab is active
         if (activeTab !== 'image') return;
-        
+
         // Don't intercept paste in input fields
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        
+
         await handlePasteEvent(e);
     });
 
@@ -470,11 +487,11 @@ async function pasteImageFromClipboard() {
         }
 
         const clipboardItems = await navigator.clipboard.read();
-        
+
         for (const item of clipboardItems) {
             // Check for image types
             const imageTypes = item.types.filter(type => type.startsWith('image/'));
-            
+
             if (imageTypes.length > 0) {
                 const blob = await item.getType(imageTypes[0]);
                 const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: imageTypes[0] });
@@ -516,9 +533,9 @@ function isImageUrl(url) {
         const urlObj = new URL(url);
         const path = urlObj.pathname.toLowerCase();
         return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(path) ||
-               url.includes('images') ||
-               url.includes('imgur') ||
-               url.includes('i.redd.it');
+            url.includes('images') ||
+            url.includes('imgur') ||
+            url.includes('i.redd.it');
     } catch {
         return false;
     }
@@ -607,7 +624,7 @@ function navigateToResult() {
         }
     } else if (activeTab === 'audio') {
         if (uploadedFiles.audio) {
-            VisioNovaStorage.saveFile('audio', uploadedFiles.audio.data, uploadedFiles.audio.fileName, uploadedFiles.audio.mimeType);
+            // Audio is already saved to IndexedDB in handleFileUpload — skip sessionStorage (quota issues)
         } else {
             const urlInput = document.querySelector('#audio-upload input[type="text"]');
             if (urlInput && urlInput.value.trim()) {
