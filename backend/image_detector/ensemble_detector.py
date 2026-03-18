@@ -470,11 +470,11 @@ class EnsembleDetector:
                     weighted_ml_votes.append(score)
             
             if len(weighted_ml_votes) >= 3:
-                real_votes = sum(1 for s in weighted_ml_votes if s < 40)
+                real_votes = sum(1 for s in weighted_ml_votes if s < 50)
                 ai_votes = sum(1 for s in weighted_ml_votes if s >= 60)
                 total = len(weighted_ml_votes)
                 
-                # If 60%+ of weighted models say REAL (< 40% AI), cap score
+                # If 60%+ of weighted models say REAL (< 50% AI), cap score
                 if real_votes / total >= 0.6 and final_score > 55:
                     old_score = final_score
                     final_score = min(final_score, 45.0)
@@ -698,7 +698,7 @@ class EnsembleDetector:
                 "Detection results show disagreement between methods. Consider additional verification."
             )
         
-        if 40 <= ai_prob <= 60:
+        if 45 <= ai_prob <= 55:
             recommendations.append(
                 "Results are inconclusive. Try reverse image search or check original source."
             )

@@ -15,10 +15,11 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 ## Key Capabilities
 
 ### Image Verification
-*   **AI Generation Detection:** Identifies images created by generative adversarial networks (GANs) or diffusion models.
+*   **Multi-Model AI Detection:** Utilizes an ensemble of state-of-the-art vision models (NYUAD ViT, SwinV2, SigLIP) for generation detection.
+*   **Granular System Safeguards:** Employs weighted score fusion with majority-vote safeguards to eliminate false positives on highly-processed human photography.
 *   **Error Level Analysis (ELA):** Highlights areas of potential manipulation within an image file.
 *   **Metadata Forensics:**  Analyzes Exif data for inconsistencies.
-*   See [Image Detection Strategy](docs/Image_Detection_Strategy.md) for technical details.
+*   See [Image Detection](docs/Image_Detection.md) for technical details.
 
 ### Video Analysis
 *   **Deepfake Detection:** Analyzes frame-by-frame artifacts, facial landmarks, and lip-sync consistency to identify synthetic videos.
