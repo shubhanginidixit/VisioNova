@@ -177,26 +177,9 @@ async function processImageAnalysis(imgData) {
 function updateUI(result) {
     console.log('[ImageResult] Updating UI with result:', result);
 
-    // Snapping Logic
     let aiProb = result.ai_probability || 0;
-    if (aiProb > 50) {
-        aiProb = 100;
-    } else {
-        aiProb = 0;
-    }
-    
-    // Update the result object so other components see the snapped probability
-    result.ai_probability = aiProb;
-    
-    // Also snap the XAI combined probability if it exists
-    if (result.ai_analysis && result.ai_analysis.combined_verdict) {
-        if (result.ai_analysis.combined_verdict.combined_probability !== undefined) {
-             result.ai_analysis.combined_verdict.combined_probability = result.ai_analysis.combined_verdict.combined_probability > 50 ? 100 : 0;
-        }
-    }
-
     const humanProb = Math.max(0, 100 - aiProb);
-
+    
     // --- 1. Probability Card (keep granular) ---
     const displayAI = aiProb;
     const displayHuman = humanProb;
