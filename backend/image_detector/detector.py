@@ -71,7 +71,7 @@ class ImageDetector:
             
             if loaded_models:
                 self.model_loaded = True
-                logger.info(f"✓ ML models loaded: {', '.join(loaded_models)}")
+                logger.info(f"[OK] ML models loaded: {', '.join(loaded_models)}")
             else:
                 logger.warning("No ML models loaded. Using statistical analysis only.")
                 logger.info("Run 'python backend/setup_ml_models.py' to download models")
@@ -89,7 +89,7 @@ class ImageDetector:
                 from .semantic_detector import SemanticPlausibilityDetector
                 self.semantic_detector = SemanticPlausibilityDetector()
                 if self.semantic_detector.available:
-                    logger.info("✓ Semantic plausibility detector loaded (Groq LLaVA)")
+                    logger.info("[OK] Semantic plausibility detector loaded (Groq LLaVA)")
                 else:
                     logger.info("Semantic detector: GROQ_API_KEY not set (optional)")
             except ImportError:

@@ -85,7 +85,7 @@ class AudioEnsembleDetector:
                 raise RuntimeError("No models could be loaded for the ensemble.")
                 
             self.models_loaded = True
-            print("✓ Audio Ensemble Loaded Successfully")
+            print("[OK] Audio Ensemble Loaded Successfully")
             
         except Exception as e:
             logger.error(f"Critical error loading ensemble: {e}")

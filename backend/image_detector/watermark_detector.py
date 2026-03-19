@@ -96,9 +96,9 @@ class WatermarkDetector:
             # Test initialization to ensure it works
             test_decoder = WatermarkDecoder('bytes', 32)
             self.watermark_lib_available = True
-            logger.info("✓ invisible-watermark library loaded and tested")
+            logger.info("[OK] invisible-watermark library loaded and tested")
         except ImportError as e:
-            logger.error(f"❌ invisible-watermark import failed: {e}")
+            logger.error(f"[ERR] invisible-watermark import failed: {e}")
             logger.info("Install with: pip install invisible-watermark")
             self.watermark_lib_available = False
         except Exception as e:
@@ -109,7 +109,7 @@ class WatermarkDetector:
         try:
             from steganogan import SteganoGAN
             self.steganogan_available = True
-            logger.info("✓ steganogan library available")
+            logger.info("[OK] steganogan library available")
         except ImportError:
             logger.debug("steganogan library not available (optional)")
         except Exception as e:

@@ -5,7 +5,7 @@ Searches multiple websites to find evidence for/against claims.
 import time
 import requests
 from urllib.parse import urlparse
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 from .config import (
     USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS,
     GOOGLE_API_KEY, GOOGLE_CSE_ID
