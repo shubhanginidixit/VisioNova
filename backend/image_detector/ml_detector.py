@@ -163,6 +163,94 @@ class NYUADDetector:
         return ai_prob
 
 
+
+class GeneralistAIDetector:
+    """
+    Generalist AI Image Detector for non-human subjects.
+    Model: umm-maybe/AI-image-detector
+    Robust against diverse diffusion outputs (animals, landscapes, objects).
+    """
+    
+    MODEL_ID = "umm-maybe/AI-image-detector"
+    
+    def __init__(self, device: str = "auto"):
+        self.model = None
+        self.processor = None
+        self.device = device
+        self.model_loaded = False
+        self.load_error = None
+        self.id2label = None
+        
+        self._load_model()
+        
+    def _load_model(self):
+        try:
+            import torch
+            from transformers import AutoImageProcessor, AutoModelForImageClassification
+            
+            if self.device == "auto":
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+            logger.info(f"Loading Generalist AI Detector on {self.device}...")
+            
+            self.processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
+            self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_ID)
+            self.model.to(self.device)
+            self.model.eval()
+            self.id2label = self.model.config.id2label
+            self.model_loaded = True
+            logger.info(f"Generalist AI Detector loaded successfully.")
+            
+        except Exception as e:
+            self.load_error = str(e)
+            logger.error(f"Failed to load Generalist detector: {e}")
+            
+    def predict(self, image) -> dict:
+        if not self.model_loaded:
+            return {'success': False, 'error': self.load_error, 'ai_probability': 50.0}
+            
+        try:
+            import torch
+            import numpy as np
+            
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+                
+            inputs = self.processor(images=image, return_tensors="pt")
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+                
+            probs_np = probs[0].cpu().numpy()
+            predicted_idx = int(np.argmax(probs_np))
+            
+            # Extract AI probability
+            ai_prob = 50.0
+            ai_keywords = ['fake', 'artificial', 'generated', 'ai']
+            real_keywords = ['human', 'real', 'authentic', 'natural']
+            
+            for idx, label in self.id2label.items():
+                label_lower = label.lower()
+                if any(kw in label_lower for kw in ai_keywords):
+                    ai_prob = float(probs_np[idx] * 100)
+                    break
+                elif any(kw in label_lower for kw in real_keywords):
+                    ai_prob = float((1 - probs_np[idx]) * 100)
+                    break
+                    
+            return {
+                'success': True,
+                'prediction': self.id2label[predicted_idx],
+                'confidence': float(probs_np[predicted_idx] * 100),
+                'ai_probability': ai_prob,
+                'model': 'umm-maybe/AI-image-detector'
+            }
+        except Exception as e:
+            logger.error(f"Generalist detector prediction error: {e}")
+            return {'success': False, 'error': str(e), 'ai_probability': 50.0}
+
 class UniversalFakeDetector:
     """
     Universal AI Image Detector (Pretrained SwinV2)
