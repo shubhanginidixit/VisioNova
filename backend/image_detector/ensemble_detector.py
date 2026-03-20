@@ -72,12 +72,22 @@ class EnsembleDetector:
     # Updated weights (Feb 2026) — RECENT MODELS ONLY
     # Only models trained on 2024-2026 generators (Flux, DALL-E 3, MJ v6,
     # GPT-Image-1, SDXL) are given weight. Outdated and broken models zeroed.
-    DEFAULT_WEIGHTS: Dict[str, float] = {
-        # Top 3 High-Accuracy Generic Models
-        'nyuad': 0.34,            # NYUAD ViT (97.36%) - Strong general baseline
-        'universal_fake': 0.33,   # SwinV2 (98.1%) - High accuracy across models
-        'siglip': 0.33            # SigLIP (92%) - Strong human vs AI semantic understanding
+    
+    FACE_WEIGHTS: Dict[str, float] = {
+        'nyuad': 0.34,
+        'universal_fake': 0.33,
+        'siglip': 0.33
     }
+    
+    GENERAL_WEIGHTS: Dict[str, float] = {
+        'generalist': 0.60,
+        'universal_fake': 0.40,
+        'nyuad': 0.0,
+        'siglip': 0.0
+    }
+    
+    DEFAULT_WEIGHTS: Dict[str, float] = FACE_WEIGHTS.copy()
+
 
     # Override weights when certain signals are strong
     WATERMARK_OVERRIDE_THRESHOLD = 80  # If watermark confidence > 80%, use it
@@ -339,10 +349,32 @@ class EnsembleDetector:
             result['dimensions'] = original_dimensions
             result['file_size_bytes'] = len(image_data)
             
+            # -- CONTEXT-AWARE ROUTING --
+            # Determine if image contains a human face.
+            # If so, use FACE_WEIGHTS. If not, use GENERAL_WEIGHTS.
+            has_human_face = False
+            try:
+                faces = self.face_detector._detect_faces(img_array)
+                has_human_face = len(faces) > 0
+            except Exception as e:
+                logger.warning(f"Face detection failed: {e}")
+                
+            if has_human_face:
+                self.weights = self.FACE_WEIGHTS.copy()
+                result['analysis_mode'] += ' (Face Context)'
+                logger.info("Human face detected. Using face-specific ensemble.")
+            else:
+                self.weights = self.GENERAL_WEIGHTS.copy()
+                result['analysis_mode'] += ' (General Content)'
+                logger.info("No human face detected. Using generalist ensemble.")
+
             # Run all detectors
             scores = {}
             
             # 1. Statistical analysis (only if detector was loaded)
+            if getattr(self, 'ela_analyzer', None) and not has_human_face:
+                result['overrides_applied'].append("ELA bypassed (general image with heavy potential compression to prevent false positives)")
+                
             if getattr(self, 'statistical_detector', None):
                 stat_result = self.statistical_detector.detect(image_data, filename)
                 result['individual_results']['statistical'] = stat_result
@@ -384,11 +416,18 @@ class EnsembleDetector:
                     scores['universal_fake'] = uni_result.get('ai_probability', 50)
 
             # 5.6 NYUAD Detector
-            if getattr(self, 'nyuad_detector', None) and self.nyuad_detector.model_loaded:
+            if getattr(self, 'nyuad_detector', None) and self.nyuad_detector.model_loaded and self.weights.get('nyuad', 0) > 0:
                 nyuad_result = self.nyuad_detector.predict(image)
                 result['individual_results']['nyuad'] = nyuad_result
                 if nyuad_result.get('success', False):
                     scores['nyuad'] = nyuad_result.get('ai_probability', 50)
+                    
+            # 5.7 Generalist Detector
+            if getattr(self, 'generalist_detector', None) and self.generalist_detector.model_loaded and self.weights.get('generalist', 0) > 0:
+                gen_result = self.generalist_detector.predict(image)
+                result['individual_results']['generalist'] = gen_result
+                if gen_result.get('success', False):
+                    scores['generalist'] = gen_result.get('ai_probability', 50)
 
             # 5.7 SigLIP Detector
             if getattr(self, 'siglip_detector', None) and self.siglip_detector.model_loaded:
