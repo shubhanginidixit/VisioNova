@@ -66,7 +66,7 @@ def normalize_adversarial_text(text: str) -> str:
     Normalize text to defend against adversarial evasion techniques.
     
     Handles:
-    - Unicode homoglyph substitution (Cyrillic 'а' for Latin 'a')
+    - Unicode homoglyph substitution (Cyrillic 'a' for Latin 'a')
     - Zero-width character injection
     - Fullwidth character substitution
     - Unicode normalization (NFC)
@@ -1065,7 +1065,7 @@ class AIContentDetector:
         Returns (human_prob, ai_prob) tuple.
         
         Scoring formula (matches documented 60/25/15 split):
-          AI_Score = (pattern_score × 0.60) + (linguistic_score × 0.25) + (watermark_score × 0.15)
+          AI_Score = (pattern_score * 0.60) + (linguistic_score * 0.25) + (watermark_score * 0.15)
         
         Improvements:
         1. Uses real LM perplexity when available (GPT-2/DistilGPT-2)
@@ -1396,7 +1396,7 @@ class AIContentDetector:
             detection_method = "offline_statistical"
         
         # ===== TRINARY CLASSIFICATION (human / AI / mixed) =====
-        # When ML ensemble gives a strong signal, trust it — skip noisy offline sentence analysis
+        # When ML ensemble gives a strong signal, trust it -- skip noisy offline sentence analysis
         ml_strong_signal = False
         if self.use_ml_model and self._ensemble_loaded:
             try:

@@ -315,7 +315,7 @@ def test_semantic_detector():
         print("   Set it with: $env:GROQ_API_KEY = 'your-key-here'")
         return False
     
-    print("✓ Semantic detector initialized")
+    print("[OK] Semantic detector initialized")
     print(f"  Model: {detector.model}")
     return True
 

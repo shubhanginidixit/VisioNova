@@ -1196,7 +1196,7 @@ class DIREDetector:
             self.model.eval()
             
             self.model_loaded = True
-            logger.info(f"✓ DIRE detector loaded on {self.device}")
+            logger.info(f"[OK] DIRE detector loaded on {self.device}")
             
         except Exception as e:
             logger.error(f"Failed to load DIRE model: {e}")
