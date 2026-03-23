@@ -910,11 +910,6 @@ def detect_ai_image_ensemble():
         # Run ensemble detection
         result = ensemble_detector.detect(image_bytes, filename)
 
-        if result.get("ai_probability", 50) > 50.0:
-            result["ai_probability"] = 100.0
-        else:
-            result["ai_probability"] = 0.0
-
         # Add XAI explanation (Ensemble Disagreement Analysis + Grad-CAM, fully offline)
         ai_analysis = image_explainer.analyze_image(image_bytes, result)
         result['ai_analysis'] = ai_analysis

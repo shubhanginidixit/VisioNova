@@ -628,7 +628,7 @@
 
                                 try {
                                     const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s for image processing
+                                    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 mins for initial model download & processing
 
                                     const response = await fetch(`${API_BASE_URL}/api/detect-image/ensemble`, {
                                         method: 'POST',
@@ -835,8 +835,9 @@
                             }
                         } catch (error) {
                             console.error('[Dashboard] Analysis error:', error);
-                            updateLoadingStatus('Analysis failed: ' + error.message);
-                            sessionStorage.setItem('visioNova_analysis_error', error.message);
+                            let userErrorMsg = error.name === 'AbortError' ? 'Analysis timed out (this might be due to initial model downloads taking longer than expected). Please try again.' : 'Analysis failed: ' + error.message;
+                            updateLoadingStatus(userErrorMsg);
+                            sessionStorage.setItem('visioNova_analysis_error', userErrorMsg);
                             return null;
                         }
                     }
@@ -875,7 +876,8 @@
                             } else {
                                 // Analysis failed — show error and offer retry
                                 logDebug('Analysis failed, staying on dashboard');
-                                updateLoadingStatus('Analysis failed. Please go back and try again.');
+                                const errorMsg = sessionStorage.getItem('visioNova_analysis_error') || 'Analysis failed. Please go back and try again.';
+                                updateLoadingStatus(errorMsg);
                             }
                         } else {
                             logDebug('Not analyzing, just displaying dashboard');
