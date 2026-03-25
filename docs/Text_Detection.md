@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document outlines VisioNova's comprehensive approach to detecting AI-generated text, combining a multi-model ensemble (DeBERTa, RoBERTa, E5), real-time perplexity analysis, zero-shot Binoculars detection, and adversarial defense mechanisms. As LLMs evolve from simple text predictors to sophisticated reasoning engines (GPT-5, DeepSeek R1, o1), our detection pipeline adapts to address the widening "forensic gap" while minimizing bias against non-native speakers.
+This document outlines VisioNova's comprehensive approach to detecting AI-generated text, combining a multi-model ensemble (DeBERTa, RoBERTa, E5, Binoculars/Falcon-7B), real-time perplexity analysis, zero-shot Binoculars detection, and adversarial defense mechanisms. As LLMs evolve from simple text predictors to sophisticated reasoning engines (GPT-5, DeepSeek R1, o1), our detection pipeline adapts to address the widening "forensic gap" while minimizing bias against non-native speakers.
 
 ---
 
@@ -248,3 +248,5 @@ Final Score = (Ensemble_Prob × 0.60) + (Pattern_Score × 0.25) + (Linguistic_Sc
 4. WildChat Dataset: Hugging Face Hub
 5. MGTBench 2.0: ACL 2024
 6. DeepSeek R1 Technical Report (2025)
+
+

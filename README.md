@@ -15,7 +15,7 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 ## Key Capabilities
 
 ### Image Verification
-*   **Multi-Model AI Detection:** Utilizes an ensemble of state-of-the-art vision models (NYUAD ViT, SwinV2, SigLIP) for generation detection.
+*   **Multi-Model AI Detection:** Utilizes an ensemble of state-of-the-art vision models (DIRE, UniversalFakeDetect, SigLIP2\+DINOv2) for generation detection.
 *   **Granular System Safeguards:** Employs weighted score fusion with majority-vote safeguards to eliminate false positives on highly-processed human photography.
 *   **Error Level Analysis (ELA):** Highlights areas of potential manipulation within an image file.
 *   **Metadata Forensics:**  Analyzes Exif data for inconsistencies.
@@ -24,12 +24,12 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 ### Video Analysis
 *   **Deepfake Detection:** Analyzes frame-by-frame artifacts, facial landmarks, and lip-sync consistency to identify synthetic videos.
 *   **Motion Consistency:** Verifies that physical movements obey natural laws.
-*   See [Video & Deepfake Strategy](docs/Video_Deepfake_Strategy.md) for technical details.
+*   See [Video & Deepfake Detection](docs/Video_Detection.md) for technical details.
 
 ### Audio Forensics
 *   **Voice Cloning Detection:** Identifies synthetic vocal patterns and indicators of text-to-speech generation.
 *   **Spectral Analysis:** Examines frequency distribution for anomalies typical of AI audio.
-*   See [Audio Detection Strategy](docs/Audio_Detection_Strategy.md) for technical details.
+*   See [Audio Detection](docs/Audio_Detection.md) for technical details.
 
 ### Text Analysis
 *   **AI Text Detection:** Distinguishes between human-written and AI-generated text using hybrid analysis (Neural Models + Stylometry).
@@ -37,19 +37,19 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 *   **Document Support:** Upload PDF, DOCX, or TXT files for full text extraction and AI detection with sentence-level analysis.
 *   **Sentence Highlighting:** Color-coded sentence-by-sentence AI probability (green=human, yellow=uncertain, red=AI) with hover tooltips.
 *   **AI Explanation:** Groq/Llama-powered detailed breakdown of detection results with key indicators, pattern analysis, and improvement suggestions.
-*   See [Text Detection Strategy](docs/Text_Detection_Strategy.md) for technical details.
+*   See [Text Detection](docs/Text_Detection.md) for technical details.
 
 ### Fact Checking
 *   **Atomic Claim Verification:** Decomposes complex multi-part rumors into individual atomic facts for precise verification.
 *   **Claim Verification:** Cross-references claims against trusted news sources and fact-checking databases.
 *   **Temporal Analysis:** Contextualizes claims within their correct time period (historical vs. current).
 *   **Source Credibility:** Scores the reliability of sources based on a curated database of domain trust ratings.
-*   See [Fact Check Documentation](docs/FactCheck_Documentation.md) for technical details.
+*   See [Fact Check Documentation](docs/Fact_Check.md) for technical details.
 
 ## Technology Stack
 
 *   **Backend:** Python 3.10+, Flask
-*   **AI/ML:** PyTorch, Transformers (DeBERTa-v3, RoBERTa, DistilGPT-2), Groq API (Llama 4 Scout)
+*   **AI/ML:** PyTorch, Transformers (Binoculars/Falcon-7B, Wav2Vec2, WavLM, ViT), Groq API (Llama 4 Scout)
 *   **Document Parsing:** PyMuPDF (PDF), python-docx (DOCX), pytesseract (OCR)
 *   **Frontend:** HTML5, Tailwind CSS, JavaScript
 *   **Analysis:** OpenCV, Librosa, Scikit-learn
@@ -172,3 +172,4 @@ For GPU-accelerated image detection (98%+ accuracy):
 ## License
 
 This project is intended for educational and research purposes.
+
