@@ -1290,9 +1290,12 @@ def detect_audio_deepfake():
     """
     Detect AI-generated or deepfake audio.
     
-    Uses NII AntiDeepfake (ASRU 2025) — state-of-the-art SSL-based detector.
-    Primary: XLS-R-1B-AntiDeepfake (1B params, EER 1.35%)
-    Fallback: Wav2Vec2-Large-AntiDeepfake (315M params, EER 1.91%)
+    Uses a 5-model weighted ensemble:
+    - XLS-R 300M (cross-lingual, 30% weight)
+    - WavLM-base (denoising, 20% weight)
+    - Wav2Vec2 Forensic (bonafide/spoof, 20% weight)
+    - Community Detector V2 (15% weight)
+    - Diversity Detector (different training split, 15% weight)
     
     Request: multipart/form-data with 'audio' file field
     Supported formats: wav, mp3, flac, ogg, m4a, webm, aac, wma
@@ -1305,7 +1308,7 @@ def detect_audio_deepfake():
             "confidence": 95.5,
             "verdict": "likely_ai",
             "ensemble_details": [...],
-            "duration_seconds": 12.5
+            "total_duration_seconds": 12.5
         }
     """
     try:

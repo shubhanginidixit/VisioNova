@@ -1,12 +1,14 @@
 /**
  * VisioNova Audio Result Page
- * Handles segmented audio analysis, timeline rendering, and dynamic UI updates.
+ * Handles segmented audio analysis, WaveSurfer waveform, timeline rendering,
+ * and 5-model ensemble display.
  *
  * Backend response shape:
  *   { success, prediction, verdict, fake_probability, real_probability, confidence,
- *     ensemble_details[], artifacts_detected[], analysis_mode, total_duration_seconds,
+ *     ensemble_details[{name, model_id, description, type, fake_probability, real_probability, weight, verdict}],
+ *     artifacts_detected[], analysis_mode, total_duration_seconds,
  *     segments_analyzed, segments[{start_sec,end_sec,fake_probability,real_probability,verdict}],
- *     meta:{duration_seconds, sample_rate, segment_length_sec, segment_overlap_sec} }
+ *     meta:{duration_seconds, sample_rate, segment_length_sec, segment_overlap_sec, ensemble_size} }
  */
 
 document.addEventListener('DOMContentLoaded', async function () {
@@ -17,10 +19,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         try {
             const result = JSON.parse(cachedResult);
             if (result.success) {
-                // Set page title from cached result metadata
-                setText('pageTitle', result.meta?.fileName || 'Audio Analysis');
+                setText('pageTitle', result.meta?.fileName || result.meta?.file_name || 'Audio Analysis');
 
-                // Try to show audio player if audio data is still available
+                // Try to show audio player from IndexedDB
                 let audioData = await VisioNovaStorage.getAudioFile().catch(() => null);
                 if (!audioData) audioData = VisioNovaStorage.getFile('audio');
                 if (audioData) {
@@ -70,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 /* ===================================================================
-   Audio player
+   Audio player — WaveSurfer waveform visualiser
    =================================================================== */
 
 let wavesurfer = null;
@@ -80,72 +81,118 @@ function showAudioPlayer(audioData) {
     const placeholder = document.getElementById('noAudioPlaceholder');
     const wrapper = document.getElementById('audioPlayerWrapper');
 
-    if (placeholder && wrapper) {
-        placeholder.classList.add('hidden');
-        wrapper.classList.remove('hidden');
+    if (!placeholder || !wrapper) return;
 
-        // Destroy existing instance if re-analyzing
-        if (wavesurfer) {
-            wavesurfer.destroy();
-        }
+    placeholder.classList.add('hidden');
+    wrapper.classList.remove('hidden');
 
-        // Initialize WaveSurfer
-        wavesurfer = WaveSurfer.create({
-            container: '#waveform',
-            waveColor: '#00E5FF',       // Neon cyan glow
-            progressColor: '#3A8DFF',   // Deep blue progress
-            cursorColor: '#ffffff',
-            barWidth: 3,
-            barGap: 3,
-            barRadius: 3,
-            height: 128,
-            normalize: true,
-            backend: 'WebAudio',        // Ensures accurate peak rendering
-        });
-
-        // Initialize Regions plugin for forensic highlighting
-        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
-
-        const audioUrl = audioData.blobUrl || audioData.data;
-        if (audioUrl) {
-            wavesurfer.load(audioUrl);
-        }
-
-        // Setup Controls
-        const playBtn = document.getElementById('playPauseBtn');
-        const volumeSlider = document.getElementById('volumeSlider');
-        const currentTimeDisplay = document.getElementById('currentTimeDisplay');
-        const durationDisplay = document.getElementById('durationDisplay');
-
-        if (playBtn) {
-            // Clone to remove old listeners
-            const newPlayBtn = playBtn.cloneNode(true);
-            playBtn.parentNode.replaceChild(newPlayBtn, playBtn);
-            newPlayBtn.onclick = () => wavesurfer.playPause();
-        }
-
-        if (volumeSlider) {
-            volumeSlider.oninput = (e) => wavesurfer.setVolume(Number(e.target.value));
-        }
-
-        // WaveSurfer Events
-        wavesurfer.on('play', () => {
-            const icon = document.getElementById('playIcon');
-            if (icon) icon.textContent = 'pause';
-        });
-        wavesurfer.on('pause', () => {
-            const icon = document.getElementById('playIcon');
-            if (icon) icon.textContent = 'play_arrow';
-        });
-
-        wavesurfer.on('ready', () => {
-            if (durationDisplay) durationDisplay.textContent = formatDuration(wavesurfer.getDuration());
-        });
-
-        wavesurfer.on('timeupdate', (currentTime) => {
-            if (currentTimeDisplay) currentTimeDisplay.textContent = formatDuration(currentTime);
-        });
+    // Destroy existing instance if re-analyzing
+    if (wavesurfer) {
+        try { wavesurfer.destroy(); } catch (_) { /* ignore */ }
+        wavesurfer = null;
+        wsRegions = null;
     }
+
+    // Initialize WaveSurfer on the #waveform div
+    const waveformEl = document.getElementById('waveform');
+    if (!waveformEl) {
+        console.warn('[Audio] #waveform element not found, skipping WaveSurfer');
+        return;
+    }
+
+    wavesurfer = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: '#00E5FF',
+        progressColor: '#3A8DFF',
+        cursorColor: '#ffffff',
+        barWidth: 3,
+        barGap: 3,
+        barRadius: 3,
+        height: 128,
+        normalize: true,
+        backend: 'WebAudio',
+    });
+
+    // Initialize Regions plugin for forensic segment highlighting
+    try {
+        wsRegions = wavesurfer.registerPlugin(WaveSurfer.Regions.create());
+    } catch (e) {
+        console.warn('[Audio] WaveSurfer Regions plugin not available:', e);
+    }
+
+    // Create a proper blob URL from the stored data
+    // This avoids the base64-data-URL size limit issues in some browsers
+    const audioUrl = createAudioBlobUrl(audioData);
+    if (audioUrl) {
+        wavesurfer.load(audioUrl);
+    }
+
+    // Setup transport controls
+    const playBtn = document.getElementById('playPauseBtn');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+    const durationDisplay = document.getElementById('durationDisplay');
+
+    if (playBtn) {
+        // Clone to remove old listeners
+        const newPlayBtn = playBtn.cloneNode(true);
+        playBtn.parentNode.replaceChild(newPlayBtn, playBtn);
+        newPlayBtn.onclick = () => wavesurfer.playPause();
+    }
+
+    if (volumeSlider) {
+        volumeSlider.oninput = (e) => wavesurfer.setVolume(Number(e.target.value));
+    }
+
+    // WaveSurfer events
+    wavesurfer.on('play', () => {
+        const icon = document.getElementById('playIcon');
+        if (icon) icon.textContent = 'pause';
+    });
+    wavesurfer.on('pause', () => {
+        const icon = document.getElementById('playIcon');
+        if (icon) icon.textContent = 'play_arrow';
+    });
+    wavesurfer.on('ready', () => {
+        if (durationDisplay) durationDisplay.textContent = formatDuration(wavesurfer.getDuration());
+    });
+    wavesurfer.on('timeupdate', (currentTime) => {
+        if (currentTimeDisplay) currentTimeDisplay.textContent = formatDuration(currentTime);
+    });
+}
+
+/**
+ * Convert stored audio data to a blob URL.
+ * Handles both raw base64 data URLs and blob URLs from IndexedDB.
+ */
+function createAudioBlobUrl(audioData) {
+    // If already a blob URL, return directly
+    if (audioData.blobUrl) return audioData.blobUrl;
+
+    const dataStr = audioData.data;
+    if (!dataStr) return null;
+
+    // If it's a data URL, convert to blob for better performance
+    if (dataStr.startsWith('data:')) {
+        try {
+            const parts = dataStr.split(',');
+            const mimeMatch = parts[0].match(/data:([^;]+)/);
+            const mime = mimeMatch ? mimeMatch[1] : (audioData.mimeType || 'audio/wav');
+            const byteString = atob(parts[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            const blob = new Blob([ab], { type: mime });
+            return URL.createObjectURL(blob);
+        } catch (e) {
+            console.warn('[Audio] Failed to create blob URL from data URL:', e);
+            return dataStr; // Fall back to raw data URL
+        }
+    }
+
+    return dataStr;
 }
 
 /* ===================================================================
@@ -165,7 +212,7 @@ async function runAudioAnalysis(audioData) {
             }
         }
 
-        // Fallback: call API directly (e.g., if user navigated here without dashboard)
+        // Fallback: call API directly
         const response = await fetch('/api/detect-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -186,9 +233,26 @@ async function runAudioAnalysis(audioData) {
         renderAll(result);
     } catch (error) {
         console.error('Audio analysis error:', error);
-        setText('probabilityText', 'Analysis failed — ' + error.message);
-        showErrorFindings(error.message);
+        showAnalysisError(error.message);
     }
+}
+
+/* ===================================================================
+   Error state
+   =================================================================== */
+
+function showAnalysisError(message) {
+    // Show the error banner
+    const banner = document.getElementById('analysisErrorBanner');
+    const errorText = document.getElementById('analysisErrorText');
+    if (banner) {
+        banner.classList.remove('hidden');
+        if (errorText) errorText.textContent = message;
+    }
+
+    // Update probability text
+    setText('probabilityText', 'Analysis failed — ' + message);
+    showErrorFindings(message);
 }
 
 /* ===================================================================
@@ -272,9 +336,13 @@ function updateModelCard(r) {
     const info = [];
     if (r.analysis_mode === 'segmented') {
         info.push(`${r.segments_analyzed} segments analyzed`);
-        info.push(`${r.meta?.segment_length_sec ?? 30}s windows, ${r.meta?.segment_overlap_sec ?? 5}s overlap`);
+        info.push(`${r.meta?.segment_length_sec ?? 10}s windows, ${r.meta?.segment_overlap_sec ?? 2}s overlap`);
     } else {
         info.push('Full audio analyzed in one pass');
+    }
+    const ensembleSize = r.meta?.ensemble_size || r.ensemble_details?.length || 0;
+    if (ensembleSize > 1) {
+        info.push(`${ensembleSize}-model ensemble`);
     }
     setText('analysisModeInfo', info.join(' · '));
 
@@ -284,11 +352,10 @@ function updateModelCard(r) {
     tagsEl.innerHTML = '';
 
     const tags = [];
-    const model = r.ensemble_details?.[0];
-    if (model) tags.push(model.name);
     tags.push(r.prediction === 'ai_generated' ? 'AI-Generated' : 'Authentic');
     if (r.analysis_mode === 'segmented') tags.push('Segmented');
     tags.push(`${Math.round(r.confidence)}% confidence`);
+    if (ensembleSize > 1) tags.push(`${ensembleSize} models`);
 
     tags.forEach(t => {
         const span = document.createElement('span');
@@ -323,7 +390,9 @@ function renderSegmentTimeline(segments, totalDuration) {
     bar.innerHTML = '';
 
     // Clear previous forensic regions
-    if (wsRegions) wsRegions.clearRegions();
+    if (wsRegions) {
+        try { wsRegions.clearRegions(); } catch (_) { /* ignore */ }
+    }
 
     if (endLabel) endLabel.textContent = formatDuration(totalDuration);
 
@@ -342,23 +411,23 @@ function renderSegmentTimeline(segments, totalDuration) {
         block.addEventListener('click', () => {
             showSegmentDetail(seg, idx, segments);
             if (wavesurfer) {
-                // Jump to slightly before the segment starts
                 wavesurfer.setTime(Math.max(0, seg.start_sec - 0.5));
             }
         });
         bar.appendChild(block);
 
-        // Add Red WaveSurfer Region overlay for high probability segments
+        // Add WaveSurfer Region overlay for high-probability segments
         if (wsRegions && seg.fake_probability >= 50) {
-            const opacity = seg.fake_probability >= 80 ? 0.6 : 0.3;
-            // RGB for #FF4A4A with dynamic opacity
-            wsRegions.addRegion({
-                start: seg.start_sec,
-                end: seg.end_sec,
-                color: `rgba(255, 74, 74, ${opacity})`,
-                drag: false,
-                resize: false
-            });
+            try {
+                const opacity = seg.fake_probability >= 80 ? 0.6 : 0.3;
+                wsRegions.addRegion({
+                    start: seg.start_sec,
+                    end: seg.end_sec,
+                    color: `rgba(255, 74, 74, ${opacity})`,
+                    drag: false,
+                    resize: false
+                });
+            } catch (_) { /* WaveSurfer not ready yet */ }
         }
     });
 }
@@ -379,7 +448,6 @@ function showSegmentDetail(seg, idx, allSegments) {
     setText('segDetailFake', Math.round(seg.fake_probability) + '%');
     setText('segDetailVerdict', seg.verdict === 'likely_ai' ? 'Likely AI' : 'Likely Human');
 
-    // Update color of verdict
     const verdictEl = document.getElementById('segDetailVerdict');
     if (verdictEl) {
         verdictEl.className = seg.verdict === 'likely_ai'
@@ -475,11 +543,11 @@ function renderKeyFindings(artifacts) {
 
 function artifactSeverity(text) {
     const lower = text.toLowerCase();
-    if (lower.includes('vocoder') || lower.includes('synthetic phase') || lower.includes('missing biological'))
+    if (lower.includes('vocoder') || lower.includes('synthetic phase') || lower.includes('neural codec'))
         return { icon: 'error', bg: 'bg-accent-danger/10', text: 'text-accent-danger' };
     if (lower.includes('anomal') || lower.includes('unnatural') || lower.includes('spectral'))
         return { icon: 'warning', bg: 'bg-accent-warning/10', text: 'text-accent-warning' };
-    if (lower.includes('natural') || lower.includes('confirmed') || lower.includes('biological markers'))
+    if (lower.includes('natural') || lower.includes('confirmed') || lower.includes('biological') || lower.includes('glottal'))
         return { icon: 'check_circle', bg: 'bg-accent-success/10', text: 'text-accent-success' };
     return { icon: 'info', bg: 'bg-primary/10', text: 'text-primary' };
 }
@@ -504,14 +572,21 @@ function renderExplanation(r) {
 
     const isFake = r.prediction === 'ai_generated';
     const pct = Math.round(r.fake_probability ?? 50);
+    const ensembleSize = r.ensemble_details?.length || 1;
     const lines = [];
 
     if (isFake) {
         lines.push(`The audio was classified as AI-generated with ${pct}% probability.`);
-        lines.push(`The ${r.ensemble_details?.[0]?.name || 'detection model'} identified patterns characteristic of synthetic speech generation.`);
+        if (ensembleSize > 1) {
+            const agreeing = r.ensemble_details.filter(m => m.verdict === 'likely_ai').length;
+            lines.push(`${agreeing} of ${ensembleSize} ensemble models flagged this audio as synthetic.`);
+        }
     } else {
         lines.push(`The audio was classified as authentic human speech with ${Math.round(r.real_probability ?? 50)}% probability.`);
-        lines.push(`The ${r.ensemble_details?.[0]?.name || 'detection model'} confirmed patterns consistent with natural human speech production.`);
+        if (ensembleSize > 1) {
+            const agreeing = r.ensemble_details.filter(m => m.verdict === 'likely_human').length;
+            lines.push(`${agreeing} of ${ensembleSize} ensemble models confirmed authentic speech patterns.`);
+        }
     }
 
     if (r.analysis_mode === 'segmented') {
@@ -535,7 +610,7 @@ function renderExplanation(r) {
 }
 
 /* ===================================================================
-   Detection Model panel
+   Detection Model panel — shows ALL ensemble models
    =================================================================== */
 
 function renderModelDetails(r) {
@@ -543,40 +618,66 @@ function renderModelDetails(r) {
     const subtitle = document.getElementById('modelsSubtitle');
     if (!list) return;
 
-    const model = r.ensemble_details?.[0];
-    if (!model) { list.innerHTML = '<p class="text-white/40 text-sm">No model information available.</p>'; return; }
+    const models = r.ensemble_details || [];
+    if (!models.length) {
+        list.innerHTML = '<p class="text-white/40 text-sm">No model information available.</p>';
+        return;
+    }
 
-    if (subtitle) subtitle.textContent = model.name;
+    // Update subtitle with ensemble summary
+    if (subtitle) {
+        subtitle.textContent = `${models.length}-model weighted ensemble`;
+    }
 
-    list.innerHTML = `
-        <div class="bg-white/5 rounded-xl p-4 border border-white/5">
-            <div class="flex justify-between items-start mb-3">
-                <div>
-                    <h5 class="text-white font-bold text-sm">${escapeHtml(model.name)}</h5>
-                    <p class="text-white/40 text-xs mt-0.5">${escapeHtml(model.model_id || '')}</p>
+    // Render each model as a card
+    list.innerHTML = models.map((model, idx) => {
+        const isFake = model.fake_probability > 50;
+        const verdictColor = isFake ? 'text-accent-danger' : 'text-accent-success';
+        const verdictLabel = isFake ? 'AI Detected' : 'Authentic';
+        const weightPct = Math.round(model.weight * 100);
+
+        // Architecture icon based on type
+        let typeIcon = 'hub';
+        if (model.type === 'wav2vec2-xlsr') typeIcon = 'language';
+        else if (model.type === 'wavlm') typeIcon = 'graphic_eq';
+        else if (model.type === 'wav2vec2') typeIcon = 'mic';
+
+        return `
+            <div class="bg-white/5 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                            <span class="material-symbols-outlined !text-[18px]">${typeIcon}</span>
+                        </div>
+                        <div>
+                            <h5 class="text-white font-bold text-sm">${escapeHtml(model.name)}</h5>
+                            <p class="text-white/30 text-[10px] mt-0.5 font-mono">${escapeHtml(model.model_id || '')}</p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] uppercase font-bold px-2 py-1 rounded ${verdictColor} bg-white/5 border border-white/5">${verdictLabel}</span>
                 </div>
-                <span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-primary/20 text-primary">Active</span>
+                ${model.description ? `<p class="text-white/40 text-xs mb-3">${escapeHtml(model.description)}</p>` : ''}
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div>
+                        <p class="text-[10px] text-white/40 uppercase">Fake Prob.</p>
+                        <p class="text-sm font-bold ${isFake ? 'text-accent-danger' : 'text-accent-success'}">${Math.round(model.fake_probability)}%</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-white/40 uppercase">Weight</p>
+                        <p class="text-sm font-bold text-white">${weightPct}%</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-white/40 uppercase">Architecture</p>
+                        <p class="text-sm font-bold text-white">${escapeHtml(model.type || 'unknown')}</p>
+                    </div>
+                </div>
+                <!-- Per-model probability bar -->
+                <div class="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div class="${isFake ? 'bg-accent-danger' : 'bg-accent-success'} h-full rounded-full transition-all duration-700" style="width: ${Math.round(model.fake_probability)}%"></div>
+                </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                <div>
-                    <p class="text-[10px] text-white/40 uppercase">Fake Prob.</p>
-                    <p class="text-sm font-bold ${r.prediction === 'ai_generated' ? 'text-accent-danger' : 'text-accent-success'}">${Math.round(model.fake_probability)}%</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-white/40 uppercase">Mode</p>
-                    <p class="text-sm font-bold text-white">${r.analysis_mode === 'segmented' ? 'Segmented' : 'Single'}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-white/40 uppercase">Duration</p>
-                    <p class="text-sm font-bold text-white">${formatDuration(r.total_duration_seconds)}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-white/40 uppercase">Sample Rate</p>
-                    <p class="text-sm font-bold text-white">${r.meta?.sample_rate ? r.meta.sample_rate + ' Hz' : '16000 Hz'}</p>
-                </div>
-            </div>
-        </div>
-    `;
+        `;
+    }).join('');
 }
 
 /* ===================================================================
@@ -606,13 +707,11 @@ function setupToggle(btnId, contentId, chevronId) {
    =================================================================== */
 
 function setupActionButtons(result) {
-    // Re-analyze
     const reBtn = document.getElementById('reanalyzeBtn');
     if (reBtn) {
         reBtn.addEventListener('click', () => window.location.reload());
     }
 
-    // Export PDF (simple text report)
     const exportBtn = document.getElementById('exportPdfBtn');
     if (exportBtn) {
         exportBtn.addEventListener('click', () => exportReport(result));
@@ -623,6 +722,7 @@ function exportReport(r) {
     const lines = [
         '═══════════════════════════════════════',
         '  VisioNova — Audio Analysis Report',
+        '  5-Model Ensemble Detection',
         '═══════════════════════════════════════',
         '',
         `Date:       ${new Date().toLocaleString()}`,
@@ -634,6 +734,16 @@ function exportReport(r) {
         `Mode:       ${r.analysis_mode}`,
         '',
     ];
+
+    // Ensemble breakdown
+    if (r.ensemble_details && r.ensemble_details.length > 0) {
+        lines.push('─── Ensemble Model Scores ───');
+        r.ensemble_details.forEach((m, i) => {
+            const verdict = m.fake_probability > 50 ? 'AI' : 'REAL';
+            lines.push(`  #${i + 1}  ${m.name.padEnd(25)} Fake: ${Math.round(m.fake_probability).toString().padStart(3)}%  Weight: ${Math.round(m.weight * 100)}%  [${verdict}]`);
+        });
+        lines.push('');
+    }
 
     if (r.segments && r.segments.length > 1) {
         lines.push('─── Segment Breakdown ───');
@@ -649,10 +759,6 @@ function exportReport(r) {
         lines.push('');
     }
 
-    lines.push('─── Model ───');
-    lines.push(`  ${r.ensemble_details?.[0]?.name || 'Unknown'}`);
-    lines.push(`  ${r.ensemble_details?.[0]?.model_id || ''}`);
-    lines.push('');
     lines.push('Generated by VisioNova');
 
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });

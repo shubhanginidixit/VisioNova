@@ -266,13 +266,41 @@
             <div class="p-4 flex flex-col gap-4 flex-1">
               <!-- Placeholder / Player -->
               <div id="audioContainer">
+                <!-- Error banner (hidden by default) -->
+                <div id="analysisErrorBanner" class="hidden mb-4 p-4 rounded-xl bg-accent-danger/10 border border-accent-danger/20">
+                  <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-accent-danger">error</span>
+                    <div>
+                      <p class="text-white font-bold text-sm">Analysis Failed</p>
+                      <p id="analysisErrorText" class="text-white/60 text-xs mt-0.5">An error occurred during audio analysis.</p>
+                    </div>
+                  </div>
+                  <a href="AnalysisDashboard.html" class="inline-flex items-center gap-1 mt-3 text-xs text-primary hover:underline">
+                    <span class="material-symbols-outlined text-[14px]">arrow_back</span> Return to Dashboard
+                  </a>
+                </div>
+
                 <div id="noAudioPlaceholder" class="flex flex-col items-center gap-4 text-white/40 py-8">
                   <span class="material-symbols-outlined text-6xl opacity-50">mic</span>
                   <p class="text-sm">No audio uploaded</p>
                   <a href="homepage.html" class="text-primary hover:underline text-sm">Upload audio to analyze</a>
                 </div>
                 <div id="audioPlayerWrapper" class="hidden">
-                  <audio id="uploadedAudio" class="w-full" controls preload="metadata"></audio>
+                  <!-- WaveSurfer Waveform Visualizer -->
+                  <div id="waveform" class="w-full rounded-lg overflow-hidden mb-3" style="min-height: 128px; background: rgba(0,0,0,0.3);"></div>
+                  <!-- Transport Controls -->
+                  <div class="flex items-center gap-4">
+                    <button id="playPauseBtn" class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 hover:bg-primary/30 text-primary transition-colors">
+                      <span id="playIcon" class="material-symbols-outlined !text-[24px]">play_arrow</span>
+                    </button>
+                    <span id="currentTimeDisplay" class="text-white/50 text-xs font-mono w-12">0:00</span>
+                    <div class="flex-1 h-px bg-white/10"></div>
+                    <span id="durationDisplay" class="text-white/50 text-xs font-mono w-12 text-right">--:--</span>
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-white/30 !text-[18px]">volume_up</span>
+                      <input id="volumeSlider" type="range" min="0" max="1" step="0.05" value="0.8" class="w-20 h-1 accent-primary bg-white/10 rounded-full cursor-pointer">
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -391,8 +419,8 @@
                 <span class="material-symbols-outlined !text-[20px]">hub</span>
               </div>
               <div class="text-left">
-                <h4 class="text-white font-bold text-sm">Detection Model</h4>
-                <p id="modelsSubtitle" class="text-white/40 text-xs">Model that performed this analysis</p>
+                <h4 class="text-white font-bold text-sm">Ensemble Models</h4>
+                <p id="modelsSubtitle" class="text-white/40 text-xs">5-model weighted ensemble</p>
               </div>
             </div>
             <span class="material-symbols-outlined text-white/40 transition-transform" id="modelsChevron">expand_more</span>

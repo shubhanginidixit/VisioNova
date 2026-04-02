@@ -107,45 +107,22 @@ Access the web interface by opening the corresponding HTML files in the `fronten
 ```
 VisioNova/
 ├── backend/                    # Flask server and core logic
-│   ├── AI/                    # AI/LLM integration modules
-│   ├── fact_check/            # Fact-checking engine
+│   ├── audio_detector/        # Audio deepfake detection (5-model ensemble)
 │   ├── image_detector/        # Image analysis detectors
 │   ├── text_detector/         # Text AI detection & document parsing
-│   │   ├── text_detector_service.py  # Core detection engine (offline/ML/binoculars)
-│   │   ├── document_parser.py        # PDF/DOCX/TXT extraction with OCR fallback
-│   │   ├── binoculars_detector.py    # Zero-shot Falcon-7B detector
-│   │   └── preprocessor.py           # NLP preprocessing utilities
-│   ├── audio_detector/        # Audio deepfake detection
 │   ├── video_detector/        # Video deepfake detection
-│   ├── app.py                 # Main Flask application
-│   └── requirements.txt       # Python dependencies
+│   └── app.py                 # Main Flask application
 ├── docs/                      # Documentation
-│   ├── ML_SETUP_COMPLETE.md   # ML models setup guide
-│   ├── QUICKSTART_ML.md       # Quick start for ML features
-│   ├── Image_Detection_Strategy.md
-│   ├── Text_Detection_Strategy.md
-│   ├── Audio_Detection_Strategy.md
-│   ├── Video_Deepfake_Strategy.md
-│   ├── FactCheck_Documentation.md
-│   └── SystemArchitecture.md
+│   ├── Audio_Detection.md     # Audio models and capabilities
+│   ├── Fact_Check.md          # Fact checking integration
+│   ├── Image_Detection.md     # Image forgery tools
+│   ├── Project_Vision_and_Security.md # Vision & goals
+│   ├── Text_Detection.md      # Text and document processing
+│   └── Video_Detection.md     # Video frame inspection
 ├── frontend/                  # Web interface
-│   ├── html/                  # HTML pages
 │   ├── css/                   # Stylesheets
-│   └── js/                    # JavaScript modules
-├── notebooks/                 # Jupyter notebooks
-│   ├── DeBERTa_Training_Notebook.ipynb
-│   └── VisioNova_Colab_Training.ipynb
-├── scripts/                   # Utility scripts
-│   ├── setup_ml_models.py     # ML model setup (Python 3.10)
-│   ├── train_deberta.py       # Text model training
-│   └── download_models.py     # Legacy model downloader
-├── tests/                     # Test files
-│   ├── test_image_api.py
-│   └── test_binoculars.py
-├── results/                   # Training outputs (gitignored)
-├── .venv/                     # Python 3.13 environment
-├── .venv310/                  # Python 3.10 for ML models (gitignored)
-├── requirements_ml.txt        # ML-specific dependencies (PyTorch + CUDA)
+│   ├── html/                  # HTML pages (Dashboards, Results)
+│   └── js/                    # Client-side JavaScript
 └── README.md                  # This file
 ```
 
@@ -154,15 +131,6 @@ VisioNova/
 - **backend/**: Core application logic and API endpoints
 - **docs/**: Comprehensive technical documentation
 - **frontend/**: User interface (HTML/CSS/JS)
-- **notebooks/**: Training notebooks for model development
-- **scripts/**: Standalone utilities and training scripts
-- **tests/**: Unit and integration tests
-
-### ML Models Setup
-
-For GPU-accelerated image detection (98%+ accuracy):
-1. See [docs/ML_SETUP_COMPLETE.md](docs/ML_SETUP_COMPLETE.md)
-2. Quick start: [docs/QUICKSTART_ML.md](docs/QUICKSTART_ML.md)
 
 ## Contributors
 
