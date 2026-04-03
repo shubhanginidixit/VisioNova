@@ -27,8 +27,9 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 *   See [Video & Deepfake Detection](docs/Video_Detection.md) for technical details.
 
 ### Audio Forensics
-*   **Voice Cloning Detection:** Identifies synthetic vocal patterns and indicators of text-to-speech generation.
-*   **Spectral Analysis:** Examines frequency distribution for anomalies typical of AI audio.
+*   **Omni-Audio Routing:** Intelligently classifies content as Speech or Music/Ambient to eliminate false positives on musical tracks.
+*   **Voice Deepfake Detection:** Highlights synthetic vocal patterns and indicators of text-to-speech generation using a 4-Model Vanguard ensemble.
+*   **Music Generation Detection:** Analyzes spectral cutoffs and phase coherence to flag synthetic AI music.
 *   See [Audio Detection](docs/Audio_Detection.md) for technical details.
 
 ### Text Analysis
@@ -107,7 +108,7 @@ Access the web interface by opening the corresponding HTML files in the `fronten
 ```
 VisioNova/
 ├── backend/                    # Flask server and core logic
-│   ├── audio_detector/        # Audio deepfake detection (5-model ensemble)
+│   ├── audio_detector/        # Omni-Audio Router & Vanguard Speech Ensemble
 │   ├── image_detector/        # Image analysis detectors
 │   ├── text_detector/         # Text AI detection & document parsing
 │   ├── video_detector/        # Video deepfake detection
