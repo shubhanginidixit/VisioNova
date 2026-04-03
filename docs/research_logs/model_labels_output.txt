@@ -1,0 +1,20 @@
+Model: Gustking/wav2vec2-large-xlsr-deepfake-audio-classification
+  id2label: {"0": "real", "1": "fake"}
+  resolved_fake_idx: 1
+
+Model: DavidCombei/wavLM-base-Deepfake_V2
+  id2label: {"0": "LABEL_0", "1": "LABEL_1"}
+  resolved_fake_idx: 1
+
+Model: Vansh180/deepfake-audio-wav2vec2
+  id2label: {"0": "real", "1": "fake"}
+  resolved_fake_idx: 1
+
+Model: MelodyMachine/Deepfake-audio-detection-V2
+  id2label: {"0": "fake", "1": "real"}
+  resolved_fake_idx: 0
+
+Model: mo-thecreator/Deepfake-audio-detection
+  id2label: {"0": "fake", "1": "real"}
+  resolved_fake_idx: 0
+

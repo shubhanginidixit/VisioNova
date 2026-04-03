@@ -1,0 +1,16 @@
+Model: abhishtagatya/hubert-base-960h-itw-deepfake
+  id2label: {"0": "bona-fide", "1": "spoof"}
+  resolved_fake_idx: 1
+
+Model: Gustking/wav2vec2-large-xlsr-deepfake-audio-classification
+  id2label: {"0": "real", "1": "fake"}
+  resolved_fake_idx: 1
+
+Model: garystafford/wav2vec2-deepfake-voice-detector
+  id2label: {"0": "real", "1": "fake"}
+  resolved_fake_idx: 1
+
+Model: Vansh180/deepfake-audio-wav2vec2
+  id2label: {"0": "real", "1": "fake"}
+  resolved_fake_idx: 1
+
