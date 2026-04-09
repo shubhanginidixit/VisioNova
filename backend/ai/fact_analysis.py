@@ -86,6 +86,8 @@ Provide a comprehensive analysis in the following JSON format:
     ],
     
     "contradictions_found": <true if sources contradict each other, false otherwise>,
+
+    "primary_evidence_found": <true if at least one primary evidence source supports final reasoning>,
     
     "claims": [
         {{
@@ -102,10 +104,13 @@ Rules:
 - If sources directly contradict the claim, verdict is FALSE  
 - If claim has some truth but is exaggerated/missing context, verdict is PARTIALLY TRUE or MISLEADING
 - If sources don't provide enough information, verdict is UNVERIFIABLE
-- If verdict is definitively TRUE or FALSE based on reliable sources, you MUST set confidence to 100. Do not hesitate.
+- Do not inflate certainty: if evidence is mixed or contradictory, confidence must be <= 75.
+- Confidence >= 80 is allowed only if there is at least one primary-evidence source category (factcheck, government, health, academic) and at least two independent reliable sources.
+- If only contextual/unreliable/unknown sources are available, verdict must be UNVERIFIABLE.
 - Calculate confidence breakdown components accurately
 - Analyze each source's stance (SUPPORTS/REFUTES/NEUTRAL) individually
 - Flag contradictions_found as true if sources disagree significantly
+- Set primary_evidence_found based on the sources used in your reasoning
 - Break down the main claim into individual verifiable statements in the "claims" array
 - Provide thorough analysis in detailed_analysis section
 
@@ -168,6 +173,7 @@ Respond ONLY with valid JSON, no other text."""
                 }),
                 'source_analysis': result.get('source_analysis', []),
                 'contradictions_found': result.get('contradictions_found', False),
+                'primary_evidence_found': result.get('primary_evidence_found', False),
                 'claims': result.get('claims', []),
                 'explanation': result.get('summary', {}).get('one_liner', 'Analysis completed.'),
                 'ai_analyzed': True
@@ -292,6 +298,10 @@ Respond ONLY with valid JSON, no other text."""
         for i, source in enumerate(sources[:8], 1):  # Limit to 8 sources
             trust = source.get('trust_level', 'unknown')
             is_factcheck = source.get('is_factcheck_site', False)
+            category = source.get('source_category', 'unknown')
+            tier = source.get('source_tier', 'unknown')
+            verdict_eligible = source.get('include_in_verdict', False)
+            evidence_role = source.get('evidence_role', 'context')
             
             source_type = "[FACT-CHECK SITE]" if is_factcheck else f"[{trust.upper()}]"
             
@@ -304,6 +314,7 @@ Respond ONLY with valid JSON, no other text."""
             context_parts.append(
                 f"{i}. {source_type} {source.get('title', 'Untitled')}\n"
                 f"   Domain: {source.get('domain', 'unknown')}\n"
+                f"   Category/Tier: {category} / {tier} (role={evidence_role}, verdict_eligible={verdict_eligible})\n"
                 f"   {content_display}"
             )
         
@@ -313,6 +324,10 @@ Respond ONLY with valid JSON, no other text."""
         """Fallback when AI is unavailable - use simple heuristics."""
         factcheck_count = sum(1 for s in sources if s.get('is_factcheck_site'))
         high_trust = sum(1 for s in sources if s.get('trust_level') == 'high')
+        primary_evidence_found = any(
+            s.get('source_category') in {'factcheck', 'government', 'health', 'academic'}
+            for s in sources
+        )
         
         if factcheck_count > 0:
             confidence = min(85, 60 + factcheck_count * 10)
@@ -330,6 +345,14 @@ Respond ONLY with valid JSON, no other text."""
         return {
             'verdict': verdict,
             'confidence': confidence,
+            'confidence_breakdown': {
+                'source_quality': min(25, factcheck_count * 10 + high_trust * 5),
+                'source_quantity': min(20, len(sources) * 2),
+                'factcheck_found': 25 if factcheck_count > 0 else 0,
+                'consensus': 0,
+                'total': confidence,
+                'explanation': 'Fallback scoring path used because AI analysis is unavailable.',
+            },
             'explanation': explanation,
             'summary': {
                 'one_liner': explanation,
@@ -341,6 +364,9 @@ Respond ONLY with valid JSON, no other text."""
                 'context': 'AI-powered analysis is currently unavailable.',
                 'limitations': 'Cannot determine verdict without AI analysis.'
             },
+            'source_analysis': [],
+            'contradictions_found': False,
+            'primary_evidence_found': primary_evidence_found,
             'claims': [],
             'ai_analyzed': False
         }

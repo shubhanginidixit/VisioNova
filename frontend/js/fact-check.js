@@ -1149,6 +1149,14 @@ function buildSourcesListHTML(result) {
     const sourcesHTML = result.sources.map((source, index) => {
         const isLast = index === result.sources.length - 1;
         const trustConfig = getSourceTrustConfig(source.trust_level, source.is_factcheck);
+        const trustScoreText = Number.isFinite(Number(source.trust_score))
+            ? `${Number(source.trust_score)}/100`
+            : 'N/A';
+        const tierText = source.source_tier ? `Tier ${source.source_tier}` : 'Tier ?';
+        const evidenceRoleText = (source.evidence_role || 'context').toUpperCase();
+        const policyNote = source.include_in_verdict
+            ? (source.source_reason || 'Eligible for verdict scoring.')
+            : (source.excluded_reason || source.source_reason || 'Context-only source.');
 
         return `
             <div class="flex gap-4 group">
@@ -1164,6 +1172,15 @@ function buildSourcesListHTML(result) {
                         <span class="px-2.5 py-1 rounded-md ${trustConfig.bgClass} ${trustConfig.textClass} text-xs font-bold border ${trustConfig.borderClass} uppercase">${trustConfig.label}</span>
                     </div>
                     <p class="text-slate-400 text-sm mb-3">${escapeHTML(source.snippet)}</p>
+                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                        <span class="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300 text-[11px] font-medium">${tierText}</span>
+                        <span class="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300 text-[11px] font-medium">Score ${trustScoreText}</span>
+                        <span class="px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary text-[11px] font-medium">${escapeHTML(evidenceRoleText)}</span>
+                        ${source.include_in_verdict
+                            ? '<span class="px-2 py-1 rounded-md bg-success/10 border border-success/20 text-success text-[11px] font-medium">Used in Verdict</span>'
+                            : '<span class="px-2 py-1 rounded-md bg-warning/10 border border-warning/20 text-warning text-[11px] font-medium">Context Only</span>'}
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">${escapeHTML(policyNote)}</p>
                     <!-- Source Evidence Card -->
                     <div class="bg-background-dark/80 rounded-xl p-4 border border-white/5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer">
                         <div class="flex items-start gap-3">
@@ -1176,7 +1193,7 @@ function buildSourcesListHTML(result) {
                                     <a href="${escapeHTML(source.url)}" target="_blank" class="text-xs text-primary font-medium hover:underline flex items-center gap-1">
                                         Visit Source <span class="material-symbols-outlined text-[12px]">open_in_new</span>
                                     </a>
-                                    <span class="text-xs text-slate-500">Trust: ${source.trust_level}</span>
+                                    <span class="text-xs text-slate-500">Trust: ${source.trust_level} (${trustScoreText})</span>
                                 </div>
                             </div>
                         </div>
@@ -1227,6 +1244,22 @@ function getSourceTrustConfig(trustLevel, isFactCheck) {
                 borderClass: 'border-warning/30',
                 icon: 'info',
                 label: 'Medium'
+            };
+        case 'low':
+            return {
+                bgClass: 'bg-warning/10',
+                textClass: 'text-warning',
+                borderClass: 'border-warning/20',
+                icon: 'report',
+                label: 'Low Trust'
+            };
+        case 'unreliable':
+            return {
+                bgClass: 'bg-danger/10',
+                textClass: 'text-danger',
+                borderClass: 'border-danger/20',
+                icon: 'gpp_bad',
+                label: 'Unreliable'
             };
         default:
             return {
