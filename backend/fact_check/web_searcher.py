@@ -5,10 +5,10 @@ Searches multiple websites to find evidence for/against claims.
 import time
 import requests
 from urllib.parse import urlparse
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from .config import (
     USER_AGENT, REQUEST_TIMEOUT, GOOGLE_SEARCH_RESULTS,
-    GOOGLE_API_KEY, GOOGLE_CSE_ID
+    GOOGLE_API_KEY, GOOGLE_CSE_ID, PRIMARY_EVIDENCE_CATEGORIES
 )
 from .credibility_manager import CredibilityManager
 
@@ -25,7 +25,6 @@ class WebSearcher:
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
         }
-        self._last_request_time = 0
         self._last_request_time = 0
         self.credibility_manager = CredibilityManager()
         
@@ -239,24 +238,44 @@ class WebSearcher:
         
         for source in sources:
             domain = source.get('domain', '').lower()
-            
-            # Get credibility info from database
-            cred_info = self.credibility_manager.get_credibility(domain)
-            trust_score = cred_info.get('trust', 50) / 100  # Normalize to 0-1
-            trust_level = self.credibility_manager.get_trust_level(domain)
-            is_factcheck = self.credibility_manager.is_factcheck_site(domain)
+            policy = self.credibility_manager.get_source_policy(domain)
+            category = policy.get('category', 'unknown')
+
+            include_in_verdict = bool(policy.get('include_in_verdict', False))
+            if include_in_verdict:
+                source_reason = 'Eligible for verdict scoring under source policy.'
+            elif category in {'unreliable', 'satire'}:
+                source_reason = 'Excluded from verdict scoring due to unreliable/satire category.'
+            else:
+                source_reason = 'Used as contextual evidence only due to source tier policy.'
+
+            evidence_role = 'primary' if category in PRIMARY_EVIDENCE_CATEGORIES else 'secondary'
+            if not include_in_verdict:
+                evidence_role = 'context'
             
             scored.append({
                 **source,
-                'trust_level': trust_level,
-                'trust_score': trust_score,
-                'is_factcheck_site': is_factcheck,
-                'bias': cred_info.get('bias', 'unknown'),
-                'source_category': cred_info.get('category', 'unknown')
+                'trust_level': policy.get('trust_level', 'unknown'),
+                'trust_score': policy.get('trust_score', 50),
+                'raw_trust_score': policy.get('raw_trust_score', 50),
+                'is_factcheck_site': policy.get('is_factcheck_site', False),
+                'bias': policy.get('bias', 'unknown'),
+                'source_category': category,
+                'source_tier': policy.get('tier', 4),
+                'include_in_verdict': include_in_verdict,
+                'source_reason': source_reason,
+                'evidence_role': evidence_role,
             })
         
-        # Sort by trust score (descending)
-        scored.sort(key=lambda x: x['trust_score'], reverse=True)
+        # Sort by policy eligibility first, then trust score and fact-check priority.
+        scored.sort(
+            key=lambda x: (
+                1 if x.get('include_in_verdict') else 0,
+                x.get('trust_score', 0),
+                1 if x.get('is_factcheck_site') else 0,
+            ),
+            reverse=True,
+        )
         
         return scored
 
