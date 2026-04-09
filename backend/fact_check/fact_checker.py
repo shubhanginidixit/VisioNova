@@ -11,7 +11,15 @@ from .content_extractor import ContentExtractor
 from .web_searcher import WebSearcher
 from .temporal_analyzer import TemporalAnalyzer
 from .credibility_manager import CredibilityManager
-from .config import Verdict
+from .config import (
+    FULL_TEXT_ENRICH_LIMIT,
+    FULL_TEXT_MAX_CHARS,
+    HIGH_CONFIDENCE_THRESHOLD,
+    MAX_RESPONSE_SOURCES,
+    PRIMARY_EVIDENCE_CATEGORIES,
+    SOURCE_ADMISSION_POLICY,
+    Verdict,
+)
 
 # Import AI analyzer from the AI package
 import concurrent.futures
@@ -118,8 +126,9 @@ class FactChecker:
         cache_key = self._get_cache_key(user_input)
         cached_result = self._get_cached_result(cache_key)
         if cached_result:
-            cached_result['cached'] = True
-            return cached_result
+            result = cached_result.copy()
+            result['cached'] = True
+            return result
         
         # Step 1: Classify input
         classification = self.classifier.classify(user_input)
@@ -138,12 +147,15 @@ class FactChecker:
                 classification['url_title'] = "Content Unavailable (Verification via Search)"
                 classification['url_content'] = ""
             else:
-                # Use title + first claim as the search query
-                claims = extracted['claims']
-                if claims:
+                # For URLs, the title is usually the most accurate representation of the core claim.
+                # If title is missing, fallback to the first extracted structural claim.
+                claims = extracted.get('claims', [])
+                if extracted.get('title') and extracted['title'] not in ["Untitled", "None"]:
+                    claim = extracted['title']
+                elif claims:
                     claim = claims[0]
                 else:
-                    claim = extracted['title']
+                    claim = user_input
                 
                 classification['claim'] = claim
                 classification['url_title'] = extracted['title']
@@ -184,25 +196,103 @@ class FactChecker:
                     all_sources.append(s)
         
         sources = all_sources
+        sources = self._apply_source_policy(sources)
+        verdict_sources = [s for s in sources if s.get('include_in_verdict', False)]
         
         if not sources:
             return self._build_response(
                 classification,
-                Verdict.UNVERIFIABLE,
-                confidence=10,
-                sources=[],
-                explanation="Could not find any sources to verify this claim."
+                {
+                    'verdict': Verdict.UNVERIFIABLE,
+                    'confidence': 10,
+                    'confidence_breakdown': {
+                        'source_quality': 0,
+                        'source_quantity': 0,
+                        'factcheck_found': 0,
+                        'consensus': 0,
+                        'total': 10,
+                        'explanation': 'No sources were found for this claim.',
+                    },
+                    'explanation': 'Could not find any sources to verify this claim.',
+                    'summary': {
+                        'one_liner': 'No evidence found from searchable sources.',
+                        'key_points': [],
+                    },
+                    'detailed_analysis': {},
+                    'source_analysis': [],
+                    'contradictions_found': False,
+                    'claims': [],
+                    'ai_analyzed': False,
+                },
+                []
             )
+
+        temporal_context = self.temporal_analyzer.extract_temporal_context(claim)
+        search_period_description = self.temporal_analyzer.format_search_period_description(
+            temporal_context
+        )
+
+        if not verdict_sources:
+            ai_result = {
+                'verdict': Verdict.UNVERIFIABLE,
+                'confidence': 25,
+                'confidence_breakdown': {
+                    'source_quality': 5,
+                    'source_quantity': min(20, len(sources) * 2),
+                    'factcheck_found': 0,
+                    'consensus': 0,
+                    'total': 25,
+                    'explanation': 'Only contextual or policy-excluded sources were found.',
+                },
+                'explanation': (
+                    'Sources were found, but none met the reliable-source policy required '
+                    'to influence the verdict.'
+                ),
+                'summary': {
+                    'one_liner': 'No eligible reliable sources were found for verdict scoring.',
+                    'key_points': [],
+                },
+                'detailed_analysis': {
+                    'overview': 'Search returned contextual evidence only.',
+                    'methodology': 'Applied source policy filters before verdict synthesis.',
+                    'context': '',
+                    'limitations': 'Reliable-source threshold not satisfied.',
+                },
+                'source_analysis': [],
+                'contradictions_found': False,
+                'claims': [],
+                'ai_analyzed': False,
+                'temporal_context': {
+                    'search_year_from': temporal_context['search_year_from'],
+                    'time_period': temporal_context['time_period'],
+                    'is_historical': temporal_context['is_historical'],
+                    'is_recent': temporal_context['is_recent'],
+                    'description': search_period_description,
+                    'years_mentioned': temporal_context['years_mentioned'],
+                },
+            }
+            result = self._build_response(classification, ai_result, sources)
+            result['cached'] = False
+            self._cache_result(cache_key, result.copy())
+            return result
         
         # Step 4: Enrich top sources with full text (Deep Read)
         # We pick up to 3 high-trust sources to read fully
-        self._enrich_sources_with_full_text(sources)
+        self._enrich_sources_with_full_text(verdict_sources)
         
         # Temporal context for calibration and filtering
-        temporal_context = self.temporal_analyzer.extract_temporal_context(claim)
+        # Temporal context already extracted above.
         
         # Step 5: Analyze sources and determine verdict using AI
-        ai_result = self._analyze_sources(claim, sources, temporal_context)
+        ai_result = self._analyze_sources(claim, verdict_sources, temporal_context)
+        ai_result['temporal_context'] = {
+            'search_year_from': temporal_context['search_year_from'],
+            'time_period': temporal_context['time_period'],
+            'is_historical': temporal_context['is_historical'],
+            'is_recent': temporal_context['is_recent'],
+            'description': search_period_description,
+            'years_mentioned': temporal_context['years_mentioned'],
+        }
         
         # Step 6: Build response with all AI analysis data
         result = self._build_response(
@@ -210,6 +300,8 @@ class FactChecker:
             ai_result,
             sources
         )
+        result['reliable_source_count'] = len(verdict_sources)
+        result['excluded_source_count'] = max(0, len(sources) - len(verdict_sources))
         
         # Cache the result for future repeated claims
         result['cached'] = False
@@ -321,14 +413,36 @@ class FactChecker:
         if not unique_sources:
             return self._build_response(
                 classification,
-                Verdict.UNVERIFIABLE,
-                confidence=10,
-                sources=[],
-                explanation="Could not find any sources to verify this claim."
+                {
+                    'verdict': Verdict.UNVERIFIABLE,
+                    'confidence': 10,
+                    'confidence_breakdown': {
+                        'source_quality': 0,
+                        'source_quantity': 0,
+                        'factcheck_found': 0,
+                        'consensus': 0,
+                        'total': 10,
+                        'explanation': 'No sources were found for this deep check.',
+                    },
+                    'explanation': 'Could not find any sources to verify this claim.',
+                    'summary': {
+                        'one_liner': 'Deep scan found no evidence for this claim.',
+                        'key_points': [],
+                    },
+                    'detailed_analysis': {},
+                    'source_analysis': [],
+                    'contradictions_found': False,
+                    'claims': [],
+                    'ai_analyzed': False,
+                },
+                []
             )
+
+        unique_sources = self._apply_source_policy(unique_sources)
+        verdict_sources = [s for s in unique_sources if s.get('include_in_verdict', False)]
         
         # Step 4: Enrich top sources with full text (Round 1)
-        self._enrich_sources_with_full_text(unique_sources)
+        self._enrich_sources_with_full_text(verdict_sources)
         
         # Step 4.5: ITERATIVE REASONING LOOP (Agentic Search)
         # Ask AI: "Do we have enough info? What is missing?"
@@ -381,7 +495,7 @@ class FactChecker:
 
             # Process Round 2 sources
             new_unique_sources = []
-            seen_urls_r2 = set(s['url'] for s in unique_sources) # Start with existing URLs
+            seen_urls_r2 = {s.get('url') for s in unique_sources if s.get('url')}  # Start with existing URLs
             
             for source in round_2_sources:
                 url = source.get('url', '')
@@ -390,16 +504,60 @@ class FactChecker:
                     new_unique_sources.append(source)
             
             if new_unique_sources:
+                new_unique_sources = self._apply_source_policy(new_unique_sources)
                 print(f"Round 2 found {len(new_unique_sources)} new unique sources.")
                 # Enrich new sources
-                self._enrich_sources_with_full_text(new_unique_sources)
+                round2_verdict_sources = [s for s in new_unique_sources if s.get('include_in_verdict', False)]
+                self._enrich_sources_with_full_text(round2_verdict_sources)
                 # Combine sources (Round 1 + Round 2)
                 unique_sources.extend(new_unique_sources)
+                verdict_sources.extend(round2_verdict_sources)
             else:
                  print("Round 2 found no new unique sources.")
 
-        # Step 5: Enhanced AI analysis with combined sources
-        ai_result = self._analyze_sources(claim, unique_sources, temporal_context)
+        if not verdict_sources:
+            ai_result = {
+                'verdict': Verdict.UNVERIFIABLE,
+                'confidence': 25,
+                'confidence_breakdown': {
+                    'source_quality': 5,
+                    'source_quantity': min(20, len(unique_sources) * 2),
+                    'factcheck_found': 0,
+                    'consensus': 0,
+                    'total': 25,
+                    'explanation': 'Deep scan found only contextual or policy-excluded sources.',
+                },
+                'explanation': (
+                    'Deep scan completed, but no sources met the reliable-source policy '
+                    'required for verdict scoring.'
+                ),
+                'summary': {
+                    'one_liner': 'Deep scan found no reliable verdict-eligible sources.',
+                    'key_points': [],
+                },
+                'detailed_analysis': {
+                    'overview': 'Deep scan sources were contextual only.',
+                    'methodology': 'Applied source policy filters before verdict synthesis.',
+                    'context': '',
+                    'limitations': 'Reliable-source threshold not satisfied.',
+                },
+                'source_analysis': [],
+                'contradictions_found': False,
+                'claims': [],
+                'ai_analyzed': False,
+            }
+        else:
+            # Step 5: Enhanced AI analysis with combined verdict-eligible sources
+            ai_result = self._analyze_sources(claim, verdict_sources, temporal_context)
+
+        ai_result['temporal_context'] = {
+            'search_year_from': temporal_context['search_year_from'],
+            'time_period': temporal_context['time_period'],
+            'is_historical': temporal_context['is_historical'],
+            'is_recent': temporal_context['is_recent'],
+            'description': search_period_description,
+            'years_mentioned': temporal_context['years_mentioned'],
+        }
         
         # Step 6: Build response with deep scan metadata
         result = self._build_response(
@@ -413,6 +571,8 @@ class FactChecker:
         result['queries_used'] = len(search_queries)
         result['total_sources_found'] = len(all_sources)
         result['unique_sources'] = len(unique_sources)
+        result['reliable_source_count'] = len(verdict_sources)
+        result['excluded_source_count'] = max(0, len(unique_sources) - len(verdict_sources))
         result['temporal_context'] = {
             'search_year_from': temporal_context['search_year_from'],
             'time_period': temporal_context['time_period'],
@@ -452,6 +612,9 @@ class FactChecker:
         
         # 2. Fact-check query
         queries.append(f"fact check {text_query}")
+        queries.append(f"site:factcheck.org {text_query}")
+        queries.append(f"site:reuters.com fact check {text_query}")
+        queries.append(f"official data {text_query}")
         
         # 3. Verification query
         if not is_url:
@@ -476,8 +639,95 @@ class FactChecker:
         if len(words) > 5:
             key_words = [w for w in words if len(w) > 3][:5]
             queries.append(" ".join(key_words) + " fact check")
-            
-        return queries[:7]
+
+        # Deduplicate while preserving order and cap query fan-out.
+        deduped = []
+        seen = set()
+        for query in queries:
+            normalized = query.lower().strip()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                deduped.append(query)
+
+        return deduped[:10]
+
+    def _apply_source_policy(self, sources: list) -> list:
+        """Normalize source metadata and apply verdict-eligibility policy."""
+        if not sources:
+            return []
+
+        processed = []
+        seen_urls = set()
+
+        for source in sources:
+            url = source.get('url', '')
+            if url and url in seen_urls:
+                continue
+            if url:
+                seen_urls.add(url)
+
+            domain = source.get('domain', '').lower().strip()
+            policy = self.credibility_manager.get_source_policy(domain)
+
+            merged = {**source}
+            merged['source_category'] = policy.get('category', merged.get('source_category', 'unknown'))
+            merged['source_tier'] = policy.get('tier', merged.get('source_tier', 4))
+            merged['is_factcheck_site'] = bool(policy.get('is_factcheck_site', merged.get('is_factcheck_site', False)))
+            merged['bias'] = policy.get('bias', merged.get('bias', 'unknown'))
+            merged['trust_level'] = policy.get('trust_level', merged.get('trust_level', 'unknown'))
+            merged['include_in_verdict'] = bool(policy.get('include_in_verdict', merged.get('include_in_verdict', False)))
+            merged['raw_trust_score'] = int(policy.get('raw_trust_score', merged.get('raw_trust_score', 50)))
+
+            try:
+                merged['trust_score'] = int(round(float(merged.get('trust_score', policy.get('trust_score', 50)))))
+            except (TypeError, ValueError):
+                merged['trust_score'] = int(policy.get('trust_score', 50))
+
+            if merged.get('source_category') in PRIMARY_EVIDENCE_CATEGORIES:
+                merged['evidence_role'] = 'primary'
+            elif merged.get('include_in_verdict'):
+                merged['evidence_role'] = 'secondary'
+            else:
+                merged['evidence_role'] = 'context'
+
+            if merged.get('include_in_verdict'):
+                merged['source_reason'] = merged.get(
+                    'source_reason',
+                    'Eligible for verdict scoring under reliable-source policy.',
+                )
+            elif merged.get('source_category') in {'unreliable', 'satire'}:
+                merged['excluded_reason'] = 'Blocked source category (unreliable/satire).'
+                merged['source_reason'] = merged.get(
+                    'source_reason',
+                    'Shown for context only; excluded from verdict scoring.',
+                )
+            else:
+                merged['excluded_reason'] = 'Source tier exceeds verdict-eligible threshold.'
+                merged['source_reason'] = merged.get(
+                    'source_reason',
+                    'Context-only source due to reliability tier policy.',
+                )
+
+            processed.append(merged)
+
+        processed.sort(
+            key=lambda x: (
+                1 if x.get('include_in_verdict') else 0,
+                x.get('trust_score', 0),
+                1 if x.get('is_factcheck_site') else 0,
+            ),
+            reverse=True,
+        )
+
+        return processed
+
+    def _has_primary_evidence(self, sources: list) -> bool:
+        """Return True if at least one verdict-eligible source is primary evidence."""
+        return any(
+            s.get('include_in_verdict', False)
+            and s.get('source_category', 'unknown') in PRIMARY_EVIDENCE_CATEGORIES
+            for s in sources
+        )
     
     def _analyze_sources(self, claim: str, sources: list, temporal_context: dict = None) -> dict:
         """
@@ -486,9 +736,16 @@ class FactChecker:
         Returns:
             dict with verdict, confidence, summary, detailed_analysis, claims
         """
+        if not sources:
+            return self._heuristic_analysis(claim, [])
+
         # Tag stance and temporal alignment before AI so both AI and fallback can use it
         sources = self._apply_stance_tags(claim, sources)
         sources = self._apply_temporal_filter(sources, temporal_context)
+
+        if not sources:
+            return self._heuristic_analysis(claim, [])
+
         # Try AI-powered analysis first
         try:
             ai_result = self.ai_analyzer.analyze_claim(claim, sources)
@@ -509,7 +766,38 @@ class FactChecker:
         Returns:
             dict with verdict, confidence, explanation, and empty structured fields
         """
-        # Categorize sources by trust level using CredibilityManager
+        eligible_sources = [s for s in sources if s.get('include_in_verdict', True)]
+
+        if not eligible_sources:
+            return {
+                'verdict': Verdict.UNVERIFIABLE,
+                'confidence': 25,
+                'confidence_breakdown': {
+                    'source_quality': 5,
+                    'source_quantity': 0,
+                    'factcheck_found': 0,
+                    'consensus': 0,
+                    'total': 25,
+                    'explanation': 'No verdict-eligible reliable sources were available.',
+                },
+                'explanation': 'No reliable verdict-eligible sources were available for analysis.',
+                'summary': {
+                    'one_liner': 'Unable to verify due to insufficient reliable evidence.',
+                    'key_points': [],
+                },
+                'detailed_analysis': {
+                    'overview': 'The analysis found no sources allowed to influence verdict scoring.',
+                    'methodology': 'Applied source policy gates before heuristic synthesis.',
+                    'context': '',
+                    'limitations': 'Reliable-source threshold not satisfied.',
+                },
+                'source_analysis': [],
+                'contradictions_found': False,
+                'claims': [],
+                'ai_analyzed': False,
+            }
+
+        # Categorize sources by trust level using policy-normalized values.
         factcheck_sites = []
         high_trust = []
         medium_trust = []
@@ -520,15 +808,14 @@ class FactChecker:
         total_trust_score = 0
         valid_sources_count = 0
         
-        for source in sources:
+        for source in eligible_sources:
             domain = source.get('domain', '').lower()
-            cred_info = self.credibility_manager.get_credibility(domain)
-            trust_score = cred_info.get('trust', 50)
-            category = cred_info.get('category', 'unknown')
-            
-            # Enrich source with credibility data
+            category = source.get('source_category', self.credibility_manager.get_source_category(domain))
+            trust_score = int(source.get('trust_score', self.credibility_manager.get_adjusted_trust_score(domain)))
+
+            # Keep normalized fields available in fallback output.
             source['trust_score'] = trust_score
-            source['trust_level'] = self.credibility_manager.get_trust_level(domain)
+            source['trust_level'] = source.get('trust_level', self.credibility_manager.get_trust_level(domain))
             source['category'] = category
             
             if category == 'factcheck' or trust_score >= 85:
@@ -550,12 +837,14 @@ class FactChecker:
             
         avg_trust = total_trust_score / max(1, valid_sources_count)
         total_trusted = len(factcheck_sites) + len(high_trust)
+        primary_evidence_found = self._has_primary_evidence(eligible_sources)
         
         # Determine verdict based on source quality and stance consensus
         support_high = sum(1 for s in support_sources if s.get('trust_score', 0) >= 70)
         refute_high = sum(1 for s in refute_sources if s.get('trust_score', 0) >= 70)
         factcheck_support = sum(1 for s in support_sources if s.get('category') == 'factcheck')
         factcheck_refute = sum(1 for s in refute_sources if s.get('category') == 'factcheck')
+        contradictions_found = support_high > 0 and refute_high > 0
 
         if factcheck_refute >= 1 and (refute_high + factcheck_refute) >= 2:
             verdict = Verdict.FALSE
@@ -597,12 +886,31 @@ class FactChecker:
                 "Could not find trusted sources to verify this claim. "
                 "The sources found are of unknown or low reliability. (Heuristic analysis)"
             )
+
+        # Reduce certainty on conflicting evidence.
+        if contradictions_found and verdict in {Verdict.TRUE, Verdict.FALSE}:
+            confidence = min(confidence, 75)
+            explanation += " Conflicting source signals reduced confidence."
+
+        # Enforce primary-evidence gate for high confidence.
+        if confidence >= HIGH_CONFIDENCE_THRESHOLD and not primary_evidence_found:
+            confidence = HIGH_CONFIDENCE_THRESHOLD - 5
+            explanation += " High confidence capped: no primary-evidence source found."
         
         # Calculate confidence breakdown for transparency
         source_quality_score = min(25, len(factcheck_sites) * 10 + len(high_trust) * 5)
-        source_quantity_score = min(20, len(sources) * 2)
+        source_quantity_score = min(20, len(eligible_sources) * 2)
         factcheck_bonus = 25 if factcheck_sites else 0
         consensus_score = min(30, confidence - source_quality_score - source_quantity_score - factcheck_bonus)
+
+        source_analysis = []
+        for source in eligible_sources[:8]:
+            source_analysis.append({
+                'source_title': source.get('title', 'Unknown Source'),
+                'stance': source.get('stance', 'neutral').upper(),
+                'relevance': min(100, max(0, int(source.get('trust_score', 50)))),
+                'key_excerpt': source.get('original_snippet', source.get('snippet', ''))[:300],
+            })
         
         confidence_breakdown = {
             'source_quality': source_quality_score,
@@ -612,7 +920,8 @@ class FactChecker:
             'total': confidence,
             'explanation': (
                 f"Quality: {source_quality_score}/25 (trusted sources), "
-                f"Quantity: {source_quantity_score}/20 ({len(sources)} sources), "
+                f"Quantity: {source_quantity_score}/20 ({len(eligible_sources)} sources), "
+                f"Primary evidence: {'yes' if primary_evidence_found else 'no'}, "
                 f"Fact-check: {factcheck_bonus}/25, "
                 f"Consensus: {max(0, consensus_score)}/30"
             )
@@ -625,6 +934,8 @@ class FactChecker:
             'explanation': explanation,
             'summary': {'one_liner': explanation, 'key_points': []},
             'detailed_analysis': {},
+            'source_analysis': source_analysis,
+            'contradictions_found': contradictions_found,
             'claims': [],
             'ai_analyzed': False
         }
@@ -645,7 +956,7 @@ class FactChecker:
         candidates = []
         for i, source in enumerate(sources):
             # Prioritize fact-checkers and high trust
-            score = source.get('trust_score', 50)
+            score = int(source.get('trust_score', 50))
             is_fc = source.get('is_factcheck_site', False)
             
             # Skip if it's a PDF (ContentExtractor might struggle/slow down) or youtube
@@ -661,27 +972,42 @@ class FactChecker:
             if priority > 0:
                 candidates.append((i, source, priority))
         
-        # Sort by priority and take top 3
+        # Sort by priority and take top N
         candidates.sort(key=lambda x: x[2], reverse=True)
-        top_candidates = candidates[:3]
+        top_candidates = candidates[:FULL_TEXT_ENRICH_LIMIT]
         
         if not top_candidates:
             return
             
         # Helper function to fetch single URL
         def fetch_text(idx, source):
+            url = source.get('url')
             try:
-                url = source.get('url')
                 # Use extracting logic
                 extracted = self.extractor.extract_from_url(url)
                 if extracted['success'] and extracted['content']:
-                    # Truncate to reasonable length (e.g. 2000 chars) to avoid blowing up context
-                    full_text = extracted['content'][:2500]
+                    # Truncate to avoid blowing up context for model prompts.
+                    full_text = extracted['content'][:FULL_TEXT_MAX_CHARS]
                     # Update source snippet with full text (prefixed)
                     return idx, f"[FULL TEXT] {full_text}..."
             except Exception as e:
                 print(f"Failed to enrich source {url}: {e}")
             return idx, None
+
+        # Fetch in parallel
+        max_workers = min(3, len(top_candidates))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(fetch_text, idx, src) for idx, src, _ in top_candidates]
+
+            for future in concurrent.futures.as_completed(futures):
+                idx, new_text = future.result()
+                if new_text:
+                    # Keep UI-friendly snippet while passing richer context to analysis.
+                    original_snippet = sources[idx].get('original_snippet')
+                    if original_snippet is None:
+                        sources[idx]['original_snippet'] = sources[idx].get('snippet', '')
+                    sources[idx]['snippet'] = new_text
+                    sources[idx]['full_text_available'] = True
 
     def _apply_stance_tags(self, claim: str, sources: list) -> list:
         """Lightweight stance tagging based on snippet/title keywords."""
@@ -724,20 +1050,7 @@ class FactChecker:
             src['temporal_match'] = latest >= year_floor
             if src['temporal_match']:
                 filtered.append(src)
-        return filtered
-
-        # Fetch in parallel
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            futures = [executor.submit(fetch_text, idx, src) for idx, src, _ in top_candidates]
-            
-            for future in concurrent.futures.as_completed(futures):
-                idx, new_text = future.result()
-                if new_text:
-                    # Replace/update snippet to give AI more context
-                    # We store original snippet for UI, but update 'snippet' for AI analysis
-                    sources[idx]['original_snippet'] = sources[idx]['snippet']
-                    sources[idx]['snippet'] = new_text
-                    sources[idx]['full_text_available'] = True
+        return filtered if filtered else sources
 
     def _extract_verdict_from_snippets(self, sources: list) -> str:
         """Extract verdict hints from source snippets."""
@@ -772,18 +1085,62 @@ class FactChecker:
     
     def _build_response(self, classification: dict, ai_result: dict, sources: list) -> dict:
         """Build the final response object with all analysis data."""
-        # Limit sources to top 10
+        if not isinstance(ai_result, dict):
+            ai_result = {
+                'verdict': Verdict.UNVERIFIABLE,
+                'confidence': 0,
+                'explanation': 'Analysis failed to produce a structured response.',
+                'summary': {'one_liner': 'Analysis unavailable.', 'key_points': []},
+                'detailed_analysis': {},
+                'source_analysis': [],
+                'contradictions_found': False,
+                'claims': [],
+                'ai_analyzed': False,
+            }
+
+        try:
+            confidence = int(ai_result.get('confidence', 50))
+        except (TypeError, ValueError):
+            confidence = 50
+
+        confidence = min(100, max(0, confidence))
+        reliable_source_count = sum(1 for s in sources if s.get('include_in_verdict', False))
+        excluded_source_count = max(0, len(sources) - reliable_source_count)
+        primary_evidence_found = self._has_primary_evidence(sources)
+
+        default_breakdown = {
+            'source_quality': 0,
+            'source_quantity': min(20, len(sources) * 2),
+            'factcheck_found': 0,
+            'consensus': 0,
+            'total': confidence,
+            'explanation': 'Confidence breakdown unavailable for this analysis path.',
+        }
+
+        # Limit sources to configured response size.
         top_sources = []
-        for source in sources[:10]:
+        for source in sources[:MAX_RESPONSE_SOURCES]:
+            snippet = source.get('original_snippet', source.get('snippet', ''))
             top_sources.append({
                 'title': source.get('title', 'Untitled'),
                 'url': source.get('url', ''),
-                'snippet': source.get('snippet', '')[:200],
+                'snippet': snippet[:200],
                 'domain': source.get('domain', ''),
                 'trust_level': source.get('trust_level', 'unknown'),
+                'trust_score': source.get('trust_score', 50),
+                'raw_trust_score': source.get('raw_trust_score', source.get('trust_score', 50)),
+                'source_tier': source.get('source_tier', 4),
+                'source_category': source.get('source_category', 'unknown'),
+                'bias': source.get('bias', 'unknown'),
                 'is_factcheck': source.get('is_factcheck_site', False),
                 'stance': source.get('stance', 'neutral'),
-                'temporal_match': source.get('temporal_match', True)
+                'temporal_match': source.get('temporal_match', True),
+                'temporal_year': source.get('temporal_year'),
+                'search_query': source.get('search_query'),
+                'include_in_verdict': source.get('include_in_verdict', False),
+                'source_reason': source.get('source_reason', ''),
+                'excluded_reason': source.get('excluded_reason', ''),
+                'evidence_role': source.get('evidence_role', 'context'),
             })
         
         return {
@@ -792,15 +1149,23 @@ class FactChecker:
             'input_type': classification['type'],
             'claim': classification['claim'],
             'verdict': ai_result.get('verdict', 'UNVERIFIABLE'),
-            'confidence': ai_result.get('confidence', 50),
+            'confidence': confidence,
             'sources': top_sources,
             'source_count': len(sources),
+            'reliable_source_count': ai_result.get('reliable_source_count', reliable_source_count),
+            'excluded_source_count': ai_result.get('excluded_source_count', excluded_source_count),
+            'primary_evidence_found': ai_result.get('primary_evidence_found', primary_evidence_found),
+            'source_policy': SOURCE_ADMISSION_POLICY,
             'explanation': ai_result.get('explanation', 'Analysis completed.'),
             # New structured data for tabs
-            'summary': ai_result.get('summary', {}),
+            'summary': ai_result.get('summary', {'one_liner': '', 'key_points': []}),
             'detailed_analysis': ai_result.get('detailed_analysis', {}),
+            'confidence_breakdown': ai_result.get('confidence_breakdown', default_breakdown),
+            'source_analysis': ai_result.get('source_analysis', []),
+            'contradictions_found': ai_result.get('contradictions_found', False),
             'claims': ai_result.get('claims', []),
-            'ai_analyzed': ai_result.get('ai_analyzed', False)
+            'temporal_context': ai_result.get('temporal_context'),
+            'ai_analyzed': ai_result.get('ai_analyzed', False),
         }
     
     def _error_response(self, user_input: str, error: str) -> dict:
@@ -814,7 +1179,26 @@ class FactChecker:
             'confidence': 0,
             'sources': [],
             'source_count': 0,
-            'explanation': error
+            'reliable_source_count': 0,
+            'excluded_source_count': 0,
+            'primary_evidence_found': False,
+            'source_policy': SOURCE_ADMISSION_POLICY,
+            'explanation': error,
+            'summary': {'one_liner': error, 'key_points': []},
+            'detailed_analysis': {},
+            'confidence_breakdown': {
+                'source_quality': 0,
+                'source_quantity': 0,
+                'factcheck_found': 0,
+                'consensus': 0,
+                'total': 0,
+                'explanation': 'Request failed before analysis could run.',
+            },
+            'source_analysis': [],
+            'contradictions_found': False,
+            'claims': [],
+            'temporal_context': None,
+            'ai_analyzed': False,
         }
 
 

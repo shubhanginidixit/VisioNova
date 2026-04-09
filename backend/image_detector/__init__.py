@@ -37,15 +37,40 @@ from .fast_cascade_detector import FastCascadeDetector, create_fast_detector
 from .noise_analyzer import NoiseAnalyzer
 
 # Accuracy improvement modules (Phase 1)
-from .sbi_detector import SBIDetector, create_sbi_detector
-from .forgery_detector import CopyMoveForgeryDetector, create_forgery_detector
+# Optional modules may be missing in lightweight installs.
+try:
+    from .sbi_detector import SBIDetector, create_sbi_detector
+except ImportError:
+    SBIDetector = None
+    create_sbi_detector = None
+
+try:
+    from .forgery_detector import CopyMoveForgeryDetector, create_forgery_detector
+except ImportError:
+    CopyMoveForgeryDetector = None
+    create_forgery_detector = None
+
 from .confidence_calibrator import ConfidenceCalibrator, create_calibrator
 
 # High-value accuracy modules (Phase 2)
 from .dire_detector import DIREDetector, create_dire_detector
-from .npr_detector import NPRDetector, create_npr_detector
-from .face_consistency_detector import FaceConsistencyDetector, create_face_detector
-from .edge_coherence_analyzer import EdgeCoherenceAnalyzer, create_edge_analyzer
+try:
+    from .npr_detector import NPRDetector, create_npr_detector
+except ImportError:
+    NPRDetector = None
+    create_npr_detector = None
+
+try:
+    from .face_consistency_detector import FaceConsistencyDetector, create_face_detector
+except ImportError:
+    FaceConsistencyDetector = None
+    create_face_detector = None
+
+try:
+    from .edge_coherence_analyzer import EdgeCoherenceAnalyzer, create_edge_analyzer
+except ImportError:
+    EdgeCoherenceAnalyzer = None
+    create_edge_analyzer = None
 
 # ML detectors (may require additional dependencies)
 try:

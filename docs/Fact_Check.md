@@ -164,37 +164,64 @@ Uses LLM (Groq/LLaMA) to analyze sources and determine verdicts. Falls back to h
 ### `POST /api/fact-check` — Quick Check
 ```json
 {
-  "claim": "The moon landing happened in 1969"
+  "input": "The moon landing happened in 1969"
 }
 ```
 
-### `POST /api/deep-fact-check` — Enhanced Check
+### `POST /api/fact-check/deep` — Enhanced Check
 Same input, but runs multiple query variations and fetches full source text.
 
 ### Response Structure
 ```json
 {
   "success": true,
+  "input": "The moon landing happened in 1969",
   "input_type": "claim",
-  "original_input": "The moon landing happened in 1969",
   "claim": "moon landing happened 1969",
   "verdict": "TRUE",
-  "confidence": 0.95,
+  "confidence": 92,
+  "confidence_breakdown": {
+    "source_quality": 25,
+    "source_quantity": 16,
+    "factcheck_found": 25,
+    "consensus": 22,
+    "total": 88,
+    "explanation": "Confidence derived from source quality, quantity, and agreement."
+  },
   "explanation": "Multiple authoritative sources confirm...",
-  "summary": "The Apollo 11 mission landed on July 20, 1969...",
+  "summary": {
+    "one_liner": "The claim is supported by reliable evidence.",
+    "key_points": [
+      "Apollo 11 landed in 1969",
+      "Multiple high-trust sources agree"
+    ]
+  },
   "sources": [
     {
       "title": "Moon landing - Wikipedia",
       "url": "https://en.wikipedia.org/wiki/Moon_landing",
       "snippet": "The United States landed astronauts...",
       "trust_score": 90,
-      "trust_level": "high"
+      "trust_level": "high",
+      "source_tier": 2,
+      "source_category": "news",
+      "include_in_verdict": true,
+      "source_reason": "Eligible for verdict scoring under reliable-source policy."
     }
   ],
+  "source_count": 10,
+  "reliable_source_count": 7,
+  "excluded_source_count": 3,
+  "primary_evidence_found": true,
+  "source_policy": "hybrid",
+  "source_analysis": [],
+  "contradictions_found": false,
+  "claims": [],
   "temporal_context": {
     "search_year_from": 1969,
     "time_period": "historical",
-    "is_historical": true
+    "is_historical": true,
+    "description": "historical archives from 1969 onwards"
   },
   "ai_analyzed": true,
   "cached": false

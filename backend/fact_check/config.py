@@ -10,6 +10,43 @@ load_dotenv()
 GOOGLE_SEARCH_RESULTS = 10  # Number of search results to fetch
 REQUEST_TIMEOUT = 10  # Seconds to wait for HTTP requests
 
+# Fact-checking policy settings
+# Source admission policy: strict | hybrid | open
+SOURCE_ADMISSION_POLICY = os.getenv('FACTCHECK_SOURCE_POLICY', 'hybrid').lower()
+
+# Tiering policy (lower tier number = higher reliability)
+SOURCE_CATEGORY_TIERS = {
+    'factcheck': 1,
+    'news_agency': 2,
+    'news': 2,
+    'government': 3,
+    'health': 3,
+    'academic': 3,
+    'reference': 4,
+    'opinion': 5,
+    'satire': 5,
+    'unreliable': 5,
+    'unknown': 4,
+}
+
+# Only Tier 1-3 can influence final verdicts.
+VERDICT_MAX_SOURCE_TIER = 3
+
+# Apply trust penalties to unknown/unmapped domains in hybrid mode.
+UNKNOWN_SOURCE_TRUST_PENALTY = 20
+
+# Hard exclusions from verdict scoring.
+BLOCKED_SOURCE_CATEGORIES = {'unreliable', 'satire'}
+
+# High-confidence outputs require at least one primary-evidence source.
+PRIMARY_EVIDENCE_CATEGORIES = {'factcheck', 'government', 'health', 'academic'}
+HIGH_CONFIDENCE_THRESHOLD = 80
+
+# Source display and enrichment behavior.
+MAX_RESPONSE_SOURCES = 10
+FULL_TEXT_ENRICH_LIMIT = 5
+FULL_TEXT_MAX_CHARS = 2500
+
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 GOOGLE_CSE_ID = os.getenv('GOOGLE_CSE_ID')
 
