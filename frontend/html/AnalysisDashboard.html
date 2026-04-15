@@ -87,7 +87,7 @@
                 </div>
             </div>
             <div class="h-full flex flex-col">
-                <div class="flex flex-1 min-h-0 items-center justify-center p-6">
+                <div class="flex flex-a sec-h-0 items-center justify-center p-6">
                     <div class="w-full max-w-2xl flex flex-col gap-6 relative z-10">
                         <!-- Real-time Scanner Card -->
                         <div
@@ -104,7 +104,7 @@
                                         Analyzing Media
                                     </h3>
                                     <p class="text-sm text-slate-400 mt-1 pl-6 leading-relaxed">Processing multi-modal
-                                        vectors...
+                                        vectors
                                     </p>
                                 </div>
                                 <span
@@ -157,7 +157,7 @@
                         </div>
                         <p class="text-center text-slate-500 text-sm animate-pulse" id="loadingStatus">establishing
                             secure
-                            connection...</p>
+                            connection</p>
                     </div>
                 </div>
 
@@ -167,7 +167,7 @@
                     const ANALYSIS_CONFIGS = {
                         image: {
                             title: 'Analyzing Image',
-                            subtitle: 'Processing pixel patterns and metadata...',
+                            subtitle: 'Processing pixel patterns and metadata',
                             badge: 'SCANNING_PIXELS',
                             steps: [
                                 { name: 'Pixel Pattern Analysis', description: 'Detecting unnatural pixel distributions' },
@@ -175,15 +175,15 @@
                                 { name: 'AI Artifact Detection', description: 'Identifying GAN fingerprints and artifacts' }
                             ],
                             statusMessages: [
-                                'Analyzing pixel distributions...',
-                                'Extracting metadata signatures...',
-                                'Scanning for AI-generated artifacts...',
-                                'Finalizing image analysis...'
+                                'Analyzing pixel distributions',
+                                'Extracting metadata signatures',
+                                'Scanning for AI-generated artifacts',
+                                'Finalizing image analysis'
                             ]
                         },
                         video: {
                             title: 'Analyzing Video',
-                            subtitle: 'Processing frames and audio tracks...',
+                            subtitle: 'Processing frames and audio tracks',
                             badge: 'PROCESSING_FRAMES',
                             steps: [
                                 { name: 'Frame-by-Frame Analysis', description: 'Detecting temporal inconsistencies' },
@@ -191,15 +191,15 @@
                                 { name: 'Deepfake Detection', description: 'Identifying face manipulation artifacts' }
                             ],
                             statusMessages: [
-                                'Extracting video frames...',
-                                'Analyzing frame consistency...',
-                                'Verifying audio synchronization...',
-                                'Running deepfake detection models...'
+                                'Extracting video frames',
+                                'Analyzing frame consistency',
+                                'Verifying audio synchronization',
+                                'Running deepfake detection models'
                             ]
                         },
                         audio: {
                             title: 'Analyzing Audio',
-                            subtitle: 'Processing voice patterns and frequencies...',
+                            subtitle: 'Processing voice patterns and frequencies',
                             badge: 'ANALYZING_WAVEFORM',
                             steps: [
                                 { name: 'Voice Pattern Analysis', description: 'Analyzing vocal characteristics' },
@@ -207,15 +207,15 @@
                                 { name: 'Speech Synthesis Detection', description: 'Identifying AI-generated speech' }
                             ],
                             statusMessages: [
-                                'Extracting audio waveform...',
-                                'Analyzing voice patterns...',
-                                'Checking frequency spectrum...',
-                                'Detecting synthetic speech markers...'
+                                'Extracting audio waveform',
+                                'Analyzing voice patterns',
+                                'Checking frequency spectrum',
+                                'Detecting synthetic speech markers'
                             ]
                         },
                         text: {
                             title: 'Analyzing Text',
-                            subtitle: 'Processing linguistic patterns...',
+                            subtitle: 'Processing linguistic patterns',
                             badge: 'PARSING_TEXT',
                             steps: [
                                 { name: 'Linguistic Pattern Analysis', description: 'Detecting writing style anomalies' },
@@ -223,15 +223,15 @@
                                 { name: 'AI Writing Detection', description: 'Identifying machine-generated text' }
                             ],
                             statusMessages: [
-                                'Tokenizing text content...',
-                                'Analyzing linguistic patterns...',
-                                'Checking source attribution...',
-                                'Running AI detection models...'
+                                'Tokenizing text content',
+                                'Analyzing linguistic patterns',
+                                'Checking source attribution',
+                                'Running AI detection models'
                             ]
                         },
                         url: {
                             title: 'Analyzing URL',
-                            subtitle: 'Extracting and verifying content...',
+                            subtitle: 'Extracting and verifying content',
                             badge: 'FETCHING_CONTENT',
                             steps: [
                                 { name: 'Content Extraction', description: 'Fetching and parsing page content' },
@@ -239,10 +239,10 @@
                                 { name: 'Claim Verification', description: 'Cross-referencing with fact-check sources' }
                             ],
                             statusMessages: [
-                                'Fetching URL content...',
-                                'Extracting main article...',
-                                'Checking source credibility...',
-                                'Verifying claims against trusted sources...'
+                                'Fetching URL content',
+                                'Extracting main article',
+                                'Checking source credibility',
+                                'Verifying claims against trusted sources'
                             ]
                         }
                     };
@@ -250,7 +250,7 @@
                     // Default fallback config
                     const DEFAULT_CONFIG = {
                         title: 'Analyzing Media',
-                        subtitle: 'Processing multi-modal vectors...',
+                        subtitle: 'Processing multi-modal vectors',
                         badge: 'PROCESSING',
                         steps: [
                             { name: 'Content Analysis', description: 'Analyzing content structure' },
@@ -258,10 +258,10 @@
                             { name: 'Authenticity Check', description: 'Checking for manipulation' }
                         ],
                         statusMessages: [
-                            'Initializing analysis...',
-                            'Processing content...',
-                            'Verifying authenticity...',
-                            'Finalizing results...'
+                            'Initializing analysis',
+                            'Processing content',
+                            'Verifying authenticity',
+                            'Finalizing results'
                         ]
                     };
 
@@ -271,7 +271,7 @@
                             <div data-step="${index}">
                                 <div class="flex justify-between text-xs mb-2 font-medium">
                                     <span class="step-name text-slate-300">${step.name}</span>
-                                    <span class="step-status text-slate-500 font-mono">${index === 0 ? 'Processing...' : 'Pending'}</span>
+                                    <span class="step-status text-slate-500 font-mono">${index === 0 ? 'Processing' : 'Pending'}</span>
                                 </div>
                                 <div class="progress-track h-2 w-full rounded-full overflow-hidden">
                                     <div class="step-bar h-full ${index === 0 ? 'bg-accent-blue w-[30%] shadow-[0_0_10px_rgba(58,141,255,0.4)]' : 'bg-slate-700 w-0'} rounded-full transition-all duration-1000"></div>
@@ -319,7 +319,7 @@
 
                             // Animate current step to 100%
                             bar.className = 'step-bar h-full bg-accent-blue w-full rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-1000';
-                            status.textContent = 'Processing...';
+                            status.textContent = 'Processing';
                             status.className = 'step-status text-accent-blue font-mono';
 
                             setTimeout(() => {
@@ -335,11 +335,11 @@
                                     const nextBar = steps[currentStep].querySelector('.step-bar');
                                     const nextStatus = steps[currentStep].querySelector('.step-status');
                                     nextBar.className = 'step-bar h-full bg-accent-blue w-[30%] rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-500';
-                                    nextStatus.textContent = 'Processing...';
+                                    nextStatus.textContent = 'Processing';
                                     nextStatus.className = 'step-status text-accent-blue font-mono';
                                 }
 
-                                setTimeout(updateStep, 300);
+                                setTimeout(updateStep, 10);
                             }, stepDuration);
                         }
 
@@ -347,7 +347,7 @@
                     }
 
                     // API configuration
-                    const API_BASE_URL = 'http://localhost:5000';
+                    const API_BASE_URL = 'http://127.0.0.1:5000';
 
                     // Logging helper
                     function logDebug(message, data = null) {
@@ -369,7 +369,7 @@
                         if (status === 'processing') {
                             bar.className = 'step-bar h-full bg-accent-blue rounded-full shadow-[0_0_10px_rgba(58,141,255,0.4)] transition-all duration-500';
                             bar.style.width = `${progress}%`;
-                            statusEl.textContent = 'Processing...';
+                            statusEl.textContent = 'Processing';
                             statusEl.className = 'step-status text-accent-blue font-mono';
                         } else if (status === 'complete') {
                             bar.className = 'step-bar h-full bg-accent-green rounded-full shadow-[0_0_10px_rgba(0,217,145,0.4)] transition-all duration-500';
@@ -430,16 +430,16 @@
                             if (mediaType === 'url') {
                                 // Step 1: Content Extraction - Start
                                 updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Fetching content...');
+                                updateLoadingStatus(config.statusMessages[0] || 'Fetching content');
 
                                 // Animate progress while waiting for API
                                 let progressValue = 30;
                                 const progressInterval = setInterval(() => {
                                     if (progressValue < 75) {
-                                        progressValue += 3;
+                                        progressValue += 50;
                                         updateStepProgress(0, 'processing', progressValue);
                                     }
-                                }, 500);
+                                }, 10);
 
                                 // Call fact-check API with timeout
                                 const controller = new AbortController();
@@ -458,7 +458,7 @@
 
                                     // Step 1: Got response
                                     updateStepProgress(0, 'processing', 90);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content');
 
                                     if (!response.ok) {
                                         const errorText = await response.text();
@@ -468,7 +468,7 @@
 
                                     // Step 1: Got response
                                     updateStepProgress(0, 'processing', 90);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting content');
 
                                     // Parse response
                                     const result = await response.json();
@@ -476,20 +476,20 @@
 
                                     // Step 2: Processing
                                     updateStepProgress(1, 'processing', 70);
-                                    await new Promise(r => setTimeout(r, 300)); // Brief pause for visual
+                                    await new Promise(r => setTimeout(r, 10)); // Brief pause for visual
 
                                     // Step 2: Complete
                                     updateStepProgress(1, 'complete', 100);
 
                                     // Step 3: Claim Verification - Start
                                     updateStepProgress(2, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[3] || 'Verifying claims...');
+                                    updateLoadingStatus(config.statusMessages[3] || 'Verifying claims');
 
                                     // Store the result
                                     sessionStorage.setItem('visioNova_factcheck_result', JSON.stringify(result));
                                     VisioNovaStorage.clearFile('url');
 
-                                    await new Promise(r => setTimeout(r, 400)); // Brief pause for visual
+                                    await new Promise(r => setTimeout(r, 10)); // Brief pause for visual
 
                                     // Step 3: Complete
                                     updateStepProgress(2, 'complete', 100);
@@ -506,25 +506,25 @@
 
                                 // Step 1: Linguistic Pattern Analysis
                                 updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Processing document...');
+                                updateLoadingStatus(config.statusMessages[0] || 'Processing document');
 
                                 let progressValue = 30;
                                 const progressInterval = setInterval(() => {
-                                    if (progressValue < 75) {
-                                        progressValue += 5;
+                                    if (progressValue < 750) {
+                                        progressValue += 50;
                                         updateStepProgress(0, 'processing', progressValue);
                                     }
-                                }, 400);
+                                }, 10);
 
                                 try {
                                     const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 mins for large docs and model downloads
+                                    const timeoutId = setTimeout(() => controller.abort(), 300000); // instant and model downloads
 
                                     let response;
 
                                     if (isDocument) {
                                         // PDF/DOCX - use file upload endpoint with actual File object
-                                        updateLoadingStatus('Extracting text from document...');
+                                        updateLoadingStatus('Extracting text from document');
 
                                         const docFile = await VisioNovaStorage.getDocumentFile();
                                         if (!docFile || !docFile.file) {
@@ -571,18 +571,18 @@
 
                                     // Step 2: Source Attribution
                                     updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Analyzing patterns...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Analyzing patterns');
 
                                     const result = await response.json();
                                     logDebug('Text analysis result:', result);
                                     logDebug('Storing result in sessionStorage');
 
-                                    await new Promise(r => setTimeout(r, 400));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(1, 'complete', 100);
 
                                     // Step 3: AI Writing Detection
                                     updateStepProgress(2, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Running AI detection...');
+                                    updateLoadingStatus(config.statusMessages[2] || 'Running AI detection');
 
                                     // Store result for TextResultPage to use
                                     sessionStorage.setItem('visioNova_text_result', JSON.stringify(result));
@@ -593,9 +593,9 @@
                                     // Don't remove isDocument flag yet - result page needs it
                                     // sessionStorage.removeItem('visioNova_isDocument');
 
-                                    await new Promise(r => setTimeout(r, 500));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete! Redirecting...');
+                                    updateLoadingStatus('Analysis complete! Redirecting');
 
                                     logDebug('About to redirect to result page');
 
@@ -607,28 +607,28 @@
                                     for (let i = 0; i < config.steps.length; i++) {
                                         updateStepProgress(i, 'complete', 100);
                                     }
-                                    updateLoadingStatus('Preparing results...');
+                                    updateLoadingStatus('Preparing results');
                                     return null;
                                 }
                             } else if (mediaType === 'image') {
                                 // Handle image analysis with backend API
-                                logDebug('Starting image analysis...');
+                                logDebug('Starting image analysis');
 
                                 // Step 1: Pixel Pattern Analysis
                                 updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing pixel patterns...');
+                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing pixel patterns');
 
                                 let progressValue = 30;
                                 const progressInterval = setInterval(() => {
                                     if (progressValue < 80) {
-                                        progressValue += 2;
+                                        progressValue += 50;
                                         updateStepProgress(0, 'processing', progressValue);
                                     }
-                                }, 300);
+                                }, 10);
 
                                 try {
                                     const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 mins for initial model download & processing
+                                    const timeoutId = setTimeout(() => controller.abort(), 300000); // instant & processing
 
                                     const response = await fetch(`${API_BASE_URL}/api/detect-image/ensemble`, {
                                         method: 'POST',
@@ -655,25 +655,32 @@
 
                                     // Step 2: Metadata Extraction
                                     updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting metadata...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Extracting metadata');
 
                                     const result = await response.json();
                                     logDebug('Image analysis result:', result);
 
-                                    await new Promise(r => setTimeout(r, 400));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(1, 'complete', 100);
 
                                     // Step 3: AI Artifact Detection
                                     updateStepProgress(2, 'processing', 60);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting AI artifacts...');
+                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting AI artifacts');
 
                                     // Store result for ImageResultPage to use
+                                    if (result.individual_results && result.individual_results.ela) {
+                                        delete result.individual_results.ela.ela_image;
+                                    }
+                                    if (result.individual_results && result.individual_results.watermark && result.individual_results.watermark.visualizations) {
+                                        delete result.individual_results.watermark.visualizations.watermark_heatmap;
+                                        delete result.individual_results.watermark.visualizations.fft_magnitude;
+                                    }
                                     sessionStorage.setItem('visioNova_image_result', JSON.stringify(result));
                                     logDebug('Image result stored in sessionStorage');
 
-                                    await new Promise(r => setTimeout(r, 600));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete! Redirecting...');
+                                    updateLoadingStatus('Analysis complete! Redirecting');
 
                                     return result;
                                 } catch (fetchError) {
@@ -683,23 +690,23 @@
                                 }
                             } else if (mediaType === 'audio') {
                                 // Handle audio analysis with backend API
-                                logDebug('Starting audio analysis...');
+                                logDebug('Starting audio analysis');
 
                                 // Step 1: Voice Pattern Analysis
                                 updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing audio...');
+                                updateLoadingStatus(config.statusMessages[0] || 'Analyzing audio');
 
                                 let progressValue = 30;
                                 const progressInterval = setInterval(() => {
                                     if (progressValue < 80) {
-                                        progressValue += 2;
+                                        progressValue += 50;
                                         updateStepProgress(0, 'processing', progressValue);
                                     }
-                                }, 400);
+                                }, 10);
 
                                 try {
                                     const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 420000); // 7 min for first-run model downloads on audio
+                                    const timeoutId = setTimeout(() => controller.abort(), 180000); // instant
 
                                     const response = await fetch(`${API_BASE_URL}/api/detect-audio`, {
                                         method: 'POST',
@@ -725,25 +732,25 @@
 
                                     // Step 2: Frequency Spectrum Check
                                     updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Checking frequency spectrum...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Checking frequency spectrum');
 
                                     const result = await response.json();
                                     logDebug('Audio analysis result:', result);
 
-                                    await new Promise(r => setTimeout(r, 400));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(1, 'complete', 100);
 
                                     // Step 3: Speech Synthesis Detection
                                     updateStepProgress(2, 'processing', 60);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting synthetic speech...');
+                                    updateLoadingStatus(config.statusMessages[2] || 'Detecting synthetic speech');
 
                                     // Store result for AudioResultPage to use
                                     sessionStorage.setItem('visioNova_audio_result', JSON.stringify(result));
                                     logDebug('Audio result stored in sessionStorage');
 
-                                    await new Promise(r => setTimeout(r, 500));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete! Redirecting...');
+                                    updateLoadingStatus('Analysis complete! Redirecting');
 
                                     return result;
                                 } catch (fetchError) {
@@ -753,23 +760,23 @@
                                 }
                             } else if (mediaType === 'video') {
                                 // Handle video analysis with backend API
-                                logDebug('Starting video analysis...');
+                                logDebug('Starting video analysis');
 
                                 // Step 1: Frame Analysis
                                 updateStepProgress(0, 'processing', 30);
-                                updateLoadingStatus(config.statusMessages[0] || 'Processing video frames...');
+                                updateLoadingStatus(config.statusMessages[0] || 'Processing video frames');
 
                                 let progressValue = 30;
                                 const progressInterval = setInterval(() => {
                                     if (progressValue < 80) {
-                                        progressValue += 2;
+                                        progressValue += 50;
                                         updateStepProgress(0, 'processing', progressValue);
                                     }
-                                }, 400);
+                                }, 10);
 
                                 try {
                                     const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min for video
+                                    const timeoutId = setTimeout(() => controller.abort(), 180000); // instant
 
                                     const response = await fetch(`${API_BASE_URL}/api/detect-video`, {
                                         method: 'POST',
@@ -795,25 +802,25 @@
 
                                     // Step 2: Audio-Visual Sync
                                     updateStepProgress(1, 'processing', 50);
-                                    updateLoadingStatus(config.statusMessages[1] || 'Checking temporal consistency...');
+                                    updateLoadingStatus(config.statusMessages[1] || 'Checking temporal consistency');
 
                                     const result = await response.json();
                                     logDebug('Video analysis result:', result);
 
-                                    await new Promise(r => setTimeout(r, 400));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(1, 'complete', 100);
 
                                     // Step 3: Deepfake Detection
                                     updateStepProgress(2, 'processing', 60);
-                                    updateLoadingStatus(config.statusMessages[2] || 'Running deepfake detectors...');
+                                    updateLoadingStatus(config.statusMessages[2] || 'Running deepfake detectors');
 
                                     // Store result for VideoResultPage to use
                                     sessionStorage.setItem('visioNova_video_result', JSON.stringify(result));
                                     logDebug('Video result stored in sessionStorage');
 
-                                    await new Promise(r => setTimeout(r, 500));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(2, 'complete', 100);
-                                    updateLoadingStatus('Analysis complete! Redirecting...');
+                                    updateLoadingStatus('Analysis complete! Redirecting');
 
                                     return result;
                                 } catch (fetchError) {
@@ -825,10 +832,10 @@
                                 // For other media types (video), simulate progress
                                 for (let i = 0; i < config.steps.length; i++) {
                                     updateStepProgress(i, 'processing', 30);
-                                    updateLoadingStatus(config.statusMessages[i] || 'Processing...');
-                                    await new Promise(r => setTimeout(r, 600));
+                                    updateLoadingStatus(config.statusMessages[i] || 'Processing');
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(i, 'processing', 70);
-                                    await new Promise(r => setTimeout(r, 400));
+                                    await new Promise(r => setTimeout(r, 10));
                                     updateStepProgress(i, 'complete', 100);
                                 }
                                 return null;

@@ -22,9 +22,9 @@ from typing import Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 # HuggingFace model for video deepfake detection
-HF_MODEL_ID = "Naman712/Deep-fake-detection"
+HF_MODEL_ID = "prithivMLmods/Deep-Fake-Detector-Model"
 # Fallback: use a proven image-level detector on extracted frames
-HF_FALLBACK_MODEL_ID = "dima806/deepfake_vs_real_faces_detection"
+HF_FALLBACK_MODEL_ID = "umm-maybe/AI-image-detector"
 
 MAX_FRAMES = 20  # Maximum frames to extract
 DEFAULT_FPS_SAMPLE = 1  # Sample 1 frame per second by default
