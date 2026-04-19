@@ -27,6 +27,9 @@ if __name__ == '__main__':
     try:
         # use_reloader=False prevents crashes on some Windows configurations
         # threaded=True handles concurrent requests from the frontend
-        app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False, threaded=True)
+        is_debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+        host = os.getenv('FLASK_HOST', '127.0.0.1')
+        port = int(os.getenv('FLASK_PORT', '5000'))
+        app.run(debug=is_debug, host=host, port=port, use_reloader=False, threaded=True)
     except Exception as e:
         print(f"[ERR] Server failed: {e}")
