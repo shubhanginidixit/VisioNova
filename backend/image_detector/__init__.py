@@ -53,7 +53,12 @@ except ImportError:
 from .confidence_calibrator import ConfidenceCalibrator, create_calibrator
 
 # High-value accuracy modules (Phase 2)
-from .dire_detector import DIREDetector, create_dire_detector
+try:
+    from .dire_detector import DIREDetector, create_dire_detector
+except ImportError:
+    DIREDetector = None
+    create_dire_detector = None
+
 try:
     from .npr_detector import NPRDetector, create_npr_detector
 except ImportError:
