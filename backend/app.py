@@ -26,13 +26,15 @@ VIDEO_DETECTOR_AVAILABLE = False
 try:
     from audio_detector import AudioDeepfakeDetector
     AUDIO_DETECTOR_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError) as e:
+    print(f"[WARN] Audio detector disabled (environment error): {e}")
     AudioDeepfakeDetector = None
 
 try:
     from video_detector import VideoDeepfakeDetector
     VIDEO_DETECTOR_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError) as e:
+    print(f"[WARN] Video detector disabled (environment error): {e}")
     VideoDeepfakeDetector = None
 
 
