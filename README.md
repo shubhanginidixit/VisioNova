@@ -65,7 +65,7 @@ A multi-modal forensic engine that doesn't just detect AI media—it *explains* 
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/DhanushPillay/VisioNova.git
+    git clone https://github.com/shubhanginidixit/VisioNova.git
     cd VisioNova
     ```
 

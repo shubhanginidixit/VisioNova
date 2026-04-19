@@ -1648,4 +1648,7 @@ if __name__ == '__main__':
     print("  GET  /api/detect-video/info - Video detector info")
     print()
     
-    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)
+    is_debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    host = os.getenv('FLASK_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_PORT', '5000'))
+    app.run(debug=is_debug, use_reloader=False, host=host, port=port)
