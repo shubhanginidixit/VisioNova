@@ -8,7 +8,7 @@
 // Configuration & Constants
 // ============================================================================
 
-const API_BASE_URL = 'http://localhost:5000';
+
 
 // ============================================================================
 // State Management
@@ -112,12 +112,12 @@ async function processImageAnalysis(imgData) {
 
     try {
         // Step 1: Check if AnalysisDashboard already stored results
-        const storedResult = sessionStorage.getItem('visioNova_image_result');
+        const storedResult = await VisioNovaStorage.getResult('image');
         let result;
 
         if (storedResult) {
             console.log('[ImageResult] Found stored analysis result from AnalysisDashboard');
-            result = JSON.parse(storedResult);
+            result = storedResult;
         } else {
             // Step 2: Fallback — call the API directly
             console.log('[ImageResult] No stored result found, calling API directly...');
@@ -195,6 +195,16 @@ function updateUI(result) {
 
     updateElement('humanPercent', `${Math.round(displayHuman)}%`);
     updateElement('aiPercent', `${Math.round(displayAI)}%`);
+
+    // Update Main Score Badges
+    const badgeConfig = getVerdictBadgeConfig(result.ensemble_verdict || result.verdict, displayAI);
+    updateElement('aiScore', `${Math.round(displayAI)}`);
+    const badgeEl = document.getElementById('verdictBadge');
+    if (badgeEl) {
+        badgeEl.textContent = badgeConfig.text;
+        badgeEl.className = `px-3 py-1 rounded-full text-xs font-bold uppercase ${badgeConfig.classes}`;
+    }
+    updateElement('verdictDescription', result.verdict_description || '');
 
     // Probability note text (hybrid)
     let probText = '';
@@ -755,7 +765,7 @@ function setupActionButtons() {
         reanalyzeBtn.addEventListener('click', async () => {
             if (!imageData) return;
             // Clear stored result so we call the API fresh
-            sessionStorage.removeItem('visioNova_image_result');
+            
             showLoadingState();
             await processImageAnalysis(imageData);
         });

@@ -3,7 +3,7 @@
  * Performs client-side text analysis and displays results
  */
 
-const API_BASE_URL = 'http://localhost:5000';
+
 
 // Analysis state
 let textData = null;
@@ -20,14 +20,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     console.log('[TextResult] textData from storage:', textData);
 
     // Check for cached result from dashboard
-    const cachedResult = sessionStorage.getItem('visioNova_text_result');
+    const cachedResult = await VisioNovaStorage.getResult('text');
     console.log('[TextResult] Cached result exists:', !!cachedResult);
 
     let preloadedResult = null;
     if (cachedResult) {
         try {
-            preloadedResult = JSON.parse(cachedResult);
-            sessionStorage.removeItem('visioNova_text_result');
+            preloadedResult = cachedResult;
+            
             console.log('[TextResult] Using cached result from dashboard');
             console.log('[TextResult] Result keys:', Object.keys(preloadedResult));
         } catch (e) {

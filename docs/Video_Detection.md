@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document outlines VisioNova's strategy for detecting deepfake videos and AI-generated video content. Our approach combines face-level analysis (facial landmarks, lip-sync verification), frame-level detection (EfficientNet-B4, XceptionNet), and temporal consistency analysis to identify synthetic or manipulated video content.
+This document outlines VisioNova's strategy for detecting AI-generated videos and deepfakes. Our 2026 approach utilizes a dual-pathway architecture: explicitly targeting both temporal anomalies (via VideoMAE processing 16-frame batches) and microscopic spatial synthetic artifacts (via Vision Transformers analyzing distinct frame diffusion pixels) to identify modern Text-to-Video models alongside traditional face-swaps.
 
 ---
 
@@ -70,17 +70,13 @@ Video Input (.mp4/.avi/.mov)
 
 ## 3. Detection Methods
 
-### 3.1 Frame-Level Analysis (CNN Detectors)
+### 3.1 AI-Generated Video Temporal Detection (VideoMAE)
+`Vansh180/VideoMae-ffc23-deepfake-detector` processes sequences of 16 frames simultaneously using Video Masked Autoencoders to identify physics violations and temporal aberrations produced by Text-to-Video AI engines.
 
-Each extracted frame is analyzed by image-level classifiers:
+### 3.2 Spatiotemporal Artifact Detection (Vision Transformer)
+`buildborderless/CommunityForensics-DeepfakeDet-ViT` conducts frame-by-frame analysis targeting microscopic "diffusion noise" and model artifacts (97.2% accuracy in discerning DALL-E/Midjourney/Sora pixel generation).
 
-| Model | Architecture | Performance | Best For |
-|-------|-------------|-------------|----------|
-| **EfficientNet-B4** | CNN | AUC 95.59% | Face-swap detection |
-| **XceptionNet** | CNN (depth-separable) | AUC 99.26% (FaceForensics++) | General deepfakes |
-| **CapsuleNet** | Capsule network | Good on unseen methods | Cross-method generalization |
-
-### 3.2 Facial Landmark Analysis
+### 3.3 Facial Landmark Analysis
 
 Tracks 68 facial landmarks across frames to detect:
 
@@ -145,10 +141,10 @@ AI-generated videos (not face-swaps) require different detection strategies:
 
 | Dataset | Size | Focus |
 |---------|------|-------|
+| **CommunityForensics** | 2.7M+ images/frames | Largest aggregation of 4,800+ Midjourney/Sora/DALL-E generators |
 | **FaceForensics++** | 1M+ frames | 5 manipulation methods (Deepfakes, Face2Face, FaceSwap, NeuralTextures, FaceShifter) |
 | **DFDC** (Deepfake Detection Challenge) | 120K+ videos | Diverse actors, environments, manipulations |
 | **Celeb-DF v2** | 5,639 videos | High-quality celebrity deepfakes |
-| **WildDeepfake** | 707 videos | Real-world deepfakes from the internet |
 | **DeeperForensics** | 60K videos | Large-scale, quality-controlled |
 
 ---

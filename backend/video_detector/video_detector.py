@@ -1,16 +1,15 @@
-"""
-Video Deepfake Detector using pretrained models from HuggingFace.
+﻿"""
+Video Deepfake and AI-Generation Detector.
 
-Primary Model: Naman712/Deep-fake-detection
-- Architecture: ResNeXt50 + LSTM for temporal analysis
-- Accuracy: 87% on evaluation set
-- Input: Video frames (extracted at regular intervals)
+Ensemble Models:
+1. buildborderless/CommunityForensics-DeepfakeDet-ViT (ViT for pure pixel/diffusion noise per-frame)
+2. Vansh180/VideoMae-ffc23-deepfake-detector (VideoMAE for 16-frame temporal sequence analysis)
 
 Approach:
-1. Extract frames from video at regular intervals
-2. Run each frame through the image classifier
-3. Aggregate frame-level predictions with temporal weighting
-4. Report overall video authenticity score
+1. Extract contiguous frames (using decord/cv2) for temporal batch analysis.
+2. Run frame batches through VideoMAE to test for physics/motion inconsistencies.
+3. Run keyframes through the CommunityForensics ViT to test for AI diffusion artifacts.
+4. Ensemble the scores.
 """
 
 import os
@@ -21,211 +20,252 @@ from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# HuggingFace model for video deepfake detection
-HF_MODEL_ID = "Naman712/Deep-fake-detection"
-# Fallback: use a proven image-level detector on extracted frames
-HF_FALLBACK_MODEL_ID = "dima806/deepfake_vs_real_faces_detection"
+HF_SPATIAL_MODEL = "buildborderless/CommunityForensics-DeepfakeDet-ViT"
+HF_TEMPORAL_MODEL = "Vansh180/VideoMae-ffc23-deepfake-detector"
 
-MAX_FRAMES = 20  # Maximum frames to extract
-DEFAULT_FPS_SAMPLE = 1  # Sample 1 frame per second by default
+MAX_FRAMES_VIT = 10  # Maximum singular keyframes to extract for spatial CNN/ViT
+NUM_FRAMES_MAE = 16  # Required frames for VideoMAE
 
 
 class VideoDeepfakeDetector:
-    """Detect deepfake videos using frame-level analysis with pretrained models."""
+    """Detect deepfake videos and full AI-generated videos using an ensemble of spatial and temporal models."""
 
     def __init__(self, use_gpu: bool = False):
-        """Initialize the video detector.
-        
-        Args:
-            use_gpu: Whether to use GPU for inference (if available)
-        """
         self.use_gpu = use_gpu
-        self.model = None
-        self.processor = None
+        
+        # Spatial Model (ViT)
+        self.spatial_model = None
+        self.spatial_processor = None
+        
+        # Temporal Model (VideoMAE)
+        self.temporal_model = None
+        self.temporal_processor = None
+        
         self.device = None
-        self.model_loaded = False
+        self.models_loaded = False
         self._load_attempted = False
-        self._active_model_id = None
 
-    def _load_model(self):
-        """Lazy-load the video deepfake detection model."""
+    def _load_models(self):
+        """Lazy-load the video deepfake detection ensemble."""
         if self._load_attempted:
             return
         self._load_attempted = True
 
         try:
             import torch
-            from transformers import AutoImageProcessor, AutoModelForImageClassification
+            from transformers import (
+                AutoImageProcessor, 
+                AutoModelForImageClassification,
+                VideoMAEImageProcessor, 
+                VideoMAEForVideoClassification
+            )
 
             self.device = torch.device("cuda" if self.use_gpu and torch.cuda.is_available() else "cpu")
 
-            # Try primary model first
+            # Try to load models inside Try/Except block for fallback safety
             try:
-                logger.info(f"Loading video detector from {HF_MODEL_ID}...")
-                print(f"Loading video deepfake detector: {HF_MODEL_ID}...")
-                self.processor = AutoImageProcessor.from_pretrained(HF_MODEL_ID, trust_remote_code=True)
-                self.model = AutoModelForImageClassification.from_pretrained(HF_MODEL_ID, trust_remote_code=True)
-                self.model.to(self.device)
-                self.model.eval()
-                self._active_model_id = HF_MODEL_ID
-                self.model_loaded = True
-                logger.info(f"Video detector loaded: {HF_MODEL_ID}")
-                print(f"Video detector loaded: {HF_MODEL_ID}")
-                return
+                logger.info(f"Loading spatial Video ViT: {HF_SPATIAL_MODEL}...")
+                print(f"Loading spatial Video ViT: {HF_SPATIAL_MODEL}...")
+                self.spatial_processor = AutoImageProcessor.from_pretrained(HF_SPATIAL_MODEL)
+                self.spatial_model = AutoModelForImageClassification.from_pretrained(HF_SPATIAL_MODEL)
+                self.spatial_model.to(self.device)
+                self.spatial_model.eval()
             except Exception as e:
-                logger.warning(f"Primary video model failed: {e}")
-                print(f"Primary video model failed: {e}, trying fallback...")
+                logger.warning(f"Spatial model loading failed: {e}")
+                print(f"Spatial model loading failed: {e}")
 
-            # Fallback: use the face deepfake detector on individual frames
-            logger.info(f"Trying fallback model: {HF_FALLBACK_MODEL_ID}...")
-            print(f"Loading fallback video detector: {HF_FALLBACK_MODEL_ID}...")
-            self.processor = AutoImageProcessor.from_pretrained(HF_FALLBACK_MODEL_ID)
-            self.model = AutoModelForImageClassification.from_pretrained(HF_FALLBACK_MODEL_ID)
-            self.model.to(self.device)
-            self.model.eval()
-            self._active_model_id = HF_FALLBACK_MODEL_ID
-            self.model_loaded = True
-            logger.info(f"Fallback video detector loaded: {HF_FALLBACK_MODEL_ID}")
-            print(f"Fallback video detector loaded: {HF_FALLBACK_MODEL_ID}")
+            try:
+                logger.info(f"Loading temporal VideoMAE: {HF_TEMPORAL_MODEL}...")
+                print(f"Loading temporal VideoMAE: {HF_TEMPORAL_MODEL}...")
+                self.temporal_processor = VideoMAEImageProcessor.from_pretrained(HF_TEMPORAL_MODEL)
+                self.temporal_model = VideoMAEForVideoClassification.from_pretrained(HF_TEMPORAL_MODEL)
+                self.temporal_model.to(self.device)
+                self.temporal_model.eval()
+            except Exception as e:
+                logger.warning(f"Temporal model loading failed: {e}")
+                print(f"Temporal model loading failed: {e}")
+
+            if self.spatial_model is not None or self.temporal_model is not None:
+                self.models_loaded = True
+            else:
+                logger.error("Failed to load any video detection models.")
 
         except Exception as e:
-            logger.error(f"Failed to load video detector: {e}")
-            print(f"Failed to load video detector: {e}")
-            self.model_loaded = False
+            logger.error(f"Failed to initialize deep learning backend for video detection: {e}")
+            self.models_loaded = False
 
-    def _extract_frames(self, video_path: str, max_frames: int = MAX_FRAMES) -> List[np.ndarray]:
-        """Extract frames from video file at regular intervals.
-        
-        Args:
-            video_path: Path to video file
-            max_frames: Maximum number of frames to extract
-            
-        Returns:
-            List of frames as numpy arrays (RGB, HWC format)
-        """
+    def _extract_frames_vit(self, video_path: str, max_frames: int = MAX_FRAMES_VIT) -> List[np.ndarray]:
+        """Extract singular keyframes for the spatial ViT analysis."""
         frames = []
         try:
             import cv2
-            
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
-                logger.error(f"Cannot open video: {video_path}")
                 return frames
-            
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            fps = cap.get(cv2.CAP_PROP_FPS) or 30
-            duration = total_frames / fps if fps > 0 else 0
-            
             if total_frames <= 0:
-                logger.error("Video has no frames")
                 cap.release()
                 return frames
             
-            # Calculate frame indices to sample
-            if total_frames <= max_frames:
-                indices = list(range(total_frames))
-            else:
-                indices = np.linspace(0, total_frames - 1, max_frames, dtype=int).tolist()
-            
+            indices = np.linspace(0, total_frames - 1, min(total_frames, max_frames), dtype=int).tolist()
             for idx in indices:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
                 ret, frame = cap.read()
                 if ret:
-                    # Convert BGR to RGB
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    frames.append(frame_rgb)
-            
+                    frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             cap.release()
-            logger.info(f"Extracted {len(frames)} frames from video ({duration:.1f}s, {fps:.0f}fps)")
-            
-        except ImportError:
-            logger.error("opencv-python not installed. Install with: pip install opencv-python")
         except Exception as e:
-            logger.error(f"Frame extraction failed: {e}")
-        
+            logger.error(f"ViT Frame extraction failed: {e}")
         return frames
 
-    def _predict_frame(self, frame: np.ndarray) -> Dict:
-        """Run detection on a single frame.
-        
-        Returns:
-            Dict with 'real_prob' and 'fake_prob'
-        """
+    def _extract_frames_mae(self, video_path: str, num_frames: int = NUM_FRAMES_MAE) -> List[np.ndarray]:
+        """Extract a uniform sequence of frames for VideoMAE."""
+        frames = []
         try:
-            import torch
-            from PIL import Image
+            from decord import VideoReader, cpu
+            vr = VideoReader(video_path, ctx=cpu(0))
+            total_frames = len(vr)
             
-            # Convert numpy array to PIL Image
-            pil_image = Image.fromarray(frame)
+            # VideoMAE is usually trained on 16 evenly spaced frames
+            indices = np.linspace(0, total_frames - 1, min(total_frames, num_frames)).astype(int)
+            batch = vr.get_batch(indices).asnumpy()
             
-            inputs = self.processor(images=pil_image, return_tensors="pt").to(self.device)
+            # If video is extremely short, pad by replicating last frame
+            frame_list = [f for f in batch]
+            while len(frame_list) < num_frames and len(frame_list) > 0:
+                frame_list.append(frame_list[-1])
+            
+            frames = frame_list
+        except Exception as e:
+            # Fallback to OpenCV if decord fails
+            logger.error(f"VideoMAE Frame extraction (decord) failed, falling back to cv2: {e}")
+            try:
+                import cv2
+                cap = cv2.VideoCapture(video_path)
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                if cap.isOpened() and total_frames > 0:
+                    indices = np.linspace(0, total_frames - 1, min(total_frames, num_frames)).astype(int)
+                    for idx in indices:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                        ret, frame = cap.read()
+                        if ret:
+                            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    while len(frames) < num_frames and len(frames) > 0:
+                        frames.append(frames[-1])
+                cap.release()
+            except Exception as cv2_err:
+                logger.error(f"VideoMAE Fallback cv2 extraction failed: {cv2_err}")
+                
+        return frames
+
+    def _predict_spatial(self, frames: List[np.ndarray]) -> Tuple[float, float, List[Dict]]:
+        """Predict AI/Real probability using the spatial ViT on individual frames."""
+        if not frames or self.spatial_model is None:
+            return 0.5, 0.5, []
+
+        import torch
+        from PIL import Image
+
+        frame_results = []
+        fake_probs = []
+
+        for i, frame in enumerate(frames):
+            try:
+                pil_image = Image.fromarray(frame)
+                inputs = self.spatial_processor(images=pil_image, return_tensors="pt").to(self.device)
+                
+                with torch.no_grad():
+                    outputs = self.spatial_model(**inputs)
+                    probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+                
+                # CommunityForensics-DeepfakeDet-ViT logic
+                prob_values = probs[0].tolist()
+                id2label = getattr(self.spatial_model.config, 'id2label', None)
+                
+                fake_prob = prob_values[1] if len(prob_values) > 1 else prob_values[0]
+                real_prob = prob_values[0]
+
+                if id2label:
+                    for idx, label in id2label.items():
+                        label_lower = label.lower()
+                        if 'fake' in label_lower or 'ai' in label_lower or 'synthetic' in label_lower:
+                            fake_prob = prob_values[int(idx)]
+                        elif 'real' in label_lower or 'human' in label_lower or 'authentic' in label_lower:
+                            real_prob = prob_values[int(idx)]
+
+                fake_probs.append(fake_prob)
+                frame_results.append({
+                    'frame_index': i,
+                    'fake_probability': round(fake_prob * 100, 2),
+                    'real_probability': round(real_prob * 100, 2)
+                })
+            except Exception as e:
+                logger.error(f"Spatial inference failed for frame {i}: {e}")
+
+        if not fake_probs:
+            return 0.5, 0.5, []
+
+        avg_fake_prob = float(np.mean(fake_probs))
+        return avg_fake_prob, 1.0 - avg_fake_prob, frame_results
+
+    def _predict_temporal(self, frames: List[np.ndarray]) -> Tuple[float, float]:
+        """Predict using the VideoMAE temporal transformer."""
+        if not frames or len(frames) != NUM_FRAMES_MAE or self.temporal_model is None:
+            return 0.5, 0.5
+
+        import torch
+        from PIL import Image
+
+        try:
+            pil_frames = [Image.fromarray(f) for f in frames]
+            inputs = self.temporal_processor(list(pil_frames), return_tensors="pt").to(self.device)
             
             with torch.no_grad():
-                outputs = self.model(**inputs)
+                outputs = self.temporal_model(**inputs)
                 probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
             
             prob_values = probs[0].tolist()
             
-            # Determine label mapping
-            id2label = getattr(self.model.config, 'id2label', None)
-            real_prob = 0.5
-            fake_prob = 0.5
+            # Vansh180/VideoMae-ffc23-deepfake-detector
+            id2label = getattr(self.temporal_model.config, 'id2label', None)
+            fake_prob = prob_values[1] if len(prob_values) > 1 else 0.5
+            real_prob = prob_values[0] if len(prob_values) > 1 else 0.5
             
             if id2label:
                 for idx, label in id2label.items():
-                    label_lower = label.lower()
-                    if any(r in label_lower for r in ['real', 'genuine', 'authentic', 'human']):
-                        real_prob = prob_values[int(idx)]
-                    elif any(f in label_lower for f in ['fake', 'deepfake', 'ai', 'generated', 'synthetic', 'spoof']):
+                    label_l = label.lower()
+                    if 'fake' in label_l or 'manipulated' in label_l:
                         fake_prob = prob_values[int(idx)]
-            else:
-                # Default assumption: index 0 = real, index 1 = fake
-                real_prob = prob_values[0]
-                fake_prob = prob_values[1] if len(prob_values) > 1 else 1.0 - prob_values[0]
-            
-            return {'real_prob': real_prob, 'fake_prob': fake_prob}
-            
+                    elif 'real' in label_l or 'pristine' in label_l:
+                        real_prob = prob_values[int(idx)]
+                        
+            return fake_prob, real_prob
         except Exception as e:
-            logger.error(f"Frame prediction failed: {e}")
-            return {'real_prob': 0.5, 'fake_prob': 0.5}
+            logger.error(f"Temporal inference failed: {e}")
+            return 0.5, 0.5
 
     def predict(self, video_input, filename: str = "video.mp4") -> Dict:
-        """Detect if a video is a deepfake.
+        """Detect if a video is an AI-generated deepfake.
         
         Args:
             video_input: File path (str) or bytes
-            filename: Original filename (used for temp file extension)
-        
-        Returns:
-            Dict with detection results:
-            - prediction: "real" or "deepfake"
-            - confidence: 0-100 confidence score
-            - ai_probability: 0-100 probability of being AI-generated/deepfake
-            - human_probability: 0-100 probability of being real
-            - frame_count: Number of frames analyzed
-            - frame_results: Per-frame breakdown
-            - temporal_consistency: Score for temporal coherence
-            - model: Model identifier
-            - success: Whether detection succeeded
+            filename: Original filename
         """
-        # Ensure model is loaded
-        self._load_model()
-        if not self.model_loaded:
+        self._load_models()
+        
+        if not self.models_loaded:
             return {
                 'prediction': 'unknown',
                 'confidence': 0,
                 'ai_probability': 50,
                 'human_probability': 50,
-                'frame_count': 0,
-                'model': self._active_model_id or HF_MODEL_ID,
+                'model': "ensemble_failed",
                 'success': False,
-                'error': 'Model not loaded'
+                'error': 'Video detection models not loaded/unavailable.'
             }
 
-        # Handle input type
         video_path = None
         temp_file = None
-        
         try:
             if isinstance(video_input, str):
                 video_path = video_input
@@ -236,103 +276,62 @@ class VideoDeepfakeDetector:
                 temp_file.close()
                 video_path = temp_file.name
             else:
-                return {
-                    'prediction': 'unknown',
-                    'confidence': 0,
-                    'ai_probability': 50,
-                    'human_probability': 50,
-                    'model': self._active_model_id or HF_MODEL_ID,
-                    'success': False,
-                    'error': f'Unsupported input type: {type(video_input)}'
-                }
+                raise ValueError("Unsupported input type.")
 
-            # Extract frames
-            frames = self._extract_frames(video_path)
-            if not frames:
-                return {
-                    'prediction': 'unknown',
-                    'confidence': 0,
-                    'ai_probability': 50,
-                    'human_probability': 50,
-                    'frame_count': 0,
-                    'model': self._active_model_id or HF_MODEL_ID,
-                    'success': False,
-                    'error': 'Failed to extract frames from video'
-                }
+            # 1. Spatial Pathway
+            spatial_frames = self._extract_frames_vit(video_path)
+            spatial_fake_prob, spatial_real_prob, frame_results = self._predict_spatial(spatial_frames)
+            
+            # 2. Temporal Pathway
+            temporal_frames = self._extract_frames_mae(video_path)
+            temporal_fake_prob, temporal_real_prob = self._predict_temporal(temporal_frames)
 
-            # Run detection on each frame
-            frame_results = []
-            fake_probs = []
-            
-            for i, frame in enumerate(frames):
-                result = self._predict_frame(frame)
-                frame_results.append({
-                    'frame_index': i,
-                    'real_probability': round(result['real_prob'] * 100, 2),
-                    'fake_probability': round(result['fake_prob'] * 100, 2),
-                })
-                fake_probs.append(result['fake_prob'])
+            # 3. Ensemble
+            if self.spatial_model and self.temporal_model:
+                final_fake_prob = (spatial_fake_prob + temporal_fake_prob) / 2.0
+            elif self.spatial_model:
+                final_fake_prob = spatial_fake_prob
+            elif self.temporal_model:
+                final_fake_prob = temporal_fake_prob
+            else:
+                final_fake_prob = 0.5
 
-            # Aggregate frame predictions
-            # Use weighted average with higher weight on more extreme predictions
-            fake_probs_arr = np.array(fake_probs)
-            
-            # Simple average
-            avg_fake = float(np.mean(fake_probs_arr))
-            
-            # Weighted by distance from 0.5 (more confident frames count more)
-            weights = np.abs(fake_probs_arr - 0.5) + 0.1  # avoid zero weight
-            weighted_fake = float(np.average(fake_probs_arr, weights=weights))
-            
-            # Final score: blend simple and weighted averages
-            final_fake_prob = 0.4 * avg_fake + 0.6 * weighted_fake
             final_real_prob = 1.0 - final_fake_prob
-            
-            # Temporal consistency analysis
-            # High variance across frames may indicate partial manipulation
-            temporal_std = float(np.std(fake_probs_arr))
-            temporal_consistency = max(0, 1.0 - temporal_std * 2)  # Higher = more consistent
-            
-            # Count frames classified as fake
-            fake_frame_count = int(np.sum(fake_probs_arr > 0.5))
-            fake_ratio = fake_frame_count / len(fake_probs)
-            
             prediction = "deepfake" if final_fake_prob > 0.5 else "real"
             confidence = round(max(final_fake_prob, final_real_prob) * 100, 2)
             
+            # Additional metric: Variance/consistency across spatial frames
+            fake_probs_arr = [res['fake_probability']/100.0 for res in frame_results]
+            temporal_std = float(np.std(fake_probs_arr)) if fake_probs_arr else 0.0
+            temporal_consistency = max(0, 1.0 - temporal_std * 2)
+
             return {
                 'prediction': prediction,
                 'confidence': confidence,
                 'ai_probability': round(final_fake_prob * 100, 2),
                 'human_probability': round(final_real_prob * 100, 2),
-                'frame_count': len(frames),
-                'fake_frame_count': fake_frame_count,
-                'fake_frame_ratio': round(fake_ratio * 100, 2),
+                'frame_count': len(spatial_frames),
                 'temporal_consistency': round(temporal_consistency * 100, 2),
                 'frame_results': frame_results,
-                'model': self._active_model_id or HF_MODEL_ID,
+                'model': 'VideoMAE+CommunityForensics Ensemble',
                 'success': True,
                 'details': {
-                    'avg_fake_probability': round(avg_fake * 100, 2),
-                    'weighted_fake_probability': round(weighted_fake * 100, 2),
+                    'spatial_fake_prob': round(spatial_fake_prob * 100, 2),
+                    'temporal_fake_prob': round(temporal_fake_prob * 100, 2),
                     'temporal_std': round(temporal_std, 4),
                 }
             }
 
         except Exception as e:
-            logger.error(f"Video detection failed: {e}")
+            logger.error(f"Video detection pipeline failed: {e}")
             return {
                 'prediction': 'unknown',
                 'confidence': 0,
                 'ai_probability': 50,
-                'human_probability': 50,
-                'frame_count': 0,
-                'model': self._active_model_id or HF_MODEL_ID,
                 'success': False,
                 'error': str(e)
             }
         finally:
-            # Clean up temp file
             if temp_file and os.path.exists(temp_file.name):
                 try:
                     os.unlink(temp_file.name)
@@ -340,13 +339,10 @@ class VideoDeepfakeDetector:
                     pass
 
     def get_model_info(self) -> Dict:
-        """Return model metadata."""
         return {
-            'model_id': self._active_model_id or HF_MODEL_ID,
-            'fallback_model_id': HF_FALLBACK_MODEL_ID,
-            'architecture': 'ResNeXt50 + LSTM (frame-level analysis)',
-            'max_frames': MAX_FRAMES,
-            'supported_formats': ['mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv'],
-            'loaded': self.model_loaded,
-            'device': str(self.device) if self.device else 'not loaded'
+            'models': [HF_SPATIAL_MODEL, HF_TEMPORAL_MODEL],
+            'architectures': ['ViT (Spatial)', 'VideoMAE (Temporal)'],
+            'max_frames_vit': MAX_FRAMES_VIT,
+            'loaded': self.models_loaded,
+            'device': str(self.device) if self.device else 'not_loaded'
         }

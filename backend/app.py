@@ -1648,4 +1648,5 @@ if __name__ == '__main__':
     print("  GET  /api/detect-video/info - Video detector info")
     print()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # disable reloader to prevent loading heavy ML models twice on startup
+    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)

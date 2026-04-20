@@ -3,7 +3,7 @@
  * Connects to the backend API for claim verification.
  */
 
-const API_BASE_URL = 'http://localhost:5000';
+
 const MAX_INPUT_LENGTH = 5000;  // Maximum characters allowed
 const DEBOUNCE_DELAY = 300;     // Milliseconds to wait before submitting
 
@@ -52,13 +52,13 @@ async function initFactCheck() {
     }
 
     // Check for pre-fetched results from AnalysisDashboard
-    const storedResult = sessionStorage.getItem('visioNova_factcheck_result');
+    const storedResult = await VisioNovaStorage.getResult('url');
     if (storedResult) {
         console.log('[FactCheck] Found pre-fetched result, displaying directly');
         try {
-            const result = JSON.parse(storedResult);
+            const result = storedResult || cachedResult;
             // Clear stored result
-            sessionStorage.removeItem('visioNova_factcheck_result');
+            
             // Display the result directly
             displayResults(result);
             // Also populate the input field with the URL that was analyzed
@@ -70,7 +70,7 @@ async function initFactCheck() {
             return; // Don't do anything else
         } catch (e) {
             console.error('[FactCheck] Error parsing stored result:', e);
-            sessionStorage.removeItem('visioNova_factcheck_result');
+            
         }
     }
 

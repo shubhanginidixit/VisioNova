@@ -494,6 +494,89 @@ const VisioNovaStorage = {
         } catch (error) {
             console.error('[Storage] Error clearing audio file:', error);
         }
+    },
+
+    // ─── Result storage (IndexedDB for persistence) ──────────
+
+    /**
+     * Save analysis result to IndexedDB
+     * @param {string} type - Media type (image, video, audio, text, url)
+     * @param {Object} result - The analysis result object from the API
+     */
+    saveResult: async function (type, result) {
+        // Fallback to SessionStorage for instant access across tabs
+        try {
+            sessionStorage.setItem(`visioNova_${type}_result`, JSON.stringify(result));
+        } catch (e) {
+            console.error("Fallback to sessionStorage failed:", e);
+        }
+
+        try {
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+
+            const resultData = {
+                id: `result_${type}`,
+                data: result,
+                timestamp: new Date().toISOString()
+            };
+
+            await new Promise((resolve, reject) => {
+                const request = store.put(resultData);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+
+            console.log(`[Storage] Result for ${type} saved to IndexedDB`);
+            db.close();
+            return true;
+        } catch (error) {
+            console.error(`[Storage] Error saving result for ${type}:`, error);
+            return false;
+        }
+    },
+
+    /**
+     * Get analysis result from IndexedDB (with fallback to sessionStorage)
+     * @param {string} type - Media type (image, video, audio, text, url)
+     * @returns {Promise<Object|null>} - The analysis result object
+     */
+    getResult: async function (type) {
+        try {
+            // First check IndexedDB
+            const db = await this._initDB();
+            const transaction = db.transaction(['files'], 'readonly');
+            const store = transaction.objectStore('files');
+
+            const resultData = await new Promise((resolve, reject) => {
+                const request = store.get(`result_${type}`);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+
+            db.close();
+            
+            if (resultData && resultData.data) {
+                console.log(`[Storage] Result for ${type} retrieved from IndexedDB`);
+                return resultData.data;
+            }
+        } catch (error) {
+            console.error(`[Storage] Error getting result for ${type} from IndexedDB:`, error);
+        }
+
+        // Fallback to sessionStorage
+        try {
+            const sessionData = sessionStorage.getItem(`visioNova_${type}_result`);
+            if (sessionData) {
+                console.log(`[Storage] Result for ${type} retrieved from sessionStorage fallback`);
+                return JSON.parse(sessionData);
+            }
+        } catch (error) {
+            console.error(`[Storage] Error getting result for ${type} from sessionStorage:`, error);
+        }
+        
+        return null;
     }
 };
 

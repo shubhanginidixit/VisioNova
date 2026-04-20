@@ -1,9 +1,9 @@
-const API_BASE_URL = 'http://localhost:5000';
+
 
 // Kick off once the page is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const videoData = getVideoFromStorage();
+        const videoData = await getVideoFromStorage();
         if (!videoData) {
             showError('No video provided. Please upload a video on the homepage.');
             return;
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showVideoPreview(videoData);
 
         // Prefer cached analysis from the dashboard
-        const cached = readCachedResult();
+        const cached = await readCachedResult();
         const result = cached || await analyzeVideo(videoData);
 
         if (result) {
@@ -26,10 +26,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function getVideoFromStorage() {
+async function getVideoFromStorage() {
     try {
-        if (window.VisioNovaStorage && typeof VisioNovaStorage.getFile === 'function') {
-            return VisioNovaStorage.getFile('video');
+        if (window.VisioNovaStorage) {
+            const dbVideo = await VisioNovaStorage.getVideoFile();
+            if (dbVideo && dbVideo.data) return dbVideo;
+            
+            if (typeof VisioNovaStorage.getFile === 'function') {
+                return VisioNovaStorage.getFile('video');
+            }
         }
     } catch (e) {
         console.warn('[VideoResult] Storage unavailable:', e);
@@ -52,17 +57,10 @@ function showVideoPreview(videoData) {
     }
 }
 
-function readCachedResult() {
-    const cached = sessionStorage.getItem('visioNova_video_result');
-    if (!cached) return null;
-    try {
-        const parsed = JSON.parse(cached);
-        sessionStorage.removeItem('visioNova_video_result');
-        return parsed;
-    } catch (e) {
-        sessionStorage.removeItem('visioNova_video_result');
-        return null;
-    }
+async function readCachedResult() {
+    const cached = await VisioNovaStorage.getResult('video');
+    return cached || null;
+}
 }
 
 async function analyzeVideo(videoData) {

@@ -13,11 +13,11 @@
 
 document.addEventListener('DOMContentLoaded', async function () {
     // Check if the dashboard already performed the analysis and cached the result
-    const cachedResult = sessionStorage.getItem('visioNova_audio_result');
+    const cachedResult = await VisioNovaStorage.getResult('audio');
     if (cachedResult) {
-        sessionStorage.removeItem('visioNova_audio_result');
+        
         try {
-            const result = JSON.parse(cachedResult);
+            const result = cachedResult;
             if (result.success) {
                 setText('pageTitle', result.meta?.fileName || result.meta?.file_name || 'Audio Analysis');
 
@@ -202,10 +202,10 @@ function createAudioBlobUrl(audioData) {
 async function runAudioAnalysis(audioData) {
     try {
         // Check if the dashboard already performed the analysis
-        const cachedResult = sessionStorage.getItem('visioNova_audio_result');
+        const cachedResult = await VisioNovaStorage.getResult('audio');
         if (cachedResult) {
-            sessionStorage.removeItem('visioNova_audio_result');
-            const result = JSON.parse(cachedResult);
+            
+            const result = cachedResult;
             if (result.success) {
                 renderAll(result);
                 return;
@@ -213,7 +213,7 @@ async function runAudioAnalysis(audioData) {
         }
 
         // Fallback: call API directly
-        const response = await fetch('/api/detect-audio', {
+        const response = await fetch(`${API_BASE_URL}/api/detect-audio`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

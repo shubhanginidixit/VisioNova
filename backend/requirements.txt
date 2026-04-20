@@ -60,8 +60,9 @@ librosa>=0.10.0  # Audio resampling and processing
 
 # Video Detection Dependencies
 # opencv-python already listed above
-# Model: Naman712/Deep-fake-detection (ResNeXt50 + LSTM, 87% accuracy)
-# Fallback: dima806/deepfake_vs_real_faces_detection (ViT)
+decord>=0.6.0  # Fast video reading for VideoMAE
+# Model 1: Vansh180/VideoMae-ffc23-deepfake-detector (VideoMAE temporal artifacts)
+# Model 2: buildborderless/CommunityForensics-DeepfakeDet-ViT (ViT spatial artifacts)
 
 # Text Detection Ensemble (4 models, weighted average)
 # desklib/ai-text-detector-v1.01 (DeBERTa-v3-large, 400M, RAID #1, w=0.35)
